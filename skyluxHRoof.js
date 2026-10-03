@@ -1787,16 +1787,52 @@ function createPL(v3d = window.v3d) {
             }
         }
 
-        function getObjTransform(objName, mode, coord) {
+        function getObjTransform(objName, isWorldSpace, mode, coord) {
             if (!objName)
                 return;
             var obj = getObjectByName(objName);
             if (!obj)
                 return;
-            if (mode === "rotation")
-                return swizzleValueSign(coord, obj[mode][coord] * 180 / Math.PI);
+
+            var coordSystem = getSceneCoordSystem();
+            var transformVal;
+
+            if (isWorldSpace && obj.parent) {
+                if (mode === 'position') {
+                    transformVal = transformCoordsSpace(
+                        obj.getWorldPosition(_pGlob.vec3Tmp), 'Y_UP_RIGHT',
+                        coordSystem, mode === 'scale');
+                } else if (mode === 'rotation') {
+                    transformVal = transformCoordsSpace(
+                        obj.getWorldEuler(_pGlob.eulerTmp, 'XYZ'), 'Y_UP_RIGHT',
+                        coordSystem, mode === 'scale');
+                } else if (mode === 'scale') {
+                    transformVal = transformCoordsSpace(
+                        obj.getWorldScale(_pGlob.vec3Tmp), 'Y_UP_RIGHT',
+                        coordSystem, mode === 'scale');
+                }
+
+            } else if (mode === 'rotation' && coordSystem == 'Z_UP_RIGHT') {
+                transformVal = transformEulerV3dToBlenderShortest(obj.rotation,
+                    _pGlob.eulerTmp);
+
+            } else if (mode === 'rotation' && coordSystem == 'Y_UP_RIGHT') {
+                var rotUI = RotationInterface.initObject(obj);
+                transformVal = rotUI.getUserRotation(_pGlob.eulerTmp);
+
+            } else {
+                transformVal = transformCoordsSpace(obj[mode].clone(),
+                    'Y_UP_RIGHT', coordSystem, mode === 'scale');
+            }
+            if (mode === 'rotation') {
+                transformVal.x = v3d.MathUtils.radToDeg(transformVal.x);
+                transformVal.y = v3d.MathUtils.radToDeg(transformVal.y);
+                transformVal.z = v3d.MathUtils.radToDeg(transformVal.z);
+            }
+            if (coord == 'xyz')
+                return transformVal.toArray().slice(0, 3);
             else
-                return swizzleValueSign(coord, obj[mode][coord]);
+                return transformVal[coord];
         }
 
         function swizzleValueSign(newAxis, value) {
