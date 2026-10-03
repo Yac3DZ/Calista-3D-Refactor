@@ -5854,7 +5854,6 @@ function createPL(v3d = window.v3d) {
 
         function takeSnapshot() {
             // Single snapshot entry point: position the camera for the active
-            // perspective, then grab the frame 250 ms after it settles.
             cameraPosition(function () {
                 registerSetTimeout(0.25, function () {
                     renderFrame();
