@@ -567,21 +567,21 @@ function createPL(v3d = window.v3d) {
             setCameraOptions(enabled);
 
             //classic style
-            setObjTransform("House_classic", 'position', '', 0, '', false);
+            setObjTransform("House_classic", false, "position", ['', 0, ''], false);
             if (isFreestanding) {
-                setObjTransform("House_classic", 'position', '', -3, '', false);
+                setObjTransform("House_classic", false, "position", ['', -3, ''], false);
                 setMorphFactor('Ground_classic', 'Deck', 0.3);
             }
             if (additionalWallsSpecs[0])
-                setObjTransform("House_classic", 'position', conservatoryWidth / 2 - 3.33, '', '', false);
+                setObjTransform("House_classic", false, "position", [conservatoryWidth / 2 - 3.33, '', ''], false);
             else
-                setObjTransform("House_classic", 'position', conservatoryWidth / 2 - 2.83, '', '', false);
+                setObjTransform("House_classic", false, "position", [conservatoryWidth / 2 - 2.83, '', ''], false);
 
             setMorphFactor('Ground_classic', 'Distance', (conservatoryDepth + 2) / 10);
 
             //modern style
-            setObjTransform("House_modern", 'position', '', 0, 0, false);
-            setObjTransform("Ground_modern", 'position', '', 0, 0, false);
+            setObjTransform("House_modern", false, "position", ['', 0, 0], false);
+            setObjTransform("Ground_modern", false, "position", ['', 0, 0], false);
 
             setMorphFactor('House_modern', 'Driveway', 0);
             setMorphFactor('Ground_modern', 'Distance front', (conservatoryDepth + 1.5) / 10);
@@ -596,13 +596,13 @@ function createPL(v3d = window.v3d) {
                 setMorphFactor('Ground_modern', 'Extra environment depth', (conservatoryDepth - 7) / 10);
 
             if (isFreestanding) {
-                setObjTransform("House_modern", 'position', '', -3, 0, false);
-                setObjTransform("Ground_modern", 'position', '', '', 0, false);
+                setObjTransform("House_modern", false, "position", ['', -3, 0], false);
+                setObjTransform("Ground_modern", false, "position", ['', '', 0], false);
 
                 setMorphFactor('Ground_modern', 'Deck', 0.3);
 
-                setObjTransform("House_modern", 'position', '', -10.5, 0, false);
-                setObjTransform("Ground_modern", 'position', '', -10.5, 0, false);
+                setObjTransform("House_modern", false, "position", ['', -10.5, 0], false);
+                setObjTransform("Ground_modern", false, "position", ['', -10.5, 0], false);
 
                 setMorphFactor('Ground_modern', 'Distance front', 0.3);
                 setMorphFactor('Ground_modern', 'Distance rear', (conservatoryDepth - 0.5) / 10);
@@ -767,14 +767,14 @@ function createPL(v3d = window.v3d) {
             if (!additionalWallsSpecs[2])
                 noFrontWallAdaptation = 0.5;
 
-            setObjTransform("Left Wall_classic", 'position', conservatoryWidth / 2, 1.4, '', false);
-            setObjTransform("Right Wall_classic", 'position', -conservatoryWidth / 2, 0, '', false);
-            setObjTransform("Front Wall", 'position', 0, conservatoryDepth, '', false);
-            setObjTransform("Right Wall Transparent", 'position', -conservatoryWidth / 2, 0, '', false);
-            setObjTransform("Front Wall Transparent", 'position', 0, conservatoryDepth, '', false);
+            setObjTransform("Left Wall_classic", false, "position", [conservatoryWidth / 2, 1.4, ''], false);
+            setObjTransform("Right Wall_classic", false, "position", [-conservatoryWidth / 2, 0, ''], false);
+            setObjTransform("Front Wall", false, "position", [0, conservatoryDepth, ''], false);
+            setObjTransform("Right Wall Transparent", false, "position", [-conservatoryWidth / 2, 0, ''], false);
+            setObjTransform("Front Wall Transparent", false, "position", [0, conservatoryDepth, ''], false);
 
-            setObjTransform("Right Wall_modern", 'position', -conservatoryWidth / 2, 0, '', false);
-            setObjTransform("Left Wall_modern", 'position', conservatoryWidth / 2, 0, '', false);
+            setObjTransform("Right Wall_modern", false, "position", [-conservatoryWidth / 2, 0, ''], false);
+            setObjTransform("Left Wall_modern", false, "position", [conservatoryWidth / 2, 0, ''], false);
 
             setMorphFactor("Left Wall_classic", 'Depth', ((conservatoryDepth - 1 - 0.4 - 1) / 99));
             setMorphFactor("Right Wall_classic", 'Depth', ((conservatoryDepth - 1) / 99));
@@ -817,7 +817,7 @@ function createPL(v3d = window.v3d) {
             changeVis("Rear Wall", false);
 
             if (!enabled) {
-                setObjTransform("Left Wall Transparent", 'position', conservatoryWidth / 2, 0, '', false);
+                setObjTransform("Left Wall Transparent", false, "position", [conservatoryWidth / 2, 0, ''], false);
                 setMorphFactor("Left Wall Transparent", 'Depth', ((conservatoryDepth - 1 + noFrontWallAdaptation) / 99));
 
                 setMorphFactor("Left Wall Transparent", 'Height', ((triangleRearHeight + gutterHeight - 1 + 0.5) / 99));
@@ -983,19 +983,19 @@ function createPL(v3d = window.v3d) {
                 return;
 
             setMorphFactor('widthMeasurement', 'Width', ((conservatoryWidth - 1) / 99));
-            setObjTransform('widthMeasurement', 'position', '', conservatoryDepth, '', false);
-            setObjTransform('widthMeasurementText', 'position', '', '', -0.15, false);
-            setObjTransform('widthMeasurementTextFlipped', 'position', '', '', -0.15, false);
+            setObjTransform('widthMeasurement', false, "position", ['', conservatoryDepth, ''], false);
+            setObjTransform('widthMeasurementText', false, "position", ['', '', -0.15], false);
+            setObjTransform('widthMeasurementTextFlipped', false, "position", ['', '', -0.15], false);
 
             setMorphFactor('depthMeasurement', 'Depth', ((conservatoryDepth - 1) / 99));
-            setObjTransform('depthMeasurement', 'position', (conservatoryWidth) / 2, 0, '', false);
-            setObjTransform('depthMeasurementText', 'position', (conservatoryWidth) / 2, (conservatoryDepth) / 2, -0.15, false);
-            setObjTransform('depthMeasurementTextFlipped', 'position', (conservatoryWidth) / 2, (conservatoryDepth) / 2, -0.15, false);
+            setObjTransform('depthMeasurement', false, "position", [(conservatoryWidth) / 2, 0, ''], false);
+            setObjTransform('depthMeasurementText', false, "position", [(conservatoryWidth) / 2, (conservatoryDepth) / 2, -0.15], false);
+            setObjTransform('depthMeasurementTextFlipped', false, "position", [(conservatoryWidth) / 2, (conservatoryDepth) / 2, -0.15], false);
 
             setMorphFactor('highestPointMeasurement', 'Height', ((totalHeight - 1) / 99));
-            setObjTransform('highestPointMeasurement', 'position', (conservatoryWidth) / 2, conservatoryDepth, '', false);
-            setObjTransform('highestPointMeasurementText', 'position', (conservatoryWidth) / 2 + 0.25 + 0.32, conservatoryDepth, totalHeight / 2, false);
-            setObjTransform('highestPointMeasurementTextFlipped', 'position', (conservatoryWidth) / 2 + 0.25 + 0.32, conservatoryDepth, totalHeight / 2, false);
+            setObjTransform('highestPointMeasurement', false, "position", [(conservatoryWidth) / 2, conservatoryDepth, ''], false);
+            setObjTransform('highestPointMeasurementText', false, "position", [(conservatoryWidth) / 2 + 0.25 + 0.32, conservatoryDepth, totalHeight / 2], false);
+            setObjTransform('highestPointMeasurementTextFlipped', false, "position", [(conservatoryWidth) / 2 + 0.25 + 0.32, conservatoryDepth, totalHeight / 2], false);
 
             updateTextObj("widthMeasurementText", conservatoryWidthMM + "mm");
             updateTextObj("widthMeasurementTextFlipped", conservatoryWidthMM + "mm");
@@ -1005,14 +1005,14 @@ function createPL(v3d = window.v3d) {
             updateTextObj("highestPointMeasurementTextFlipped", totalHeightMM + "mm");
 
             setMorphFactor('widthMeasurementTop', 'Width', ((conservatoryWidth - 1) / 99));
-            setObjTransform('widthMeasurementTop', 'position', '', conservatoryDepth, totalHeight, false);
-            setObjTransform('widthMeasurementTopText', 'position', '', conservatoryDepth, totalHeight + 0.35, false);
-            setObjTransform('widthMeasurementTopTextFlipped', 'position', '', conservatoryDepth, totalHeight + 0.35, false);
+            setObjTransform('widthMeasurementTop', false, "position", ['', conservatoryDepth, totalHeight], false);
+            setObjTransform('widthMeasurementTopText', false, "position", ['', conservatoryDepth, totalHeight + 0.35], false);
+            setObjTransform('widthMeasurementTopTextFlipped', false, "position", ['', conservatoryDepth, totalHeight + 0.35], false);
 
             setMorphFactor('depthMeasurementTop', 'Depth', ((conservatoryDepth - 1) / 99));
-            setObjTransform('depthMeasurementTop', 'position', (conservatoryWidth) / 2, 0, totalHeight, false);
-            setObjTransform('depthMeasurementTopText', 'position', (conservatoryWidth) / 2, conservatoryDepth / 2, totalHeight + 0.35, false);
-            setObjTransform('depthMeasurementTopTextFlipped', 'position', (conservatoryWidth) / 2, conservatoryDepth / 2, totalHeight + 0.35, false);
+            setObjTransform('depthMeasurementTop', false, "position", [(conservatoryWidth) / 2, 0, totalHeight], false);
+            setObjTransform('depthMeasurementTopText', false, "position", [(conservatoryWidth) / 2, conservatoryDepth / 2, totalHeight + 0.35], false);
+            setObjTransform('depthMeasurementTopTextFlipped', false, "position", [(conservatoryWidth) / 2, conservatoryDepth / 2, totalHeight + 0.35], false);
 
             updateTextObj("widthMeasurementTopText", conservatoryWidthMM + "mm");
             updateTextObj("widthMeasurementTopTextFlipped", conservatoryWidthMM + "mm");
@@ -1022,25 +1022,25 @@ function createPL(v3d = window.v3d) {
             // Horizontal screen height Back and Front meeasurements
             //Back
             setMorphFactor('HorizontalScreenHeightMeasurement', 'Height', (getHScreenHight().back - 1) / 99);
-            setObjTransform('HorizontalScreenHeightMeasurement', 'position', conservatoryWidth / 2, '', '', false);
-            setObjTransform('HorizontalScreenHeightMeasurementText', 'position', '', '', totalHeight / 2, false);
-            setObjTransform('HorizontalScreenHeightMeasurementTextFlipped', 'position', '', '', (totalHeight + 0.15) / 2, false);
+            setObjTransform('HorizontalScreenHeightMeasurement', false, "position", [conservatoryWidth / 2, '', ''], false);
+            setObjTransform('HorizontalScreenHeightMeasurementText', false, "position", ['', '', totalHeight / 2], false);
+            setObjTransform('HorizontalScreenHeightMeasurementTextFlipped', false, "position", ['', '', (totalHeight + 0.15) / 2], false);
             updateTextObj("HorizontalScreenHeightMeasurementText", getHScreenHight().back * 1000 + "mm");
             updateTextObj("HorizontalScreenHeightMeasurementTextFlipped", getHScreenHight().back * 1000 + "mm");
 
             //Front
             setMorphFactor('HorizontalScreenFrontMeasurement', 'Height', (getHScreenHight().front - 1) / 99);
-            setObjTransform('HorizontalScreenFrontMeasurement', 'position', conservatoryWidth / 2, conservatoryDepth, '', false);
-            setObjTransform('HorizontalScreenFrontMeasurementText', 'position', '', '', (getHScreenHight().front) / 2, false);
-            setObjTransform('HorizontalScreenFrontMeasurementTextFlipped', 'position', '', '', (getHScreenHight().front) / 2, false);
+            setObjTransform('HorizontalScreenFrontMeasurement', false, "position", [conservatoryWidth / 2, conservatoryDepth, ''], false);
+            setObjTransform('HorizontalScreenFrontMeasurementText', false, "position", ['', '', (getHScreenHight().front) / 2], false);
+            setObjTransform('HorizontalScreenFrontMeasurementTextFlipped', false, "position", ['', '', (getHScreenHight().front) / 2], false);
             updateTextObj("HorizontalScreenFrontMeasurementText", getHScreenHight().front * 1000 + "mm");
             updateTextObj("HorizontalScreenFrontMeasurementTextFlipped", getHScreenHight().front * 1000 + "mm");
 
             //Walk Through Height
             setMorphFactor('WalkThroughHeightMeasurement', 'Height', (totalHeight - 0.26 - 1) / 99);
-            setObjTransform('WalkThroughHeightMeasurement', 'position', -conservatoryWidth / 2 + 0.15, conservatoryDepth, '', false);
-            setObjTransform('WalkThroughHeightMeasurementText', 'position', '', '', (totalHeight) / 2, false);
-            setObjTransform('WalkThroughHeightMeasurementTextFlipped', 'position', '', '', (totalHeight) / 2, false);
+            setObjTransform('WalkThroughHeightMeasurement', false, "position", [-conservatoryWidth / 2 + 0.15, conservatoryDepth, ''], false);
+            setObjTransform('WalkThroughHeightMeasurementText', false, "position", ['', '', (totalHeight) / 2], false);
+            setObjTransform('WalkThroughHeightMeasurementTextFlipped', false, "position", ['', '', (totalHeight) / 2], false);
             updateTextObj("WalkThroughHeightMeasurementText", totalHeightMM - (0.26 * 1000) + "mm");
             updateTextObj("WalkThroughHeightMeasurementTextFlipped", totalHeightMM - (0.26 * 1000) + "mm");
 
@@ -1335,9 +1335,9 @@ function createPL(v3d = window.v3d) {
         }
 
         function planeAction() {
-            setObjTransform("orientationPicker_lowZ", 'rotation', getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), '', false);
-            setObjTransform("grid", 'rotation', getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), '', false);
-            setObjTransform("rotationManipulator", 'rotation', getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), '', false);
+            setObjTransform("orientationPicker_lowZ", false, "rotation", [getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), ''], false);
+            setObjTransform("grid", false, "rotation", [getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), ''], false);
+            setObjTransform("rotationManipulator", false, "rotation", [getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), ''], false);
         }
 
         function dragMove(objSelector, mode, blockId, parentDragOverBlockId) {
@@ -1693,54 +1693,72 @@ function createPL(v3d = window.v3d) {
             }
         }
 
-        function getAllObjectNames() {
-            var objNameList = [];
-            appInstance.scene.traverse(function (obj) {
-                if (notIgnoredObj(obj))
-                    objNameList.push(obj.name)
-            });
-            return objNameList;
+        function getSceneCoordSystem() {
+            const scene = appInstance.scene;
+            if (scene && 'coordSystem' in scene.userData) {
+                return scene.userData.coordSystem;
+            }
+            return 'Y_UP_RIGHT';
         }
 
-        function getObjectNamesByGroupName(targetGroupName) {
-            var objNameList = [];
-            appInstance.scene.traverse(function (obj) {
-                if (notIgnoredObj(obj)) {
-                    var groupNames = obj.groupNames;
-                    if (!groupNames)
+        function isObjectWorthProcessing(obj) {
+            return obj.name !== '' &&
+                !(obj.isMesh && obj.isMaterialGeneratedMesh) &&
+                !obj.isAuxClippingMesh;
+        }
+
+
+        function getObjectNamesByGroupName(groupName) {
+            const objNameList = [];
+            appInstance.scene.traverse(obj => {
+                if (isObjectWorthProcessing(obj)) {
+                    const objGroupNames = obj.groupNames;
+                    if (!objGroupNames)
                         return;
-                    for (var i = 0; i < groupNames.length; i++) {
-                        var groupName = groupNames[i];
-                        if (groupName == targetGroupName) {
+                    for (let i = 0; i < objGroupNames.length; i++) {
+                        const objGroupName = objGroupNames[i];
+                        if (objGroupName === groupName)
                             objNameList.push(obj.name);
-                        }
                     }
                 }
             });
             return objNameList;
         }
 
-        function retrieveObjectNames(objNames) {
-            var acc = [];
-            retrieveObjectNamesAcc(objNames, acc);
-            return acc;
+        function getAllObjectNames() {
+            const objNameList = [];
+            appInstance.scene.traverse(obj => {
+                if (isObjectWorthProcessing(obj))
+                    objNameList.push(obj.name);
+            });
+            return objNameList;
         }
 
-        function retrieveObjectNamesAcc(currObjNames, acc) {
-            if (typeof currObjNames == "string") {
-                acc.push(currObjNames);
-            } else if (Array.isArray(currObjNames) && currObjNames[0] == "GROUP") {
-                var newObj = getObjectNamesByGroupName(currObjNames[1]);
-                for (var i = 0; i < newObj.length; i++)
-                    acc.push(newObj[i]);
-            } else if (Array.isArray(currObjNames) && currObjNames[0] == "ALL_OBJECTS") {
-                var newObj = getAllObjectNames();
-                for (var i = 0; i < newObj.length; i++)
-                    acc.push(newObj[i]);
+
+        
+
+        function retrieveObjectNamesAccum(currObjNames, namesAccum) {
+            if (typeof currObjNames === 'string') {
+                namesAccum.push(currObjNames);
+            } else if (Array.isArray(currObjNames) && currObjNames[0] === 'GROUP') {
+                const newObjNames = getObjectNamesByGroupName(currObjNames[1]);
+                for (let i = 0; i < newObjNames.length; i++) {
+                    namesAccum.push(newObjNames[i]);
+                }
+            } else if (Array.isArray(currObjNames) && currObjNames[0] === 'ALL_OBJECTS') {
+                const newObjNames = getAllObjectNames();
+                for (let i = 0; i < newObjNames.length; i++)
+                    namesAccum.push(newObjNames[i]);
             } else if (Array.isArray(currObjNames)) {
-                for (var i = 0; i < currObjNames.length; i++)
-                    retrieveObjectNamesAcc(currObjNames[i], acc);
+                for (let i = 0; i < currObjNames.length; i++)
+                    retrieveObjectNamesAccum(currObjNames[i], namesAccum);
             }
+        }
+
+        function retrieveObjectNames(objNames) {
+            const accum = [];
+            retrieveObjectNamesAccum(objNames, accum);
+            return accum.filter(name => name !== '');
         }
 
         function setMorphFactor(objName, targetName, factor) {
@@ -1791,43 +1809,6 @@ function createPL(v3d = window.v3d) {
             return dest;
         }
 
-        /* function setObjTransform(objNames, mode, x, y, z, offset) {
-            objNames = retrieveObjectNames(objNames);
-            if (!objNames) return;
-
-            function setObjProp(obj, prop, val) {
-                if (typeof val != "number")
-                    return;
-                if (mode === "rotation")
-                    val = val * Math.PI / 180;
-                if (!offset) {
-                    obj[mode][prop] = val;
-                } else {
-                    if (mode !== "scale")
-                        obj[mode][prop] += val;
-                    else
-                        obj[mode][prop] *= val;
-                }
-            }
-            var inVec = swizzleVec3([x, y, z]);
-            x = inVec[0];
-            y = inVec[1];
-            z = inVec[2];
-
-            for (var i = 0; i < objNames.length; i++) {
-                var objName = objNames[i];
-                if (!objName) continue;
-
-                var obj = getObjectByName(objName);
-                if (!obj) continue;
-
-                setObjProp(obj, "x", x);
-                setObjProp(obj, "y", y);
-                setObjProp(obj, "z", z);
-
-                obj.updateMatrixWorld(true);
-            }
-        } */
         function setObjTransform(objSelector, isWorldSpace, mode, vector, offset) {
             const x = vector[0];
             const y = vector[1];
@@ -1910,6 +1891,91 @@ function createPL(v3d = window.v3d) {
                 obj.updateWorldMatrix(false, true);
             }
         }
+
+        function transformCoordsSpace(coords, spaceFrom, spaceTo, noSignChange = false) {
+            if (spaceFrom === spaceTo) {
+                return coords;
+            }
+
+            const y = coords.y;
+            const z = coords.z;
+
+            if (spaceFrom === 'Z_UP_RIGHT' && spaceTo === 'Y_UP_RIGHT') {
+                coords.y = z;
+                coords.z = noSignChange ? y : -y;
+            } else if (spaceFrom === 'Y_UP_RIGHT' && spaceTo === 'Z_UP_RIGHT') {
+                coords.y = noSignChange ? z : -z;
+                coords.z = y;
+            } else
+                console.error('transformCoordsSpace: Unsupported coordinate space');
+            return coords;
+        }
+
+        const transformEulerV3dToBlenderShortest = function () {
+            const eulerTmp = new v3d.Euler();
+            const eulerTmp2 = new v3d.Euler();
+            const vec3Tmp = new v3d.Vector3();
+
+            return function (euler, dest) {
+                const eulerBlender = eulerTmp.copy(euler).reorder('YZX');
+                const eulerBlenderAlt = eulerTmp2.copy(eulerBlender).makeAlternative();
+
+                const len = vec3Tmp.setFromEuler(eulerBlender).lengthSq();
+                const lenAlt = vec3Tmp.setFromEuler(eulerBlenderAlt).lengthSq();
+
+                dest.copy(len < lenAlt ? eulerBlender : eulerBlenderAlt);
+                return transformCoordsSpace(dest, 'Y_UP_RIGHT', 'Z_UP_RIGHT');
+            }
+        }();
+
+        function RotationInterface() {
+            this._userRotation = new v3d.Euler(0, 0, 0, 'ZYX');
+            this._actualRotation = new v3d.Euler();
+        }
+
+        Object.assign(RotationInterface, {
+            initObject: function (obj) {
+                if (obj.userData.puzzles === undefined) {
+                    obj.userData.puzzles = {}
+                }
+                if (obj.userData.puzzles.rotationInterface === undefined) {
+                    obj.userData.puzzles.rotationInterface = new RotationInterface();
+                }
+
+                const rotUI = obj.userData.puzzles.rotationInterface;
+                rotUI.updateFromObject(obj);
+                return rotUI;
+            },
+        });
+
+        Object.assign(RotationInterface.prototype, {
+            updateFromObject: function (obj) {
+                const SYNC_ROT_EPS = 1e-8;
+
+                if (!this._actualRotation.equalsEps(obj.rotation, SYNC_ROT_EPS)) {
+                    this._actualRotation.copy(obj.rotation);
+                    this._updateUserRotFromActualRot();
+                }
+            },
+            getActualRotation: function (euler) {
+                return euler.copy(this._actualRotation);
+            },
+            setUserRotation: function (euler) {
+                this._userRotation.set(euler.x, euler.y, euler.z);
+                this._updateActualRotFromUserRot();
+            },
+            getUserRotation: function (euler) {
+                return euler.copy(this._userRotation);
+            },
+            _updateUserRotFromActualRot: function () {
+                const order = this._userRotation.order;
+                this._userRotation.copy(this._actualRotation).reorder(order);
+            },
+            _updateActualRotFromUserRot: function () {
+                const order = this._actualRotation.order;
+                this._actualRotation.copy(this._userRotation).reorder(order);
+            },
+        });
 
         function findUniqueObjectName(name, warning) {
             function objNameUsed(name) {
@@ -2680,14 +2746,14 @@ function createPL(v3d = window.v3d) {
             }
 
             /* if (isHorizontalScreenConfigurator)
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, totalHeight, false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, totalHeight], false);
             else
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, totalHeight / 2, false); */
-            setObjTransform("Camerapos", "position", camPosX, camPosY, camPosZ, false);
-            setObjTransform("Cameratarget", "position", (width - screenWidthList[0]) / 1000 / 2, conservatoryDepth / 2, totalHeight / 2 + zPos, false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, totalHeight / 2], false); */
+            setObjTransform("Camerapos", false, "position", [camPosX, camPosY, camPosZ], false);
+            setObjTransform("Cameratarget", false, "position", [(width - screenWidthList[0]) / 1000 / 2, conservatoryDepth / 2, totalHeight / 2 + zPos], false);
             // Wrap ScaleCube around the building so zoomCamera frames it to a consistent size.
-            setObjTransform("ScaleCube", "position", (width - screenWidthList[0]) / 1000 / 2, conservatoryDepth / 2, zPos, false);
-            setObjTransform("ScaleCube", "scale", width / 1000, conservatoryDepth, totalHeight, false);
+            setObjTransform("ScaleCube", false, "position", [(width - screenWidthList[0]) / 1000 / 2, conservatoryDepth / 2, zPos], false);
+            setObjTransform("ScaleCube", false, "scale", [width / 1000, conservatoryDepth, totalHeight], false);
 
             //changeVis("ScaleCube", true);
 
@@ -2733,13 +2799,13 @@ function createPL(v3d = window.v3d) {
                             if (!getObjectByName(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter]))
                                 leftSpecs.integratedWallWoodFrameCache[woodFrameCounter] = cloneObject("Integrated wall_wood_frame.0", 1000);
 
-                            setObjTransform(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", conservatoryWidth / 2 + depthAdaptation, framePosition + poleAdaptation + woodFrameSectionWidth / 2, '', false);
+                            setObjTransform(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [conservatoryWidth / 2 + depthAdaptation, framePosition + poleAdaptation + woodFrameSectionWidth / 2, ''], false);
 
                             setMorphFactor(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             setMorphFactor(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', (((woodFrameSectionWidth) - 1) / 99));
 
                             if ((leftSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x) < woodFrameSectionWidth) {
-                                setObjTransform(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", '', framePosition + poleAdaptation + ((leftSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, '', false);
+                                setObjTransform(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", ['', framePosition + poleAdaptation + ((leftSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, ''], false);
                                 setMorphFactor(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', ((((leftSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) - 1) / 99));
                             }
                             changeVis(leftSpecs.integratedWallWoodFrameCache[woodFrameCounter], true);
@@ -2755,11 +2821,11 @@ function createPL(v3d = window.v3d) {
 
                             for (let x = 0; x <= 1; x++) {
                                 for (let y = 0; y < leftSpecs.integratedWallWoodShortCache.length; y++) {
-                                    setObjTransform(leftSpecs.integratedWallWoodCache[woodCounter][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation + woodThickness / 2, '', false);
-                                    setObjTransform(leftSpecs.integratedWallWoodShortCache[y][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation + woodThickness / 2, '', false);
+                                    setObjTransform(leftSpecs.integratedWallWoodCache[woodCounter][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation + woodThickness / 2, ''], false);
+                                    setObjTransform(leftSpecs.integratedWallWoodShortCache[y][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation + woodThickness / 2, ''], false);
 
-                                    setObjTransform(leftSpecs.integratedWallWoodCache[woodCounter][x], "rotation", '', '', 0, false);
-                                    setObjTransform(leftSpecs.integratedWallWoodShortCache[y][x], "rotation", '', '', 0, false);
+                                    setObjTransform(leftSpecs.integratedWallWoodCache[woodCounter][x], false, "rotation", ['', '', 0], false);
+                                    setObjTransform(leftSpecs.integratedWallWoodShortCache[y][x], false, "rotation", ['', '', 0], false);
 
                                     setMorphFactor(leftSpecs.integratedWallWoodCache[woodCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                                     setMorphFactor(leftSpecs.integratedWallWoodShortCache[y][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -2792,9 +2858,9 @@ function createPL(v3d = window.v3d) {
                             leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                             leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                         }
-                        setObjTransform(leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "position", conservatoryWidth / 2 + depthAdaptation, lengthCache + poleAdaptation, '', false);
+                        setObjTransform(leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "position", [conservatoryWidth / 2 + depthAdaptation, lengthCache + poleAdaptation, ''], false);
                         lengthCache = totalLength;
-                        setObjTransform(leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "position", conservatoryWidth / 2 + depthAdaptation, lengthCache + poleAdaptation, '', false);
+                        setObjTransform(leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "position", [conservatoryWidth / 2 + depthAdaptation, lengthCache + poleAdaptation, ''], false);
 
                         setMorphFactor(leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         setMorphFactor(leftSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -2819,7 +2885,7 @@ function createPL(v3d = window.v3d) {
                             leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, '', false);
+                            setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, ''], false);
                             setMorphFactor(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
 
@@ -2836,7 +2902,7 @@ function createPL(v3d = window.v3d) {
                             leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, '', false);
+                            setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, ''], false);
                             setMorphFactor(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][0], true);
@@ -2848,8 +2914,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(leftSpecs.integratedWallGlassCache[glassCounter]))
                             leftSpecs.integratedWallGlassCache[glassCounter] = cloneObject("Integrated wall_glass.0", 1000, true, true);
 
-                        setObjTransform(leftSpecs.integratedWallGlassCache[glassCounter], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                        setObjTransform(leftSpecs.integratedWallGlassCache[glassCounter], "rotation", '', '', 0, false);
+                        setObjTransform(leftSpecs.integratedWallGlassCache[glassCounter], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                        setObjTransform(leftSpecs.integratedWallGlassCache[glassCounter], false, "rotation", ['', '', 0], false);
 
                         setMorphFactor(leftSpecs.integratedWallGlassCache[glassCounter], 'Length', ((leftSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(leftSpecs.integratedWallGlassCache[glassCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -2884,8 +2950,8 @@ function createPL(v3d = window.v3d) {
                             leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter] = [cloneObject("Integrated wall_sandwich panelAA.0", 1000), cloneObject("Integrated wall_sandwich panelWW.0", 1000), cloneObject("Integrated wall_sandwich panelRW.0", 1000)];
 
                         for (let y = 0; y < leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter].length; y++) {
-                            setObjTransform(leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                            setObjTransform(leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "rotation", '', '', 0, false);
+                            setObjTransform(leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                            setObjTransform(leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "rotation", ['', '', 0], false);
 
                             setMorphFactor(leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Length', ((leftSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                             setMorphFactor(leftSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -2904,13 +2970,13 @@ function createPL(v3d = window.v3d) {
                             leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter] = cloneObject("Integrated wall_doorway post.0", 1000);
                             leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1] = cloneObject("Integrated wall_doorway post.0", 1000);
                         }
-                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation + 0.01, '', false);
-                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "rotation", '', '', 0, false);
+                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation + 0.01, ''], false);
+                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "rotation", ['', '', 0], false);
 
                         setMorphFactor(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
-                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + leftSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, '', false);
-                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "rotation", '', '', 0, false);
+                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + leftSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, ''], false);
+                        setObjTransform(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "rotation", ['', '', 0], false);
 
                         setMorphFactor(leftSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
@@ -2923,8 +2989,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(leftSpecs.integratedWallBottomProfileCache[i]))
                             leftSpecs.integratedWallBottomProfileCache[i] = cloneObject("Integrated wall_bottom profile.0", 1000);
 
-                        setObjTransform(leftSpecs.integratedWallBottomProfileCache[i], "position", conservatoryWidth / 2 + depthAdaptation, totalLength - (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                        setObjTransform(leftSpecs.integratedWallBottomProfileCache[i], "rotation", '', '', 0, false);
+                        setObjTransform(leftSpecs.integratedWallBottomProfileCache[i], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength - (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                        setObjTransform(leftSpecs.integratedWallBottomProfileCache[i], false, "rotation", ['', '', 0], false);
 
                         setMorphFactor(leftSpecs.integratedWallBottomProfileCache[i], 'Length', ((leftSpecs.wallSpecs[i].width / 1000 - 1) / 100));
 
@@ -2933,8 +2999,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(leftSpecs.integratedWallTopProfileCache[i]))
                             leftSpecs.integratedWallTopProfileCache[i] = cloneObject("Integrated wall_top profile.0", 1000);
 
-                        setObjTransform(leftSpecs.integratedWallTopProfileCache[i], "position", conservatoryWidth / 2 + depthAdaptation, totalLength - (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                        setObjTransform(leftSpecs.integratedWallTopProfileCache[i], "rotation", '', '', 0, false);
+                        setObjTransform(leftSpecs.integratedWallTopProfileCache[i], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength - (leftSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                        setObjTransform(leftSpecs.integratedWallTopProfileCache[i], false, "rotation", ['', '', 0], false);
 
                         setMorphFactor(leftSpecs.integratedWallTopProfileCache[i], 'Length', ((leftSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(leftSpecs.integratedWallTopProfileCache[i], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -2948,7 +3014,7 @@ function createPL(v3d = window.v3d) {
                                 leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, '', false);
+                                setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, ''], false);
                                 setMorphFactor(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][1], true);
@@ -2959,7 +3025,7 @@ function createPL(v3d = window.v3d) {
                                 leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, '', false);
+                                setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, ''], false);
                                 setMorphFactor(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -2971,7 +3037,7 @@ function createPL(v3d = window.v3d) {
                             leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, '', false);
+                            setObjTransform(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [conservatoryWidth / 2 + depthAdaptation, totalLength + poleAdaptation, ''], false);
                             setMorphFactor(leftSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
 
@@ -3001,14 +3067,14 @@ function createPL(v3d = window.v3d) {
                             if (!getObjectByName(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter]))
                                 rightSpecs.integratedWallWoodFrameCache[woodFrameCounter] = cloneObject("Integrated wall_wood_frame.0", 1000);
 
-                            setObjTransform(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", -(conservatoryWidth / 2 + depthAdaptation), framePosition + poleAdaptation + woodFrameSectionWidth / 2, '', false);
-                            setObjTransform(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], "rotation", '', '', 180, false);
+                            setObjTransform(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), framePosition + poleAdaptation + woodFrameSectionWidth / 2, ''], false);
+                            setObjTransform(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "rotation", ['', '', 180], false);
 
                             setMorphFactor(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             setMorphFactor(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', (((woodFrameSectionWidth) - 1) / 99));
 
                             if ((rightSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x) < woodFrameSectionWidth) {
-                                setObjTransform(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", '', framePosition + poleAdaptation + ((rightSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, '', false);
+                                setObjTransform(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", ['', framePosition + poleAdaptation + ((rightSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, ''], false);
                                 setMorphFactor(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', ((((rightSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) - 1) / 99));
                             }
                             changeVis(rightSpecs.integratedWallWoodFrameCache[woodFrameCounter], true);
@@ -3023,11 +3089,11 @@ function createPL(v3d = window.v3d) {
 
                             for (let x = 0; x <= 1; x++) {
                                 for (let y = 0; y < rightSpecs.integratedWallWoodShortCache.length; y++) {
-                                    setObjTransform(rightSpecs.integratedWallWoodCache[woodCounter][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation + woodThickness / 2, '', false);
-                                    setObjTransform(rightSpecs.integratedWallWoodShortCache[y][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation + woodThickness / 2, '', false);
+                                    setObjTransform(rightSpecs.integratedWallWoodCache[woodCounter][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation + woodThickness / 2, ''], false);
+                                    setObjTransform(rightSpecs.integratedWallWoodShortCache[y][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation + woodThickness / 2, ''], false);
 
-                                    setObjTransform(rightSpecs.integratedWallWoodCache[woodCounter][x], "scale", -1, '', '', false);
-                                    setObjTransform(rightSpecs.integratedWallWoodShortCache[y][x], "scale", -1, '', '', false);
+                                    setObjTransform(rightSpecs.integratedWallWoodCache[woodCounter][x], false, "scale", [-1, '', ''], false);
+                                    setObjTransform(rightSpecs.integratedWallWoodShortCache[y][x], false, "scale", [-1, '', ''], false);
 
                                     setMorphFactor(rightSpecs.integratedWallWoodCache[woodCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                                     setMorphFactor(rightSpecs.integratedWallWoodShortCache[y][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3059,11 +3125,11 @@ function createPL(v3d = window.v3d) {
                             rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                             rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                         }
-                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "position", -(conservatoryWidth / 2 + depthAdaptation), lengthCache + poleAdaptation, '', false);
-                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), lengthCache + poleAdaptation, ''], false);
+                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "rotation", ['', '', 180], false);
                         lengthCache = totalLength;
-                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "position", -(conservatoryWidth / 2 + depthAdaptation), lengthCache + poleAdaptation, '', false);
-                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), lengthCache + poleAdaptation, ''], false);
+                        setObjTransform(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "rotation", ['', '', 180], false);
 
                         setMorphFactor(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         setMorphFactor(rightSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3088,7 +3154,7 @@ function createPL(v3d = window.v3d) {
                             rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, '', false);
+                            setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, ''], false);
                             setMorphFactor(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
 
@@ -3105,7 +3171,7 @@ function createPL(v3d = window.v3d) {
                             rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, '', false);
+                            setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, ''], false);
                             setMorphFactor(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][0], true);
@@ -3117,8 +3183,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(rightSpecs.integratedWallGlassCache[glassCounter]))
                             rightSpecs.integratedWallGlassCache[glassCounter] = cloneObject("Integrated wall_glass.0", 1000, true, true);
 
-                        setObjTransform(rightSpecs.integratedWallGlassCache[glassCounter], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                        setObjTransform(rightSpecs.integratedWallGlassCache[glassCounter], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallGlassCache[glassCounter], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                        setObjTransform(rightSpecs.integratedWallGlassCache[glassCounter], false, "rotation", ['', '', 180], false);
 
                         setMorphFactor(rightSpecs.integratedWallGlassCache[glassCounter], 'Length', ((rightSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(rightSpecs.integratedWallGlassCache[glassCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3151,8 +3217,8 @@ function createPL(v3d = window.v3d) {
                             rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter] = [cloneObject("Integrated wall_sandwich panelAA.0", 1000), cloneObject("Integrated wall_sandwich panelWW.0", 1000), cloneObject("Integrated wall_sandwich panelRW.0", 1000)];
 
                         for (let y = 0; y < rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter].length; y++) {
-                            setObjTransform(rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                            setObjTransform(rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "rotation", '', '', 180, false);
+                            setObjTransform(rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                            setObjTransform(rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "rotation", ['', '', 180], false);
 
                             setMorphFactor(rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Length', ((rightSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                             setMorphFactor(rightSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3171,13 +3237,13 @@ function createPL(v3d = window.v3d) {
                             rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter] = cloneObject("Integrated wall_doorway post.0", 1000);
                             rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1] = cloneObject("Integrated wall_doorway post.0", 1000);
                         }
-                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation + 0.01, '', false);
-                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation + 0.01, ''], false);
+                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "rotation", ['', '', 180], false);
 
                         setMorphFactor(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
-                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + rightSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, '', false);
-                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + rightSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, ''], false);
+                        setObjTransform(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "rotation", ['', '', 180], false);
 
                         setMorphFactor(rightSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
@@ -3190,8 +3256,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(rightSpecs.integratedWallBottomProfileCache[i]))
                             rightSpecs.integratedWallBottomProfileCache[i] = cloneObject("Integrated wall_bottom profile.0", 1000);
 
-                        setObjTransform(rightSpecs.integratedWallBottomProfileCache[i], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength - (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                        setObjTransform(rightSpecs.integratedWallBottomProfileCache[i], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallBottomProfileCache[i], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength - (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                        setObjTransform(rightSpecs.integratedWallBottomProfileCache[i], false, "rotation", ['', '', 180], false);
 
                         setMorphFactor(rightSpecs.integratedWallBottomProfileCache[i], 'Length', ((rightSpecs.wallSpecs[i].width / 1000 - 1) / 100));
 
@@ -3200,8 +3266,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(rightSpecs.integratedWallTopProfileCache[i]))
                             rightSpecs.integratedWallTopProfileCache[i] = cloneObject("Integrated wall_top profile.0", 1000);
 
-                        setObjTransform(rightSpecs.integratedWallTopProfileCache[i], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength - (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, '', false);
-                        setObjTransform(rightSpecs.integratedWallTopProfileCache[i], "rotation", '', '', 180, false);
+                        setObjTransform(rightSpecs.integratedWallTopProfileCache[i], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength - (rightSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, ''], false);
+                        setObjTransform(rightSpecs.integratedWallTopProfileCache[i], false, "rotation", ['', '', 180], false);
 
                         setMorphFactor(rightSpecs.integratedWallTopProfileCache[i], 'Length', ((rightSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(rightSpecs.integratedWallTopProfileCache[i], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3215,7 +3281,7 @@ function createPL(v3d = window.v3d) {
                                 rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, '', false);
+                                setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, ''], false);
                                 setMorphFactor(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][1], true);
@@ -3226,7 +3292,7 @@ function createPL(v3d = window.v3d) {
                                 rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, '', false);
+                                setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, ''], false);
                                 setMorphFactor(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -3238,7 +3304,7 @@ function createPL(v3d = window.v3d) {
                             rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, '', false);
+                            setObjTransform(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2 + depthAdaptation), totalLength + poleAdaptation, ''], false);
                             setMorphFactor(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(rightSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -3266,14 +3332,14 @@ function createPL(v3d = window.v3d) {
                             if (!getObjectByName(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter]))
                                 frontSpecs.integratedWallWoodFrameCache[woodFrameCounter] = cloneObject("Integrated wall_wood_frame.0", 1000);
 
-                            setObjTransform(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", (conservatoryWidth / 2) - framePosition - poleAdaptation - woodFrameSectionWidth / 2, conservatoryDepth + depthAdaptation, '', false);
-                            setObjTransform(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], "rotation", '', '', 90, false);
+                            setObjTransform(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [(conservatoryWidth / 2) - framePosition - poleAdaptation - woodFrameSectionWidth / 2, conservatoryDepth + depthAdaptation, ''], false);
+                            setObjTransform(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "rotation", ['', '', 90], false);
 
                             setMorphFactor(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             setMorphFactor(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', (((woodFrameSectionWidth) - 1) / 99));
 
                             if ((frontSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x) < woodFrameSectionWidth) {
-                                setObjTransform(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", (conservatoryWidth / 2) - framePosition - poleAdaptation + (-(frontSpecs.wallSpecs[i].width / 1000) + (woodFrameSectionWidth * x)) / 2, '', '', false);
+                                setObjTransform(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [(conservatoryWidth / 2) - framePosition - poleAdaptation + (-(frontSpecs.wallSpecs[i].width / 1000) + (woodFrameSectionWidth * x)) / 2, '', ''], false);
                                 setMorphFactor(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', ((((frontSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) - 1) / 99));
                             }
                             changeVis(frontSpecs.integratedWallWoodFrameCache[woodFrameCounter], true);
@@ -3288,11 +3354,11 @@ function createPL(v3d = window.v3d) {
 
                             for (let x = 0; x <= 1; x++) {
                                 for (let y = 0; y < frontSpecs.integratedWallWoodShortCache.length; y++) {
-                                    setObjTransform(frontSpecs.integratedWallWoodCache[woodCounter][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation - woodThickness / 2, conservatoryDepth + depthAdaptation, '', false);
-                                    setObjTransform(frontSpecs.integratedWallWoodShortCache[y][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation - woodThickness / 2, conservatoryDepth + depthAdaptation, '', false);
+                                    setObjTransform(frontSpecs.integratedWallWoodCache[woodCounter][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation - woodThickness / 2, conservatoryDepth + depthAdaptation, ''], false);
+                                    setObjTransform(frontSpecs.integratedWallWoodShortCache[y][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation - woodThickness / 2, conservatoryDepth + depthAdaptation, ''], false);
 
-                                    setObjTransform(frontSpecs.integratedWallWoodCache[woodCounter][x], "rotation", '', '', 90, false);
-                                    setObjTransform(frontSpecs.integratedWallWoodShortCache[y][x], "rotation", '', '', 90, false);
+                                    setObjTransform(frontSpecs.integratedWallWoodCache[woodCounter][x], false, "rotation", ['', '', 90], false);
+                                    setObjTransform(frontSpecs.integratedWallWoodShortCache[y][x], false, "rotation", ['', '', 90], false);
 
                                     setMorphFactor(frontSpecs.integratedWallWoodCache[woodCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                                     setMorphFactor(frontSpecs.integratedWallWoodShortCache[y][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3324,11 +3390,11 @@ function createPL(v3d = window.v3d) {
                             frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                             frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                         }
-                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "position", (conservatoryWidth / 2) - lengthCache - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "position", [(conservatoryWidth / 2) - lengthCache - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "rotation", ['', '', 90], false);
                         lengthCache = totalLength;
-                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "position", (conservatoryWidth / 2) - lengthCache - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "position", [(conservatoryWidth / 2) - lengthCache - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         setMorphFactor(frontSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3353,8 +3419,8 @@ function createPL(v3d = window.v3d) {
                             frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', 90, false);
+                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', 90], false);
                             setMorphFactor(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
 
@@ -3371,8 +3437,8 @@ function createPL(v3d = window.v3d) {
                             frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', 90, false);
+                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', 90], false);
                             setMorphFactor(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][0], true);
@@ -3384,8 +3450,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(frontSpecs.integratedWallGlassCache[glassCounter]))
                             frontSpecs.integratedWallGlassCache[glassCounter] = cloneObject("Integrated wall_glass.0", 1000, true, true);
 
-                        setObjTransform(frontSpecs.integratedWallGlassCache[glassCounter], "position", (conservatoryWidth / 2) - totalLength - (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallGlassCache[glassCounter], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallGlassCache[glassCounter], false, "position", [(conservatoryWidth / 2) - totalLength - (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallGlassCache[glassCounter], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(frontSpecs.integratedWallGlassCache[glassCounter], 'Length', ((frontSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(frontSpecs.integratedWallGlassCache[glassCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3418,8 +3484,8 @@ function createPL(v3d = window.v3d) {
                             frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter] = [cloneObject("Integrated wall_sandwich panelAA.0", 1000), cloneObject("Integrated wall_sandwich panelWW.0", 1000), cloneObject("Integrated wall_sandwich panelRW.0", 1000)];
 
                         for (let y = 0; y < frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter].length; y++) {
-                            setObjTransform(frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "position", (conservatoryWidth / 2) - totalLength - (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                            setObjTransform(frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "rotation", '', '', 90, false);
+                            setObjTransform(frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "position", [(conservatoryWidth / 2) - totalLength - (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                            setObjTransform(frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "rotation", ['', '', 90], false);
 
                             setMorphFactor(frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Length', ((frontSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                             setMorphFactor(frontSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3438,13 +3504,13 @@ function createPL(v3d = window.v3d) {
                             frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter] = cloneObject("Integrated wall_doorway post.0", 1000);
                             frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1] = cloneObject("Integrated wall_doorway post.0", 1000);
                         }
-                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation - 0.01, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation - 0.01, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
-                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "position", (conservatoryWidth / 2) - totalLength - frontSpecs.wallSpecs[i].width / 1000 - poleAdaptation + 0.01, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "position", [(conservatoryWidth / 2) - totalLength - frontSpecs.wallSpecs[i].width / 1000 - poleAdaptation + 0.01, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(frontSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
@@ -3457,8 +3523,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(frontSpecs.integratedWallBottomProfileCache[i]))
                             frontSpecs.integratedWallBottomProfileCache[i] = cloneObject("Integrated wall_bottom profile.0", 1000);
 
-                        setObjTransform(frontSpecs.integratedWallBottomProfileCache[i], "position", (conservatoryWidth / 2) - totalLength + (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallBottomProfileCache[i], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallBottomProfileCache[i], false, "position", [(conservatoryWidth / 2) - totalLength + (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallBottomProfileCache[i], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(frontSpecs.integratedWallBottomProfileCache[i], 'Length', ((frontSpecs.wallSpecs[i].width / 1000 - 1) / 100));
 
@@ -3467,8 +3533,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(frontSpecs.integratedWallTopProfileCache[i]))
                             frontSpecs.integratedWallTopProfileCache[i] = cloneObject("Integrated wall_top profile.0", 1000);
 
-                        setObjTransform(frontSpecs.integratedWallTopProfileCache[i], "position", (conservatoryWidth / 2) - totalLength + (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.integratedWallTopProfileCache[i], "rotation", '', '', 90, false);
+                        setObjTransform(frontSpecs.integratedWallTopProfileCache[i], false, "position", [(conservatoryWidth / 2) - totalLength + (frontSpecs.wallSpecs[i].width / 1000 / 2) - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.integratedWallTopProfileCache[i], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(frontSpecs.integratedWallTopProfileCache[i], 'Length', ((frontSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(frontSpecs.integratedWallTopProfileCache[i], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3482,8 +3548,8 @@ function createPL(v3d = window.v3d) {
                                 frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', 90, false);
+                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', 90], false);
                                 setMorphFactor(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][1], true);
@@ -3494,8 +3560,8 @@ function createPL(v3d = window.v3d) {
                                 frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', 90, false);
+                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                                setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', 90], false);
                                 setMorphFactor(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -3507,8 +3573,8 @@ function createPL(v3d = window.v3d) {
                             frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", (conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, '', false);
-                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', 90, false);
+                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [(conservatoryWidth / 2) - totalLength - poleAdaptation, conservatoryDepth + depthAdaptation, ''], false);
+                            setObjTransform(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', 90], false);
                             setMorphFactor(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(frontSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -3537,14 +3603,14 @@ function createPL(v3d = window.v3d) {
                             if (!getObjectByName(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter]))
                                 rearSpecs.integratedWallWoodFrameCache[woodFrameCounter] = cloneObject("Integrated wall_wood_frame.0", 1000);
 
-                            setObjTransform(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", -(conservatoryWidth / 2) + framePosition + poleAdaptation + woodFrameSectionWidth / 2, -depthAdaptation, '', false);
-                            setObjTransform(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], "rotation", '', '', -90, false);
+                            setObjTransform(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [-(conservatoryWidth / 2) + framePosition + poleAdaptation + woodFrameSectionWidth / 2, -depthAdaptation, ''], false);
+                            setObjTransform(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "rotation", ['', '', -90], false);
 
                             setMorphFactor(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             setMorphFactor(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', (((woodFrameSectionWidth) - 1) / 99));
 
                             if ((rearSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x) < woodFrameSectionWidth) {
-                                setObjTransform(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", -(conservatoryWidth / 2) + framePosition + poleAdaptation + ((rearSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, '', '', false);
+                                setObjTransform(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [-(conservatoryWidth / 2) + framePosition + poleAdaptation + ((rearSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, '', ''], false);
                                 setMorphFactor(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', ((((rearSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) - 1) / 99));
                             }
                             changeVis(rearSpecs.integratedWallWoodFrameCache[woodFrameCounter], true);
@@ -3559,11 +3625,11 @@ function createPL(v3d = window.v3d) {
 
                             for (let x = 0; x <= 1; x++) {
                                 for (let y = 0; y < rearSpecs.integratedWallWoodShortCache.length; y++) {
-                                    setObjTransform(rearSpecs.integratedWallWoodCache[woodCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, '', false);
-                                    setObjTransform(rearSpecs.integratedWallWoodShortCache[y][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, '', false);
+                                    setObjTransform(rearSpecs.integratedWallWoodCache[woodCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, ''], false);
+                                    setObjTransform(rearSpecs.integratedWallWoodShortCache[y][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, ''], false);
 
-                                    setObjTransform(rearSpecs.integratedWallWoodCache[woodCounter][x], "rotation", '', '', -90, false);
-                                    setObjTransform(rearSpecs.integratedWallWoodShortCache[y][x], "rotation", '', '', -90, false);
+                                    setObjTransform(rearSpecs.integratedWallWoodCache[woodCounter][x], false, "rotation", ['', '', -90], false);
+                                    setObjTransform(rearSpecs.integratedWallWoodShortCache[y][x], false, "rotation", ['', '', -90], false);
 
                                     setMorphFactor(rearSpecs.integratedWallWoodCache[woodCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                                     setMorphFactor(rearSpecs.integratedWallWoodShortCache[y][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3595,11 +3661,11 @@ function createPL(v3d = window.v3d) {
                             rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                             rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                         }
-                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "position", -(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "rotation", '', '', -90, false);
+                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "position", [-(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "rotation", ['', '', -90], false);
                         lengthCache = totalLength;
-                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "position", -(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "rotation", '', '', -90, false);
+                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "position", [-(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         setMorphFactor(rearSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3624,8 +3690,8 @@ function createPL(v3d = window.v3d) {
                             rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                             setMorphFactor(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
 
@@ -3642,8 +3708,8 @@ function createPL(v3d = window.v3d) {
                             rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                             setMorphFactor(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][0], true);
@@ -3655,8 +3721,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(rearSpecs.integratedWallGlassCache[glassCounter]))
                             rearSpecs.integratedWallGlassCache[glassCounter] = cloneObject("Integrated wall_glass.0", 1000, true, true);
 
-                        setObjTransform(rearSpecs.integratedWallGlassCache[glassCounter], "position", -(conservatoryWidth / 2) + totalLength + (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallGlassCache[glassCounter], "rotation", '', '', -90, false);
+                        setObjTransform(rearSpecs.integratedWallGlassCache[glassCounter], false, "position", [-(conservatoryWidth / 2) + totalLength + (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallGlassCache[glassCounter], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(rearSpecs.integratedWallGlassCache[glassCounter], 'Length', ((rearSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(rearSpecs.integratedWallGlassCache[glassCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3689,8 +3755,8 @@ function createPL(v3d = window.v3d) {
                             rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter] = [cloneObject("Integrated wall_sandwich panelAA.0", 1000), cloneObject("Integrated wall_sandwich panelWW.0", 1000), cloneObject("Integrated wall_sandwich panelRW.0", 1000)];
 
                         for (let y = 0; y < rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter].length; y++) {
-                            setObjTransform(rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "position", -(conservatoryWidth / 2) + totalLength + (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "rotation", '', '', -90, false);
+                            setObjTransform(rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "position", [-(conservatoryWidth / 2) + totalLength + (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "rotation", ['', '', -90], false);
 
                             setMorphFactor(rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Length', ((rearSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                             setMorphFactor(rearSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3709,13 +3775,13 @@ function createPL(v3d = window.v3d) {
                             rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter] = cloneObject("Integrated wall_doorway post.0", 1000);
                             rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1] = cloneObject("Integrated wall_doorway post.0", 1000);
                         }
-                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation + 0.01, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "rotation", '', '', 90, false);
+                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation + 0.01, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
-                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "position", -(conservatoryWidth / 2) + totalLength + rearSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "rotation", '', '', 90, false);
+                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "position", [-(conservatoryWidth / 2) + totalLength + rearSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(rearSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
@@ -3728,8 +3794,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(rearSpecs.integratedWallBottomProfileCache[i]))
                             rearSpecs.integratedWallBottomProfileCache[i] = cloneObject("Integrated wall_bottom profile.0", 1000);
 
-                        setObjTransform(rearSpecs.integratedWallBottomProfileCache[i], "position", -(conservatoryWidth / 2) + totalLength - (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallBottomProfileCache[i], "rotation", '', '', -90, false);
+                        setObjTransform(rearSpecs.integratedWallBottomProfileCache[i], false, "position", [-(conservatoryWidth / 2) + totalLength - (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallBottomProfileCache[i], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(rearSpecs.integratedWallBottomProfileCache[i], 'Length', ((rearSpecs.wallSpecs[i].width / 1000 - 1) / 100));
 
@@ -3738,8 +3804,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(rearSpecs.integratedWallTopProfileCache[i]))
                             rearSpecs.integratedWallTopProfileCache[i] = cloneObject("Integrated wall_top profile.0", 1000);
 
-                        setObjTransform(rearSpecs.integratedWallTopProfileCache[i], "position", -(conservatoryWidth / 2) + totalLength - (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.integratedWallTopProfileCache[i], "rotation", '', '', -90, false);
+                        setObjTransform(rearSpecs.integratedWallTopProfileCache[i], false, "position", [-(conservatoryWidth / 2) + totalLength - (rearSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.integratedWallTopProfileCache[i], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(rearSpecs.integratedWallTopProfileCache[i], 'Length', ((rearSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(rearSpecs.integratedWallTopProfileCache[i], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3753,8 +3819,8 @@ function createPL(v3d = window.v3d) {
                                 rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                                 setMorphFactor(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][1], true);
@@ -3765,8 +3831,8 @@ function createPL(v3d = window.v3d) {
                                 rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                                setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                                 setMorphFactor(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -3778,8 +3844,8 @@ function createPL(v3d = window.v3d) {
                             rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                             setMorphFactor(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(rearSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -3811,14 +3877,14 @@ function createPL(v3d = window.v3d) {
                             if (!getObjectByName(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter]))
                                 standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter] = cloneObject("Integrated wall_wood_frame.0", 1000);
 
-                            setObjTransform(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", -(conservatoryWidth / 2) + framePosition + poleAdaptation + woodFrameSectionWidth / 2, -depthAdaptation, '', false);
-                            setObjTransform(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], "rotation", '', '', -90, false);
+                            setObjTransform(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [-(conservatoryWidth / 2) + framePosition + poleAdaptation + woodFrameSectionWidth / 2, -depthAdaptation, ''], false);
+                            setObjTransform(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "rotation", ['', '', -90], false);
 
                             setMorphFactor(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             setMorphFactor(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', (((woodFrameSectionWidth) - 1) / 99));
 
                             if ((standaloneSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x) < woodFrameSectionWidth) {
-                                setObjTransform(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], "position", -(conservatoryWidth / 2) + framePosition + poleAdaptation + ((standaloneSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, '', '', false);
+                                setObjTransform(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], false, "position", [-(conservatoryWidth / 2) + framePosition + poleAdaptation + ((standaloneSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) / 2, '', ''], false);
                                 setMorphFactor(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], 'Width', ((((standaloneSpecs.wallSpecs[i].width / 1000) - (woodFrameSectionWidth * x)) - 1) / 99));
                             }
                             changeVis(standaloneSpecs.integratedWallWoodFrameCache[woodFrameCounter], true);
@@ -3833,11 +3899,11 @@ function createPL(v3d = window.v3d) {
 
                             for (let x = 0; x <= 1; x++) {
                                 for (let y = 0; y < standaloneSpecs.integratedWallWoodShortCache.length; y++) {
-                                    setObjTransform(standaloneSpecs.integratedWallWoodCache[woodCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, '', false);
-                                    setObjTransform(standaloneSpecs.integratedWallWoodShortCache[y][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, '', false);
+                                    setObjTransform(standaloneSpecs.integratedWallWoodCache[woodCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, ''], false);
+                                    setObjTransform(standaloneSpecs.integratedWallWoodShortCache[y][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation + woodThickness / 2, -depthAdaptation, ''], false);
 
-                                    setObjTransform(standaloneSpecs.integratedWallWoodCache[woodCounter][x], "rotation", '', '', -90, false);
-                                    setObjTransform(standaloneSpecs.integratedWallWoodShortCache[y][x], "rotation", '', '', -90, false);
+                                    setObjTransform(standaloneSpecs.integratedWallWoodCache[woodCounter][x], false, "rotation", ['', '', -90], false);
+                                    setObjTransform(standaloneSpecs.integratedWallWoodShortCache[y][x], false, "rotation", ['', '', -90], false);
 
                                     setMorphFactor(standaloneSpecs.integratedWallWoodCache[woodCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                                     setMorphFactor(standaloneSpecs.integratedWallWoodShortCache[y][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3869,11 +3935,11 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                             standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1] = cloneObject("Integrated wall_wood_end_profile.0", 1000);
                         }
-                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "position", -(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], "rotation", '', '', -90, false);
+                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "position", [-(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], false, "rotation", ['', '', -90], false);
                         lengthCache = totalLength;
-                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "position", -(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], "rotation", '', '', -90, false);
+                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "position", [-(conservatoryWidth / 2) + lengthCache + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         setMorphFactor(standaloneSpecs.integratedWallWoodEndProfileCache[woodEndProfileCounter + 1], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3898,8 +3964,8 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                             setMorphFactor(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
 
@@ -3916,8 +3982,8 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                             setMorphFactor(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][0], true);
@@ -3929,8 +3995,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(standaloneSpecs.integratedWallGlassCache[glassCounter]))
                             standaloneSpecs.integratedWallGlassCache[glassCounter] = cloneObject("Integrated wall_glass.0", 1000, true, true);
 
-                        setObjTransform(standaloneSpecs.integratedWallGlassCache[glassCounter], "position", -(conservatoryWidth / 2) + totalLength + (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallGlassCache[glassCounter], "rotation", '', '', -90, false);
+                        setObjTransform(standaloneSpecs.integratedWallGlassCache[glassCounter], false, "position", [-(conservatoryWidth / 2) + totalLength + (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallGlassCache[glassCounter], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(standaloneSpecs.integratedWallGlassCache[glassCounter], 'Length', ((standaloneSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(standaloneSpecs.integratedWallGlassCache[glassCounter], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3971,8 +4037,8 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter] = [cloneObject("Integrated wall_sandwich panelAA.0", 1000), cloneObject("Integrated wall_sandwich panelWW.0", 1000), cloneObject("Integrated wall_sandwich panelRW.0", 1000)];
 
                         for (let y = 0; y < standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter].length; y++) {
-                            setObjTransform(standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "position", -(conservatoryWidth / 2) + totalLength + (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], "rotation", '', '', -90, false);
+                            setObjTransform(standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "position", [-(conservatoryWidth / 2) + totalLength + (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], false, "rotation", ['', '', -90], false);
 
                             setMorphFactor(standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Length', ((standaloneSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                             setMorphFactor(standaloneSpecs.integratedWallSandwichPanelCache[sandwichPanelCounter][y], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -3991,13 +4057,13 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter] = cloneObject("Integrated wall_doorway post.0", 1000);
                             standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1] = cloneObject("Integrated wall_doorway post.0", 1000);
                         }
-                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation + 0.01, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], "rotation", '', '', 90, false);
+                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation + 0.01, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
-                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "position", -(conservatoryWidth / 2) + totalLength + standaloneSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], "rotation", '', '', 90, false);
+                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "position", [-(conservatoryWidth / 2) + totalLength + standaloneSpecs.wallSpecs[i].width / 1000 + poleAdaptation - 0.01, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], false, "rotation", ['', '', 90], false);
 
                         setMorphFactor(standaloneSpecs.integratedWallDoorwayPostCache[doorwayPostCounter + 1], 'Height', (((totalHeight - heightAdaptation + doorwayPostL2Adaptation) - 1) / 99));
 
@@ -4011,8 +4077,8 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallBottomProfileCache[i] = cloneObject("Integrated wall_bottom profile.0", 1000);
 
 
-                        setObjTransform(standaloneSpecs.integratedWallBottomProfileCache[i], "position", -(conservatoryWidth / 2) + totalLength - (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallBottomProfileCache[i], "rotation", '', '', -90, false);
+                        setObjTransform(standaloneSpecs.integratedWallBottomProfileCache[i], false, "position", [-(conservatoryWidth / 2) + totalLength - (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallBottomProfileCache[i], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(standaloneSpecs.integratedWallBottomProfileCache[i], 'Length', ((standaloneSpecs.wallSpecs[i].width / 1000 - 1) / 100));
 
@@ -4021,8 +4087,8 @@ function createPL(v3d = window.v3d) {
                         if (!getObjectByName(standaloneSpecs.integratedWallTopProfileCache[i]))
                             standaloneSpecs.integratedWallTopProfileCache[i] = cloneObject("Integrated wall_top profile.0", 1000);
 
-                        setObjTransform(standaloneSpecs.integratedWallTopProfileCache[i], "position", -(conservatoryWidth / 2) + totalLength - (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.integratedWallTopProfileCache[i], "rotation", '', '', -90, false);
+                        setObjTransform(standaloneSpecs.integratedWallTopProfileCache[i], false, "position", [-(conservatoryWidth / 2) + totalLength - (standaloneSpecs.wallSpecs[i].width / 1000 / 2) + poleAdaptation, -depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.integratedWallTopProfileCache[i], false, "rotation", ['', '', -90], false);
 
                         setMorphFactor(standaloneSpecs.integratedWallTopProfileCache[i], 'Length', ((standaloneSpecs.wallSpecs[i].width / 1000 - 1) / 100));
                         setMorphFactor(standaloneSpecs.integratedWallTopProfileCache[i], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
@@ -4036,8 +4102,8 @@ function createPL(v3d = window.v3d) {
                                 standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                                 setMorphFactor(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][1], true);
@@ -4048,8 +4114,8 @@ function createPL(v3d = window.v3d) {
                                 standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                             for (let x = 0; x <= 2; x++) {
-                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                                setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                                 setMorphFactor(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                             }
                             changeVis(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -4061,8 +4127,8 @@ function createPL(v3d = window.v3d) {
                             standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter] = [cloneObject("Integrated wall_panel_start_profile.0", 1000), cloneObject("Integrated wall_panel_mid_profile.0", 1000), cloneObject("Integrated wall_panel_end_profile.0", 1000)];
 
                         for (let x = 0; x <= 2; x++) {
-                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "position", -(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, '', false);
-                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], "rotation", '', '', -90, false);
+                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "position", [-(conservatoryWidth / 2) + totalLength + poleAdaptation, -depthAdaptation, ''], false);
+                            setObjTransform(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], false, "rotation", ['', '', -90], false);
                             setMorphFactor(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][x], 'Height', (((totalHeight - heightAdaptation) - 1) / 99));
                         }
                         changeVis(standaloneSpecs.integratedWallVerticalProfileCache[verticalProfileCounter][2], true);
@@ -4200,15 +4266,15 @@ function createPL(v3d = window.v3d) {
                     horizontalVerandaPostSupportCache[i] = [cloneObject("Post bracket.0", 12), cloneObject("Post foundation.0", 12)];
 
             for (let i = 0; i <= 1; i++) {
-                setObjTransform(horizontalVerandaPostSupportCache[0][i], "position", conservatoryWidth / 2, conservatoryDepth, -0.1 * (postSupportType[0] == "bracket_under"), false);
-                setObjTransform(horizontalVerandaPostSupportCache[1][i], "position", -conservatoryWidth / 2, conservatoryDepth, -0.1 * (postSupportType[1] == "bracket_under"), false);
-                setObjTransform(horizontalVerandaPostSupportCache[2][i], "position", conservatoryWidth / 2, 0, -0.1 * (postSupportType[2] == "bracket_under"), false);
-                setObjTransform(horizontalVerandaPostSupportCache[3][i], "position", -conservatoryWidth / 2, 0, -0.1 * (postSupportType[3] == "bracket_under"), false);
+                setObjTransform(horizontalVerandaPostSupportCache[0][i], false, "position", [conservatoryWidth / 2, conservatoryDepth, -0.1 * (postSupportType[0] == "bracket_under")], false);
+                setObjTransform(horizontalVerandaPostSupportCache[1][i], false, "position", [-conservatoryWidth / 2, conservatoryDepth, -0.1 * (postSupportType[1] == "bracket_under")], false);
+                setObjTransform(horizontalVerandaPostSupportCache[2][i], false, "position", [conservatoryWidth / 2, 0, -0.1 * (postSupportType[2] == "bracket_under")], false);
+                setObjTransform(horizontalVerandaPostSupportCache[3][i], false, "position", [-conservatoryWidth / 2, 0, -0.1 * (postSupportType[3] == "bracket_under")], false);
 
-                setObjTransform(horizontalVerandaPostSupportCache[0][i], "rotation", '', '', 180, false);
-                setObjTransform(horizontalVerandaPostSupportCache[1][i], "rotation", '', '', -90, false);
-                setObjTransform(horizontalVerandaPostSupportCache[2][i], "rotation", '', '', 90, false);
-                setObjTransform(horizontalVerandaPostSupportCache[3][i], "rotation", '', '', 0, false);
+                setObjTransform(horizontalVerandaPostSupportCache[0][i], false, "rotation", ['', '', 180], false);
+                setObjTransform(horizontalVerandaPostSupportCache[1][i], false, "rotation", ['', '', -90], false);
+                setObjTransform(horizontalVerandaPostSupportCache[2][i], false, "rotation", ['', '', 90], false);
+                setObjTransform(horizontalVerandaPostSupportCache[3][i], false, "rotation", ['', '', 0], false);
             }
 
             if (postSupportType[0] == "bracket" || postSupportType[0] == "bracket_under")//left front
@@ -4587,7 +4653,7 @@ function createPL(v3d = window.v3d) {
                     }
 
                     let anchor = obj.userData.tussenpaalAnchor || { x: 0, y: 0 };
-                    setObjTransform(name, "position", targetX - anchor.x, targetY - anchor.y, 0, false);
+                    setObjTransform(name, false, "position", [targetX - anchor.x, targetY - anchor.y, 0], false);
                     // An intermediate post stops at the UNDERSIDE of the crown beam, unlike a
                     // corner post which runs to totalHeight (= gutterHeight + 0.26) and hides its
                     // top plate inside the gutter corner. The post mesh carries a 3 mm aluminium
@@ -4883,19 +4949,19 @@ function createPL(v3d = window.v3d) {
                         let x0 = tussenpaalOrigin[side] > 0 ? conservatoryWidth / 2 - inset : -conservatoryWidth / 2 + inset;
                         let xc = tussenpaalOrigin[side] > 0 ? x0 - p / 2 : x0 + p / 2;
                         let y = ((side == "front") ? conservatoryDepth - faceOut : faceOut) + out.y * originOut;
-                        setObjTransform(name, 'position', xc, y, z, false);
+                        setObjTransform(name, false, "position", [xc, y, z], false);
                         tx = xc; ty = y + out.y * TUSSENPAAL_MEAS_TICK;
                     }
                     else {
                         // bar anchored at its start and growing along +y
                         let yStart = tussenpaalOrigin[side] > 0 ? conservatoryDepth - inset - p : inset;
                         let x = ((side == "left") ? conservatoryWidth / 2 - faceOut : -conservatoryWidth / 2 + faceOut) + out.x * originOut;
-                        setObjTransform(name, 'position', x, yStart, z, false);
+                        setObjTransform(name, false, "position", [x, yStart, z], false);
                         tx = x + out.x * TUSSENPAAL_MEAS_TICK; ty = yStart + p / 2;
                     }
                     // upright label on the solid line
-                    setObjTransform(name + "_text", 'position', tx, ty, zBase + TUSSENPAAL_MEAS_TEXT_Z, false);
-                    setObjTransform(name + "_textFlipped", 'position', tx, ty, zBase + TUSSENPAAL_MEAS_TEXT_Z, false);
+                    setObjTransform(name + "_text", false, "position", [tx, ty, zBase + TUSSENPAAL_MEAS_TEXT_Z], false);
+                    setObjTransform(name + "_textFlipped", false, "position", [tx, ty, zBase + TUSSENPAAL_MEAS_TEXT_Z], false);
                     updateTextObj(name + "_text", label);
                     updateTextObj(name + "_textFlipped", label);
                 }
@@ -5053,7 +5119,7 @@ function createPL(v3d = window.v3d) {
                 return;
             box.visible = true;
             box.scale.set(sizeX, sizeZ, sizeY);
-            setObjTransform(name, "position", cx, cy, cz, false);
+            setObjTransform(name, false, "position", [cx, cy, cz], false);
         }
 
         function enableSurfaceScreens() {
@@ -5113,8 +5179,8 @@ function createPL(v3d = window.v3d) {
                 if (!root)
                     continue;
                 root.traverse(function (o) { o.visible = true; });
-                setObjTransform(rootName, "rotation", 0, 0, geo.rot, false);
-                setObjTransform(rootName, "position", outerX, centerY, originZ, false);
+                setObjTransform(rootName, false, "rotation", [0, 0, geo.rot], false);
+                setObjTransform(rootName, false, "position", [outerX, centerY, originZ], false);
                 setMorphFactor(rootName, "Width", (fabricW - 1) / 100);
                 setMorphFactor(rootName, "Height", (originZ - SURFACE_SCREEN_BAR_CLEARANCE) / 100);
                 setMorphFactor(rootName, "Opening", 0);
@@ -5139,10 +5205,10 @@ function createPL(v3d = window.v3d) {
             //return;
 
             //Posts
-            setObjTransform("Horizontal_Corner_Post_Front_Left", "position", conservatoryWidth / 2, conservatoryDepth, 0, false);
-            setObjTransform("Horizontal_Corner_Post_Front_Right", "position", -conservatoryWidth / 2, conservatoryDepth, 0, false);
-            setObjTransform("Horizontal_Corner_Post_Rear_Left", "position", conservatoryWidth / 2, 0, 0, false);
-            setObjTransform("Horizontal_Corner_Post_Rear_Right", "position", -conservatoryWidth / 2, 0, 0, false);
+            setObjTransform("Horizontal_Corner_Post_Front_Left", false, "position", [conservatoryWidth / 2, conservatoryDepth, 0], false);
+            setObjTransform("Horizontal_Corner_Post_Front_Right", false, "position", [-conservatoryWidth / 2, conservatoryDepth, 0], false);
+            setObjTransform("Horizontal_Corner_Post_Rear_Left", false, "position", [conservatoryWidth / 2, 0, 0], false);
+            setObjTransform("Horizontal_Corner_Post_Rear_Right", false, "position", [-conservatoryWidth / 2, 0, 0], false);
 
             setMorphFactor("Horizontal_Corner_Post_Front_Left", 'Height', (((totalHeight) - 1) / 99));
             setMorphFactor("Horizontal_Corner_Post_Front_Right", 'Height', (((totalHeight) - 1) / 99));
@@ -5158,10 +5224,10 @@ function createPL(v3d = window.v3d) {
             enableHorizontalVerandaPostSupports();
 
             //Crownbeams
-            setObjTransform("Horizontal_Gutter_Left", "position", conservatoryWidth / 2, conservatoryDepth / 2, totalHeight, false);
-            setObjTransform("Horizontal_Gutter_Right", "position", -conservatoryWidth / 2, conservatoryDepth / 2, totalHeight, false);
-            setObjTransform("Horizontal_Gutter_Front", "position", '', conservatoryDepth, totalHeight, false);
-            setObjTransform("Horizontal_Gutter_Rear", "position", '', 0, totalHeight, false);
+            setObjTransform("Horizontal_Gutter_Left", false, "position", [conservatoryWidth / 2, conservatoryDepth / 2, totalHeight], false);
+            setObjTransform("Horizontal_Gutter_Right", false, "position", [-conservatoryWidth / 2, conservatoryDepth / 2, totalHeight], false);
+            setObjTransform("Horizontal_Gutter_Front", false, "position", ['', conservatoryDepth, totalHeight], false);
+            setObjTransform("Horizontal_Gutter_Rear", false, "position", ['', 0, totalHeight], false);
 
             setMorphFactor("Horizontal_Gutter_Left", 'Width', (((conservatoryDepth - 2 * getPoleSize('x')) - 1) / 100));
             setMorphFactor("Horizontal_Gutter_Right", 'Width', (((conservatoryDepth - 2 * getPoleSize('x')) - 1) / 100));
@@ -5220,10 +5286,10 @@ function createPL(v3d = window.v3d) {
                 }
 
                 for (let j = 0; j < 4; j++) {
-                    setObjTransform(horizontalRoofDivisionObjectCache[i][0][j], 'position', position, conservatoryDepth / 2, totalHeight, false);
+                    setObjTransform(horizontalRoofDivisionObjectCache[i][0][j], false, "position", [position, conservatoryDepth / 2, totalHeight], false);
                     setMorphFactor(horizontalRoofDivisionObjectCache[i][0][j], 'Width', (((conservatoryDepth - 2 * getPoleSize('x')) - 1) / 100));
 
-                    setObjTransform(horizontalRoofDivisionObjectCache[i][1][j], 'position', position, conservatoryDepth / 2, totalHeight, false);
+                    setObjTransform(horizontalRoofDivisionObjectCache[i][1][j], false, "position", [position, conservatoryDepth / 2, totalHeight], false);
                     setMorphFactor(horizontalRoofDivisionObjectCache[i][1][j], 'Width', (((conservatoryDepth - 2 * getPoleSize('x')) - 1) / 100));
 
                     changeVis(horizontalRoofDivisionObjectCache[i][0][j], false);
@@ -5241,7 +5307,7 @@ function createPL(v3d = window.v3d) {
 
                     let depthPos = 0;
 
-                    setObjTransform(horizontalRoofDivisionObjectCache[i][selection][1], 'position', position, conservatoryDepth / 2, totalHeight, false);
+                    setObjTransform(horizontalRoofDivisionObjectCache[i][selection][1], false, "position", [position, conservatoryDepth / 2, totalHeight], false);
                     changeVis(horizontalRoofDivisionObjectCache[i][selection][1], true);
 
                     for (let j = 0; j < roofSpecs[0].rafter[i].ledSpot.length; j++) {
@@ -5251,7 +5317,7 @@ function createPL(v3d = window.v3d) {
                         }
                         depthPos = depthPos + roofSpecs[0].rafter[i].ledSpot[j] / 1000;
 
-                        setObjTransform(horizontalRoofDivisionObjectCache[i][selection][4][j], 'position', position, depthPos, totalHeight, false);
+                        setObjTransform(horizontalRoofDivisionObjectCache[i][selection][4][j], false, "position", [position, depthPos, totalHeight], false);
                         changeVis(horizontalRoofDivisionObjectCache[i][selection][4][j], true);
                         lightBrightness += 0.5;
                     }
@@ -5260,7 +5326,7 @@ function createPL(v3d = window.v3d) {
                     changeVis(horizontalRoofDivisionObjectCache[i][selection][3], true);
             }
 
-            setObjTransform("Spot", "position", 0, conservatoryDepth / 2, totalHeight - 0.2, false);
+            setObjTransform("Spot", false, "position", [0, conservatoryDepth / 2, totalHeight - 0.2], false);
 
             if (anyLedStripOrSpotVisible == true) {
                 lightIntensity("Spot", 6 + lightBrightness);
@@ -5303,7 +5369,7 @@ function createPL(v3d = window.v3d) {
                     }
                 }
                 for (let j = 0; j < roofFillingCache[i].length; j++) {
-                    setObjTransform(roofFillingCache[i][j], "position", position, conservatoryDepth / 2, totalHeight, false);
+                    setObjTransform(roofFillingCache[i][j], false, "position", [position, conservatoryDepth / 2, totalHeight], false);
 
                     setMorphFactor(roofFillingCache[i][j], 'Depth', (((conservatoryDepth - 2 * getPoleSize('x')) - 1) / 100));
                     setMorphFactor(roofFillingCache[i][j], 'Width', (((roofSpecs[0].roof[i].width / 1000) - 1) / 100));
@@ -5375,25 +5441,25 @@ function createPL(v3d = window.v3d) {
                     makeParent(leftSpecs.climaglideManipulatorCache[pos2], 'globalManipulator');
                 }
 
-                setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'rotation', '', '', -90, false);
-                setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], 'rotation', '', '', -90, false);
+                setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "rotation", ['', '', -90], false);
+                setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], false, "rotation", ['', '', -90], false);
 
                 if (openingDirection == 'right') {
                     if (!leftSpecs.climaglideIsOpen[i])
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][0] + climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", [conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][0] + climaglideManipulatorDistanceFromEdge), ''], false);
                     else
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][1] - (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", [conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][1] - (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), ''], false);
 
                     changeVis(leftSpecs.climaglideManipulatorCache[pos1], true);
                 }
                 else if (openingDirection == 'middle') {
                     if (!leftSpecs.climaglideIsOpen[i]) {
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), '', false);
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), ''], false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), ''], false);
                     }
                     else {
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][1] - (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), '', false);
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][0] + (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][1] - (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), ''], false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][0] + (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), ''], false);
                     }
 
                     changeVis(leftSpecs.climaglideManipulatorCache[pos1], true);
@@ -5401,9 +5467,9 @@ function createPL(v3d = window.v3d) {
                 }
                 else {
                     if (!leftSpecs.climaglideIsOpen[i])
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][1] - climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", [conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][1] - climaglideManipulatorDistanceFromEdge), ''], false);
                     else
-                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][0] + (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", [conservatoryWidth / 2 - 0.01 - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (leftSpecs.optionYposSE[i][0] + (leftSpecs.optionSpacing[i] / leftSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), ''], false);
 
                     changeVis(leftSpecs.climaglideManipulatorCache[pos1], true);
                 }
@@ -5420,34 +5486,34 @@ function createPL(v3d = window.v3d) {
                     rightSpecs.climaglideManipulatorCache[pos2] = cloneObject("Climaglide_Manipulator.000", 12);
                     makeParent(rightSpecs.climaglideManipulatorCache[pos2], 'globalManipulator');
                 }
-                setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'rotation', '', '', -90, false);
-                setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], 'rotation', '', '', -90, false);
+                setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "rotation", ['', '', -90], false);
+                setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], false, "rotation", ['', '', -90], false);
 
                 if (openingDirection == 'left') {
                     if (!rightSpecs.climaglideIsOpen[i])
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', -conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][0] + climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", [-conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][0] + climaglideManipulatorDistanceFromEdge), ''], false);
                     else
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', -conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][1] - (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", [-conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][1] - (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), ''], false);
 
                     changeVis(rightSpecs.climaglideManipulatorCache[pos1], true);
                 }
                 else if (openingDirection == 'middle') {
                     if (!rightSpecs.climaglideIsOpen[i]) {
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), '', false);
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), ''], false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), ''], false);
                     }
                     else {
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][1] - (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), '', false);
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][0] + (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][1] - (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) + climaglideManipulatorDistanceFromEdge), ''], false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][0] + (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), ''], false);
                     }
                     changeVis(rightSpecs.climaglideManipulatorCache[pos1], true);
                     changeVis(rightSpecs.climaglideManipulatorCache[pos2], true);
                 }
                 else {
                     if (!rightSpecs.climaglideIsOpen[i])
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', -conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][1] - climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", [-conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][1] - climaglideManipulatorDistanceFromEdge), ''], false);
                     else
-                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', -conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][0] + (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), '', false);
+                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", [-conservatoryWidth / 2 + 0.01 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, (rightSpecs.optionYposSE[i][0] + (rightSpecs.optionSpacing[i] / rightSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), ''], false);
 
                     changeVis(rightSpecs.climaglideManipulatorCache[pos1], true);
                 }
@@ -5465,34 +5531,34 @@ function createPL(v3d = window.v3d) {
                     makeParent(frontSpecs.climaglideManipulatorCache[pos2], 'globalManipulator');
                 }
 
-                setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'rotation', '', '', 0, false);
-                setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], 'rotation', '', '', 0, false);
+                setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "rotation", ['', '', 0], false);
+                setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], false, "rotation", ['', '', 0], false);
 
                 if (openingDirection == 'right') {
                     if (!frontSpecs.climaglideIsOpen[i])
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', (frontSpecs.optionXposSE[i][0] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [(frontSpecs.optionXposSE[i][0] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
                     else
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', (frontSpecs.optionXposSE[i][1] + (frontSpecs.optionSpacing[i] / frontSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [(frontSpecs.optionXposSE[i][1] + (frontSpecs.optionSpacing[i] / frontSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
 
                     changeVis(frontSpecs.climaglideManipulatorCache[pos1], true);
                 }
                 else if (openingDirection == 'middle') {
                     if (!frontSpecs.climaglideIsOpen[i]) {
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', (frontSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], 'position', (frontSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [(frontSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], false, "position", [(frontSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
                     }
                     else {
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', (getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], 'position', (frontSpecs.optionXposSE[i][1] + (frontSpecs.optionSpacing[i] / frontSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [(getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], false, "position", [(frontSpecs.optionXposSE[i][1] + (frontSpecs.optionSpacing[i] / frontSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
                     }
                     changeVis(frontSpecs.climaglideManipulatorCache[pos1], true);
                     changeVis(frontSpecs.climaglideManipulatorCache[pos2], true);
                 }
                 else {
                     if (!frontSpecs.climaglideIsOpen[i])
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', (frontSpecs.optionXposSE[i][1] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [(frontSpecs.optionXposSE[i][1] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
                     else
-                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', (getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [(getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
 
                     changeVis(frontSpecs.climaglideManipulatorCache[pos1], true);
                 }
@@ -5512,20 +5578,20 @@ function createPL(v3d = window.v3d) {
 
                 if (openingDirection == 'left') {
                     if (!rearSpecs.climaglideIsOpen[i])
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', (rearSpecs.optionXposSE[i][0] - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [(rearSpecs.optionXposSE[i][0] - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, ''], false);
                     else
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', (rearSpecs.optionXposSE[i][1] + (rearSpecs.optionSpacing[i] / rearSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [(rearSpecs.optionXposSE[i][1] + (rearSpecs.optionSpacing[i] / rearSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, ''], false);
 
                     changeVis(rearSpecs.climaglideManipulatorCache[pos1], true);
                 }
                 else if (openingDirection == 'middle') {
                     if (!rearSpecs.climaglideIsOpen[i]) {
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', (rearSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos2], 'position', (rearSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [(rearSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos2], false, "position", [(rearSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
                     }
                     else {
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', (getClimaglidePanelPos(0, 3, i) + getClimaglidePanelPos(1, 3, i)) / 2 + climaglideManipulatorDistanceFromEdge, getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos2], 'position', (rearSpecs.optionXposSE[i][1] + (rearSpecs.optionSpacing[i] / rearSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [(getClimaglidePanelPos(0, 3, i) + getClimaglidePanelPos(1, 3, i)) / 2 + climaglideManipulatorDistanceFromEdge, getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos2], false, "position", [(rearSpecs.optionXposSE[i][1] + (rearSpecs.optionSpacing[i] / rearSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
                     }
 
                     changeVis(rearSpecs.climaglideManipulatorCache[pos1], true);
@@ -5533,9 +5599,9 @@ function createPL(v3d = window.v3d) {
                 }
                 else {
                     if (!rearSpecs.climaglideIsOpen[i])
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', (rearSpecs.optionXposSE[i][1] + climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [(rearSpecs.optionXposSE[i][1] + climaglideManipulatorDistanceFromEdge), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, ''], false);
                     else
-                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', (getClimaglidePanelPos(0, 3, i) + getClimaglidePanelPos(1, 3, i)) / 2 + climaglideManipulatorDistanceFromEdge, getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [(getClimaglidePanelPos(0, 3, i) + getClimaglidePanelPos(1, 3, i)) / 2 + climaglideManipulatorDistanceFromEdge, getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation, ''], false);
 
                     changeVis(rearSpecs.climaglideManipulatorCache[pos1], true);
                 }
@@ -5553,34 +5619,34 @@ function createPL(v3d = window.v3d) {
                     makeParent(standaloneSpecs.climaglideManipulatorCache[pos2], 'globalManipulator');
                 }
 
-                setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'rotation', '', '', 0, false);
-                setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos2], 'rotation', '', '', 0, false);
+                setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "rotation", ['', '', 0], false);
+                setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos2], false, "rotation", ['', '', 0], false);
 
                 if (openingDirection == 'right') {
                     if (!standaloneSpecs.climaglideIsOpen[i])
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'position', (standaloneSpecs.optionXposSE[i][0] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "position", [(standaloneSpecs.optionXposSE[i][0] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
                     else
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'position', (standaloneSpecs.optionXposSE[i][1] + (standaloneSpecs.optionSpacing[i] / standaloneSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "position", [(standaloneSpecs.optionXposSE[i][1] + (standaloneSpecs.optionSpacing[i] / standaloneSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
 
                     changeVis(standaloneSpecs.climaglideManipulatorCache[pos1], true);
                 }
                 else if (openingDirection == 'middle') {
                     if (!standaloneSpecs.climaglideIsOpen[i]) {
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'position', (standaloneSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos2], 'position', (standaloneSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "position", [(standaloneSpecs.optionCenterPos[i] - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos2], false, "position", [(standaloneSpecs.optionCenterPos[i] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
                     }
                     else {
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'position', (getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos2], 'position', (standaloneSpecs.optionXposSE[i][1] + (standaloneSpecs.optionSpacing[i] / standaloneSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, '', false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "position", [(getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos2], false, "position", [(standaloneSpecs.optionXposSE[i][1] + (standaloneSpecs.optionSpacing[i] / standaloneSpecs.climaglidePanelAmount[i]) - climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation, ''], false);
                     }
                     changeVis(standaloneSpecs.climaglideManipulatorCache[pos1], true);
                     changeVis(standaloneSpecs.climaglideManipulatorCache[pos2], true);
                 }
                 else {
                     if (!standaloneSpecs.climaglideIsOpen[i])
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'position', (standaloneSpecs.optionXposSE[i][1] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "position", [(standaloneSpecs.optionXposSE[i][1] + climaglideManipulatorDistanceFromEdge), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
                     else
-                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], 'position', (getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, '', false);
+                        setObjTransform(standaloneSpecs.climaglideManipulatorCache[pos1], false, "position", [(getClimaglidePanelPos(0, 2, i) + getClimaglidePanelPos(1, 2, i)) / 2 + climaglideManipulatorDistanceFromEdge, conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 - depthAdaptation, ''], false);
 
                     changeVis(standaloneSpecs.climaglideManipulatorCache[pos1], true);
                 }
@@ -5618,10 +5684,10 @@ function createPL(v3d = window.v3d) {
                     motorCircleHorizontalCache[x] = cloneObject("motorPosCircle_HorizontalScreen.0", 50, false, false);
                     motorImageHorizontalCache[x] = cloneObject("MotorImageHorizontal.0", 50, false, false);
 
-                    setObjTransform(motorImageHorizontalCache[x], 'position', getObjTransform(motorCircleHorizontalCache[x], "position", 'x'), getObjTransform(motorCircleHorizontalCache[x], "position", 'z'), getObjTransform(motorCircleHorizontalCache[x], "position", 'y'), false);
+                    setObjTransform(motorImageHorizontalCache[x], false, "position", [getObjTransform(motorCircleHorizontalCache[x], "position", 'x'), getObjTransform(motorCircleHorizontalCache[x], "position", 'z'), getObjTransform(motorCircleHorizontalCache[x], "position", 'y')], false);
                     makeParent(motorImageHorizontalCache[x], motorCircleHorizontalCache[x]);
                 }
-                setObjTransform(motorCircleHorizontalCache[x], 'position', ((motorSideList[x] == 'L') ? recenteredScreenPos + screenWidthList[x] / 1000 / 2 - 0.1 : recenteredScreenPos - screenWidthList[x] / 1000 / 2 + 0.1) + screenPositionList[x] / 1000, 0, totalHeight + horizontalScreenMotorOffset, false);
+                setObjTransform(motorCircleHorizontalCache[x], false, "position", [((motorSideList[x] == 'L') ? recenteredScreenPos + screenWidthList[x] / 1000 / 2 - 0.1 : recenteredScreenPos - screenWidthList[x] / 1000 / 2 + 0.1) + screenPositionList[x] / 1000, 0, totalHeight + horizontalScreenMotorOffset], false);
                 changeVis([motorCircleHorizontalCache[x], motorImageHorizontalCache[x]], true);
             }
         }
@@ -5636,10 +5702,10 @@ function createPL(v3d = window.v3d) {
 
             let sideTranslations = (scope["_3d_side_translations"]) ? JSON.parse(scope["_3d_side_translations"]) : {};
 
-            setObjTransform('Text_Back', 'position', '', -offset, '', false);
-            setObjTransform('Text_Front', 'position', '', conservatoryDepth + offset, '', false);
-            setObjTransform('Text_Right', 'position', -conservatoryWidth / 2 - offset, conservatoryDepth / 2, '', false);
-            setObjTransform('Text_Left', 'position', conservatoryWidth / 2 + offset, conservatoryDepth / 2, '', false);
+            setObjTransform('Text_Back', false, "position", ['', -offset, ''], false);
+            setObjTransform('Text_Front', false, "position", ['', conservatoryDepth + offset, ''], false);
+            setObjTransform('Text_Right', false, "position", [-conservatoryWidth / 2 - offset, conservatoryDepth / 2, ''], false);
+            setObjTransform('Text_Left', false, "position", [conservatoryWidth / 2 + offset, conservatoryDepth / 2, ''], false);
 
             changeVis('Text_Back', true);
             changeVis('Text_Front', true);
@@ -5655,7 +5721,7 @@ function createPL(v3d = window.v3d) {
             /* if (horizontalScreenEnabled.includes(true)) {
                 changeVis('motorPosCircle_HorizontalScreen.0', true);
                 changeVis('MotorImageHorizontal.0', true);
-                setObjTransform('motorPosCircle_HorizontalScreen.0', 'position', (roofScreenMotorSide == 'L') ? conservatoryWidth / 2 : -conservatoryWidth / 2, 0.05, totalHeight , false);
+                setObjTransform('motorPosCircle_HorizontalScreen.0', false, "position", [(roofScreenMotorSide == 'L') ? conservatoryWidth / 2 : -conservatoryWidth / 2, 0.05, totalHeight], false);
             } */
 
 
@@ -5665,22 +5731,22 @@ function createPL(v3d = window.v3d) {
             if (leftSpecsL1.option == 'optionsScreens') {
                 changeVis('motorPosCircle_left', true);
                 changeVis('MotorImageLeft', true);
-                setObjTransform('motorPosCircle_left', 'position', conservatoryWidth / 2 + 0.003, (leftSpecsL1.screen.motor == 'left') ? 0.15 : conservatoryDepth - 0.15, totalHeight - 0.04, false);
+                setObjTransform('motorPosCircle_left', false, "position", [conservatoryWidth / 2 + 0.003, (leftSpecsL1.screen.motor == 'left') ? 0.15 : conservatoryDepth - 0.15, totalHeight - 0.04], false);
             }
             if (rightSpecsL1.option == 'optionsScreens') {
                 changeVis('motorPosCircle_right', true);
                 changeVis('MotorImageRight', true);
-                setObjTransform('motorPosCircle_right', 'position', -conservatoryWidth / 2 - 0.003, (rightSpecsL1.screen.motor == 'left') ? conservatoryDepth - 0.15 : 0.15, totalHeight - 0.04, false);
+                setObjTransform('motorPosCircle_right', false, "position", [-conservatoryWidth / 2 - 0.003, (rightSpecsL1.screen.motor == 'left') ? conservatoryDepth - 0.15 : 0.15, totalHeight - 0.04], false);
             }
             if (frontSpecsL1.option == 'optionsScreens') {
                 changeVis('motorPosCircle_front', true);
                 changeVis('MotorImageFront', true);
-                setObjTransform('motorPosCircle_front', 'position', (frontSpecsL1.screen.motor == 'right') ? -conservatoryWidth / 2 + 0.15 : conservatoryWidth / 2 - 0.15, conservatoryDepth + 0.003, totalHeight - 0.04, false);
+                setObjTransform('motorPosCircle_front', false, "position", [(frontSpecsL1.screen.motor == 'right') ? -conservatoryWidth / 2 + 0.15 : conservatoryWidth / 2 - 0.15, conservatoryDepth + 0.003, totalHeight - 0.04], false);
             }
             if (backSpecsL1.option == 'optionsScreens') {
                 changeVis('motorPosCircle_back', true);
                 changeVis('MotorImageBack', true);
-                setObjTransform('motorPosCircle_back', 'position', (backSpecsL1.screen.motor == 'right') ? conservatoryWidth / 2 - 0.15 : -conservatoryWidth / 2 + 0.15, -0.003, totalHeight - 0.04, false);
+                setObjTransform('motorPosCircle_back', false, "position", [(backSpecsL1.screen.motor == 'right') ? conservatoryWidth / 2 - 0.15 : -conservatoryWidth / 2 + 0.15, -0.003, totalHeight - 0.04], false);
             }
 
             updateMotorRotation();
@@ -5688,13 +5754,13 @@ function createPL(v3d = window.v3d) {
 
         function updateMotorRotation() {
             for (let x = 0; x < motorImageHorizontalCache.length; x++) {
-                setObjTransform(motorCircleHorizontalCache[x], 'rotation', '', '', cameraZAngle - 90, false);
+                setObjTransform(motorCircleHorizontalCache[x], false, "rotation", ['', '', cameraZAngle - 90], false);
             }
-            //setObjTransform('motorPosCircle_HorizontalScreen.0', 'rotation', '', '', cameraZAngle - 90, false);
-            setObjTransform('motorPosCircle_left', 'rotation', '', '', cameraZAngle - 90, false);
-            setObjTransform('motorPosCircle_right', 'rotation', '', '', cameraZAngle - 90, false);
-            setObjTransform('motorPosCircle_front', 'rotation', '', '', cameraZAngle - 90, false);
-            setObjTransform('motorPosCircle_back', 'rotation', '', '', cameraZAngle - 90, false);
+            //setObjTransform('motorPosCircle_HorizontalScreen.0', false, "rotation", ['', '', cameraZAngle - 90], false);
+            setObjTransform('motorPosCircle_left', false, "rotation", ['', '', cameraZAngle - 90], false);
+            setObjTransform('motorPosCircle_right', false, "rotation", ['', '', cameraZAngle - 90], false);
+            setObjTransform('motorPosCircle_front', false, "rotation", ['', '', cameraZAngle - 90], false);
+            setObjTransform('motorPosCircle_back', false, "rotation", ['', '', cameraZAngle - 90], false);
         }
 
         function enableClimaglide(openingDirection) {
@@ -5738,14 +5804,14 @@ function createPL(v3d = window.v3d) {
                         }
 
                     }
-                    setObjTransform(frontSpecs.climaglideBottomRailCache[totalCounter], 'position', frontSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], '', false);
+                    setObjTransform(frontSpecs.climaglideBottomRailCache[totalCounter], false, "position", [frontSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], ''], false);
                     setMorphFactor(frontSpecs.climaglideBottomRailCache[totalCounter], 'Width', ((frontSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(frontSpecs.climaglideTopRailCache[totalCounter], 'position', frontSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], climaglideHeight[2], false);
+                    setObjTransform(frontSpecs.climaglideTopRailCache[totalCounter], false, "position", [frontSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], climaglideHeight[2]], false);
                     setMorphFactor(frontSpecs.climaglideTopRailCache[totalCounter], 'Width', ((frontSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(frontSpecs.climaglideTopMainRailCache[i], 'position', frontSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - depthAdaptation[2], climaglideHeight[2], false);
-                    setObjTransform(frontSpecs.climaglideTopMainRailCache[i], 'rotation', '', '', 180, false);
+                    setObjTransform(frontSpecs.climaglideTopMainRailCache[i], false, "position", [frontSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - depthAdaptation[2], climaglideHeight[2]], false);
+                    setObjTransform(frontSpecs.climaglideTopMainRailCache[i], false, "rotation", ['', '', 180], false);
 
                     setMorphFactor(frontSpecs.climaglideTopMainRailCache[i], 'Width', ((frontSpecs.optionSpacing[i] - 1) / 99));
                     if (frontSpecs.climaglideOpeningDirection[i] == 'middle')
@@ -5758,31 +5824,31 @@ function createPL(v3d = window.v3d) {
 
                     if (frontSpecs.climaglideOpeningDirection[i] == "right") {
                         if (!frontSpecs.climaglideIsOpen[i])
-                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], ''], false);
                         else
-                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(frontSpecs.climaglidePanelAmount[i] - 1, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(frontSpecs.climaglidePanelAmount[i] - 1, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (frontSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], ''], false);
                     }
                     else if (frontSpecs.climaglideOpeningDirection[i] == "middle") {
                         if (!frontSpecs.climaglideIsOpen[i]) {
                             if (frontSpecs.climaglidePanelAmount[i] / (counter + 1) > 2)
-                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((frontSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((frontSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                             else if (frontSpecs.climaglidePanelAmount[i] / (counter + 1) == 2 || frontSpecs.climaglidePanelAmount[i] / counter == 2)
-                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                             else
-                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(frontSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(frontSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                         }
                         else {
                             if (frontSpecs.climaglidePanelAmount[i] / (counter + 1) >= 2)
-                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(0, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((frontSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(0, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((frontSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                             else
-                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(frontSpecs.climaglidePanelAmount[i] - 1, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(frontSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(frontSpecs.climaglidePanelAmount[i] - 1, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(frontSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((frontSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                         }
                     }
                     else {
                         if (!frontSpecs.climaglideIsOpen[i])
-                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], ''], false);
                         else
-                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(0, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(frontSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(0, 2, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], ''], false);
                     }
 
                     if (!(frontSpecs.climaglideOpeningDirection[i] == 'middle' && frontSpecs.climaglidePanelAmount[i] / (counter + 1) < 2)) {
@@ -5838,16 +5904,16 @@ function createPL(v3d = window.v3d) {
                             makeParent(leftSpecs.climaglidePanelCache[x + i * 10], 'globalManipulator');
                         }
                     }
-                    setObjTransform(leftSpecs.climaglideBottomRailCache[totalCounter], 'position', conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], leftSpecs.optionCenterPos[i], '', false);
-                    setObjTransform(leftSpecs.climaglideBottomRailCache[totalCounter], 'rotation', '', '', 90, false);
+                    setObjTransform(leftSpecs.climaglideBottomRailCache[totalCounter], false, "position", [conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], leftSpecs.optionCenterPos[i], ''], false);
+                    setObjTransform(leftSpecs.climaglideBottomRailCache[totalCounter], false, "rotation", ['', '', 90], false);
                     setMorphFactor(leftSpecs.climaglideBottomRailCache[totalCounter], 'Width', ((leftSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(leftSpecs.climaglideTopRailCache[totalCounter], 'position', conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], leftSpecs.optionCenterPos[i], climaglideHeight[0], false);
-                    setObjTransform(leftSpecs.climaglideTopRailCache[totalCounter], 'rotation', '', '', 90, false);
+                    setObjTransform(leftSpecs.climaglideTopRailCache[totalCounter], false, "position", [conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], leftSpecs.optionCenterPos[i], climaglideHeight[0]], false);
+                    setObjTransform(leftSpecs.climaglideTopRailCache[totalCounter], false, "rotation", ['', '', 90], false);
                     setMorphFactor(leftSpecs.climaglideTopRailCache[totalCounter], 'Width', ((leftSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(leftSpecs.climaglideTopMainRailCache[i], 'position', conservatoryWidth / 2 - 0.01 - depthAdaptation[0], leftSpecs.optionCenterPos[i], climaglideHeight[0], false);
-                    setObjTransform(leftSpecs.climaglideTopMainRailCache[i], 'rotation', '', '', 90, false);
+                    setObjTransform(leftSpecs.climaglideTopMainRailCache[i], false, "position", [conservatoryWidth / 2 - 0.01 - depthAdaptation[0], leftSpecs.optionCenterPos[i], climaglideHeight[0]], false);
+                    setObjTransform(leftSpecs.climaglideTopMainRailCache[i], false, "rotation", ['', '', 90], false);
                     setMorphFactor(leftSpecs.climaglideTopMainRailCache[i], 'Width', ((leftSpecs.optionSpacing[i] - 1) / 99));
 
                     if (leftSpecs.climaglideOpeningDirection[i] == 'middle')
@@ -5857,35 +5923,35 @@ function createPL(v3d = window.v3d) {
 
                     setMorphFactor(leftSpecs.climaglidePanelCache[counter + i * 10], 'Width', ((((leftSpecs.optionSpacing[i]) / leftSpecs.climaglidePanelAmount[i]) - 0.1 + (overhang)) / 100));
                     setMorphFactor(leftSpecs.climaglidePanelCache[counter + i * 10], 'Height', (((climaglideHeight[0]) - 1) / 99));
-                    setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'rotation', '', '', -90, false);
+                    setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "rotation", ['', '', -90], false);
 
                     if (leftSpecs.climaglideOpeningDirection[i] == "right") {
                         if (!leftSpecs.climaglideIsOpen[i])
-                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 + (counter * 0.02) - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), '', false);
+                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 + (counter * 0.02) - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), ''], false);
                         else
-                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 + (counter * 0.02) - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(leftSpecs.climaglidePanelAmount[i] - 1, 0, i), '', false);
+                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 + (counter * 0.02) - ((leftSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(leftSpecs.climaglidePanelAmount[i] - 1, 0, i), ''], false);
                     }
                     else if (leftSpecs.climaglideOpeningDirection[i] == "middle") {
                         if (!leftSpecs.climaglideIsOpen[i]) {
                             if (leftSpecs.climaglidePanelAmount[i] / (counter + 1) > 2)
-                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), '', false);
+                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), ''], false);
                             else if (leftSpecs.climaglidePanelAmount[i] / (counter + 1) == 2 || leftSpecs.climaglidePanelAmount[i] / counter == 2)
-                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), '', false);
+                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), ''], false);
                             else
-                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), '', false);
+                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), ''], false);
                         }
                         else {
                             if (leftSpecs.climaglidePanelAmount[i] / (counter + 1) >= 2)
-                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(0, 0, i), '', false);
+                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(0, 0, i), ''], false);
                             else
-                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(leftSpecs.climaglidePanelAmount[i] - 1, 0, i), '', false);
+                                setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (((leftSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[0], getClimaglidePanelPos(leftSpecs.climaglidePanelAmount[i] - 1, 0, i), ''], false);
                         }
                     }
                     else {
                         if (!leftSpecs.climaglideIsOpen[i])
-                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), '', false);
+                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(counter, 0, i), ''], false);
                         else
-                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], 'position', conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(0, 0, i), '', false);
+                            setObjTransform(leftSpecs.climaglidePanelCache[counter + i * 10], false, "position", [conservatoryWidth / 2 - 0.01 - (counter * 0.02) - depthAdaptation[0], getClimaglidePanelPos(0, 0, i), ''], false);
                     }
                     if (!(leftSpecs.climaglideOpeningDirection[i] == 'middle' && leftSpecs.climaglidePanelAmount[i] / (counter + 1) < 2)) {
                         changeVis(leftSpecs.climaglideBottomRailCache[totalCounter], true);
@@ -5946,16 +6012,16 @@ function createPL(v3d = window.v3d) {
                             makeParent(rightSpecs.climaglidePanelCache[x + i * 10], 'globalManipulator');
                         }
                     }
-                    setObjTransform(rightSpecs.climaglideBottomRailCache[totalCounter], 'position', -conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], rightSpecs.optionCenterPos[i], '', false);
-                    setObjTransform(rightSpecs.climaglideBottomRailCache[totalCounter], 'rotation', '', '', -90, false);
+                    setObjTransform(rightSpecs.climaglideBottomRailCache[totalCounter], false, "position", [-conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], rightSpecs.optionCenterPos[i], ''], false);
+                    setObjTransform(rightSpecs.climaglideBottomRailCache[totalCounter], false, "rotation", ['', '', -90], false);
                     setMorphFactor(rightSpecs.climaglideBottomRailCache[totalCounter], 'Width', ((rightSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(rightSpecs.climaglideTopRailCache[totalCounter], 'position', -conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], rightSpecs.optionCenterPos[i], climaglideHeight[1], false);
-                    setObjTransform(rightSpecs.climaglideTopRailCache[totalCounter], 'rotation', '', '', -90, false);
+                    setObjTransform(rightSpecs.climaglideTopRailCache[totalCounter], false, "position", [-conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], rightSpecs.optionCenterPos[i], climaglideHeight[1]], false);
+                    setObjTransform(rightSpecs.climaglideTopRailCache[totalCounter], false, "rotation", ['', '', -90], false);
                     setMorphFactor(rightSpecs.climaglideTopRailCache[totalCounter], 'Width', ((rightSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(rightSpecs.climaglideTopMainRailCache[i], 'position', -conservatoryWidth / 2 + 0.01 - depthAdaptation[1], rightSpecs.optionCenterPos[i], climaglideHeight[1], false);
-                    setObjTransform(rightSpecs.climaglideTopMainRailCache[i], 'rotation', '', '', -90, false);
+                    setObjTransform(rightSpecs.climaglideTopMainRailCache[i], false, "position", [-conservatoryWidth / 2 + 0.01 - depthAdaptation[1], rightSpecs.optionCenterPos[i], climaglideHeight[1]], false);
+                    setObjTransform(rightSpecs.climaglideTopMainRailCache[i], false, "rotation", ['', '', -90], false);
                     setMorphFactor(rightSpecs.climaglideTopMainRailCache[i], 'Width', ((rightSpecs.optionSpacing[i] - 1) / 99));
 
                     if (rightSpecs.climaglideOpeningDirection[i] == 'middle')
@@ -5965,35 +6031,35 @@ function createPL(v3d = window.v3d) {
 
                     setMorphFactor(rightSpecs.climaglidePanelCache[counter + i * 10], 'Width', ((((rightSpecs.optionSpacing[i]) / rightSpecs.climaglidePanelAmount[i]) - 0.1 + (overhang)) / 100));
                     setMorphFactor(rightSpecs.climaglidePanelCache[counter + i * 10], 'Height', (((climaglideHeight[1]) - 1) / 99));
-                    setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'rotation', '', '', -90, false);
+                    setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "rotation", ['', '', -90], false);
 
                     if (rightSpecs.climaglideOpeningDirection[i] == "left") {
                         if (!rightSpecs.climaglideIsOpen[i])
-                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 - counter * 0.02 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), '', false);
+                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 - counter * 0.02 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), ''], false);
                         else
-                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 - counter * 0.02 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(rightSpecs.climaglidePanelAmount[i] - 1, 1, i), '', false);
+                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 - counter * 0.02 + ((rightSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(rightSpecs.climaglidePanelAmount[i] - 1, 1, i), ''], false);
                     }
                     else if (rightSpecs.climaglideOpeningDirection[i] == "middle") {
                         if (!rightSpecs.climaglideIsOpen[i]) {
                             if (rightSpecs.climaglidePanelAmount[i] / (counter + 1) > 2)
-                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), '', false);
+                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), ''], false);
                             else if (rightSpecs.climaglidePanelAmount[i] / (counter + 1) == 2 || rightSpecs.climaglidePanelAmount[i] / counter == 2)
-                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), '', false);
+                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) / 2 - 1) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), ''], false);
                             else
-                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), '', false);
+                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), ''], false);
                         }
                         else {
                             if (rightSpecs.climaglidePanelAmount[i] / (counter + 1) >= 2)
-                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(0, 1, i), '', false);
+                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(0, 1, i), ''], false);
                             else
-                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(rightSpecs.climaglidePanelAmount[i] - 1, 1, i), '', false);
+                                setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (((rightSpecs.climaglidePanelAmount[i]) - 1 - counter) * 0.02) - depthAdaptation[1], getClimaglidePanelPos(rightSpecs.climaglidePanelAmount[i] - 1, 1, i), ''], false);
                         }
                     }
                     else {
                         if (!rightSpecs.climaglideIsOpen[i])
-                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), '', false);
+                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(counter, 1, i), ''], false);
                         else
-                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], 'position', -conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(0, 1, i), '', false);
+                            setObjTransform(rightSpecs.climaglidePanelCache[counter + i * 10], false, "position", [-conservatoryWidth / 2 + 0.01 + (counter * 0.02) - depthAdaptation[1], getClimaglidePanelPos(0, 1, i), ''], false);
                     }
                     if (!(rightSpecs.climaglideOpeningDirection[i] == 'middle' && rightSpecs.climaglidePanelAmount[i] / (counter + 1) < 2)) {
                         changeVis(rightSpecs.climaglideBottomRailCache[totalCounter], true);
@@ -6047,14 +6113,14 @@ function createPL(v3d = window.v3d) {
                             makeParent(rearSpecs.climaglidePanelCache[x + i * 10], 'globalManipulator');
                         }
                     }
-                    setObjTransform(rearSpecs.climaglideBottomRailCache[totalCounter], 'position', rearSpecs.optionCenterPos[i], getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], '', false);
+                    setObjTransform(rearSpecs.climaglideBottomRailCache[totalCounter], false, "position", [rearSpecs.optionCenterPos[i], getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], ''], false);
                     setMorphFactor(rearSpecs.climaglideBottomRailCache[totalCounter], 'Width', ((rearSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(rearSpecs.climaglideTopRailCache[totalCounter], 'position', rearSpecs.optionCenterPos[i], getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], climaglideHeight[3], false);
+                    setObjTransform(rearSpecs.climaglideTopRailCache[totalCounter], false, "position", [rearSpecs.optionCenterPos[i], getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], climaglideHeight[3]], false);
                     setMorphFactor(rearSpecs.climaglideTopRailCache[totalCounter], 'Width', ((rearSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(rearSpecs.climaglideTopMainRailCache[i], 'position', rearSpecs.optionCenterPos[i], getPoleSize("y") - 0.105 - depthAdaptation[3], climaglideHeight[3], false);
-                    setObjTransform(rearSpecs.climaglideTopMainRailCache[i], 'rotation', '', '', 0, false);
+                    setObjTransform(rearSpecs.climaglideTopMainRailCache[i], false, "position", [rearSpecs.optionCenterPos[i], getPoleSize("y") - 0.105 - depthAdaptation[3], climaglideHeight[3]], false);
+                    setObjTransform(rearSpecs.climaglideTopMainRailCache[i], false, "rotation", ['', '', 0], false);
 
                     setMorphFactor(rearSpecs.climaglideTopMainRailCache[i], 'Width', ((rearSpecs.optionSpacing[i] - 1) / 99));
                     if (rearSpecs.climaglideOpeningDirection[i] == 'middle')
@@ -6067,31 +6133,31 @@ function createPL(v3d = window.v3d) {
 
                     if (rearSpecs.climaglideOpeningDirection[i] == "left") {
                         if (!rearSpecs.climaglideIsOpen[i])
-                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 - (counter * 0.02) + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[3], '', false);
+                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 - (counter * 0.02) + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[3], ''], false);
                         else
-                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(rearSpecs.climaglidePanelAmount[i] - 1, 3, i), getPoleSize("y") - 0.105 - (counter * 0.02) + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[3], '', false);
+                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(rearSpecs.climaglidePanelAmount[i] - 1, 3, i), getPoleSize("y") - 0.105 - (counter * 0.02) + ((rearSpecs.climaglidePanelAmount[i] - 1) * 0.02) - depthAdaptation[3], ''], false);
                     }
                     else if (rearSpecs.climaglideOpeningDirection[i] == "middle") {
                         if (!rearSpecs.climaglideIsOpen[i]) {
                             if (rearSpecs.climaglidePanelAmount[i] / (counter + 1) > 2)
-                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], '', false);
+                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], ''], false);
                             else if (rearSpecs.climaglidePanelAmount[i] / (counter + 1) == 2 || rearSpecs.climaglidePanelAmount[i] / counter == 2)
-                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[3], '', false);
+                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[3], ''], false);
                             else
-                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1 - counter) * 0.02) - depthAdaptation[3], '', false);
+                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1 - counter) * 0.02) - depthAdaptation[3], ''], false);
                         }
                         else {
                             if (rearSpecs.climaglidePanelAmount[i] / (counter + 1) >= 2)
-                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(0, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], '', false);
+                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(0, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], ''], false);
                             else
-                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(rearSpecs.climaglidePanelAmount[i] - 1, 3, i), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1 - counter) * 0.02) - depthAdaptation[3], '', false);
+                                setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(rearSpecs.climaglidePanelAmount[i] - 1, 3, i), getPoleSize("y") - 0.105 + ((rearSpecs.climaglidePanelAmount[i] - 1 - counter) * 0.02) - depthAdaptation[3], ''], false);
                         }
                     }
                     else {
                         if (!rearSpecs.climaglideIsOpen[i])
-                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], '', false);
+                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], ''], false);
                         else
-                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(0, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], '', false);
+                            setObjTransform(rearSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(0, 3, i), getPoleSize("y") - 0.105 + (counter * 0.02) - depthAdaptation[3], ''], false);
                     }
 
                     if (!(rearSpecs.climaglideOpeningDirection[i] == 'middle' && rearSpecs.climaglidePanelAmount[i] / (counter + 1) < 2)) {
@@ -6146,14 +6212,14 @@ function createPL(v3d = window.v3d) {
                             makeParent(standaloneSpecs.climaglidePanelCache[x + i * 10], 'globalManipulator');
                         }
                     }
-                    setObjTransform(standaloneSpecs.climaglideBottomRailCache[totalCounter], 'position', standaloneSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], '', false);
+                    setObjTransform(standaloneSpecs.climaglideBottomRailCache[totalCounter], false, "position", [standaloneSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], ''], false);
                     setMorphFactor(standaloneSpecs.climaglideBottomRailCache[totalCounter], 'Width', ((standaloneSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(standaloneSpecs.climaglideTopRailCache[totalCounter], 'position', standaloneSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], climaglideHeight[2], false);
+                    setObjTransform(standaloneSpecs.climaglideTopRailCache[totalCounter], false, "position", [standaloneSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], climaglideHeight[2]], false);
                     setMorphFactor(standaloneSpecs.climaglideTopRailCache[totalCounter], 'Width', ((standaloneSpecs.optionSpacing[i] - 1) / 99));
 
-                    setObjTransform(standaloneSpecs.climaglideTopMainRailCache[i], 'position', standaloneSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - depthAdaptation[2], climaglideHeight[2], false);
-                    setObjTransform(standaloneSpecs.climaglideTopMainRailCache[i], 'rotation', '', '', 180, false);
+                    setObjTransform(standaloneSpecs.climaglideTopMainRailCache[i], false, "position", [standaloneSpecs.optionCenterPos[i], conservatoryDepth - getPoleSize("y") + 0.11 - depthAdaptation[2], climaglideHeight[2]], false);
+                    setObjTransform(standaloneSpecs.climaglideTopMainRailCache[i], false, "rotation", ['', '', 180], false);
 
                     setMorphFactor(standaloneSpecs.climaglideTopMainRailCache[i], 'Width', ((standaloneSpecs.optionSpacing[i] - 1) / 99));
                     if (standaloneSpecs.climaglideOpeningDirection[i] == 'middle')
@@ -6166,31 +6232,31 @@ function createPL(v3d = window.v3d) {
 
                     if (standaloneSpecs.climaglideOpeningDirection[i] == "right") {
                         if (!standaloneSpecs.climaglideIsOpen[i])
-                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], ''], false);
                         else
-                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(standaloneSpecs.climaglidePanelAmount[i] - 1, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(standaloneSpecs.climaglidePanelAmount[i] - 1, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (standaloneSpecs.climaglidePanelAmount[i] - 1) * 0.02 + (counter * 0.02) - depthAdaptation[2], ''], false);
                     }
                     else if (standaloneSpecs.climaglideOpeningDirection[i] == "middle") {
                         if (!standaloneSpecs.climaglideIsOpen[i]) {
                             if (standaloneSpecs.climaglidePanelAmount[i] / (counter + 1) > 2)
-                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((standaloneSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((standaloneSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                             else if (standaloneSpecs.climaglidePanelAmount[i] / (counter + 1) == 2 || standaloneSpecs.climaglidePanelAmount[i] / counter == 2)
-                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                             else
-                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(standaloneSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(standaloneSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                         }
                         else {
                             if (standaloneSpecs.climaglidePanelAmount[i] / (counter + 1) >= 2)
-                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(0, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((standaloneSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(0, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + ((standaloneSpecs.climaglidePanelAmount[i] / 2 - counter - 1) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                             else
-                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(standaloneSpecs.climaglidePanelAmount[i] - 1, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(standaloneSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], '', false);
+                                setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(standaloneSpecs.climaglidePanelAmount[i] - 1, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 + (-(standaloneSpecs.climaglidePanelAmount[i] / 2 - counter) * 0.02) - ((standaloneSpecs.climaglidePanelAmount[i] / 2 - 1) * 0.02) - depthAdaptation[2], ''], false);
                         }
                     }
                     else {
                         if (!standaloneSpecs.climaglideIsOpen[i])
-                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(counter, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], ''], false);
                         else
-                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], 'position', getClimaglidePanelPos(0, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], '', false);
+                            setObjTransform(standaloneSpecs.climaglidePanelCache[counter + i * 10], false, "position", [getClimaglidePanelPos(0, 4, i), conservatoryDepth - getPoleSize("y") + 0.11 - (counter * 0.02) - depthAdaptation[2], ''], false);
                     }
 
                     if (!(standaloneSpecs.climaglideOpeningDirection[i] == 'middle' && standaloneSpecs.climaglidePanelAmount[i] / (counter + 1) < 2)) {
@@ -6368,8 +6434,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * (leftSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == leftSpecs.climaglidePanelAmount[pos] - 1)
-                                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', '', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(0, pos), '', false);
-                                    setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", ['', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(0, pos), ''], false);
+                                    setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                 }, function () {
                                     if (i == leftSpecs.climaglidePanelAmount[pos] - 1) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6397,8 +6463,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * (leftSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == leftSpecs.climaglidePanelAmount[pos] / 2 - 1)
-                                            setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], 'position', '', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(0, pos), '', false);
-                                        setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                            setObjTransform(leftSpecs.climaglideManipulatorCache[pos2], false, "position", ['', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(0, pos), ''], false);
+                                        setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                     }, function () {
                                         if (i == leftSpecs.climaglidePanelAmount[pos] - 1) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6421,8 +6487,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == leftSpecs.climaglidePanelAmount[pos] / 2)
-                                            setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', '', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(0, pos), '', false);
-                                        setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                            setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", ['', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(0, pos), ''], false);
+                                        setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                     }, function () {
                                         if (i == leftSpecs.climaglidePanelAmount[pos] / 2) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6450,8 +6516,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == 0)
-                                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], 'position', '', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(0, pos), '', false);
-                                    setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                        setObjTransform(leftSpecs.climaglideManipulatorCache[pos1], false, "position", ['', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(0, pos), ''], false);
+                                    setObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                 }, function () {
                                     if (i == 0) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6485,8 +6551,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * (rightSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == rightSpecs.climaglidePanelAmount[pos] - 1)
-                                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', '', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(1, pos), '', false);
-                                    setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", ['', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(1, pos), ''], false);
+                                    setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                 }, function () {
                                     if (i == rightSpecs.climaglidePanelAmount[pos] - 1) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6514,8 +6580,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * (rightSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == rightSpecs.climaglidePanelAmount[pos] / 2 - 1)
-                                            setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], 'position', '', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(1, pos), '', false);
-                                        setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                            setObjTransform(rightSpecs.climaglideManipulatorCache[pos2], false, "position", ['', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(1, pos), ''], false);
+                                        setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                     }, function () {
                                         if (i == rightSpecs.climaglidePanelAmount[pos] - 1) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6538,8 +6604,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == rightSpecs.climaglidePanelAmount[pos] / 2)
-                                            setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', '', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(1, pos), '', false);
-                                        setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                            setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", ['', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(1, pos), ''], false);
+                                        setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                     }, function () {
                                         if (i == rightSpecs.climaglidePanelAmount[pos] / 2) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6567,8 +6633,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == 0)
-                                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], 'position', '', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(1, pos), '', false);
-                                    setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', '', _pGlob.animateParamUpdate, '', false);
+                                        setObjTransform(rightSpecs.climaglideManipulatorCache[pos1], false, "position", ['', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(1, pos), ''], false);
+                                    setObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", ['', _pGlob.animateParamUpdate, ''], false);
                                 }, function () {
                                     if (i == 0) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6602,8 +6668,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * (frontSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == frontSpecs.climaglidePanelAmount[pos] - 1)
-                                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(2, pos), '', '', false);
-                                    setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [_pGlob.animateParamUpdate - getClimaglideManipulatorPos(2, pos), '', ''], false);
+                                    setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                 }, function () {
                                     if (i == frontSpecs.climaglidePanelAmount[pos] - 1) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6631,8 +6697,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * (frontSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == frontSpecs.climaglidePanelAmount[pos] / 2 - 1)
-                                            setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], 'position', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(2, pos), '', '', false);
-                                        setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                            setObjTransform(frontSpecs.climaglideManipulatorCache[pos2], false, "position", [_pGlob.animateParamUpdate - getClimaglideManipulatorPos(2, pos), '', ''], false);
+                                        setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                     }, function () {
                                         if (i == frontSpecs.climaglidePanelAmount[pos] - 1) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6655,8 +6721,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == frontSpecs.climaglidePanelAmount[pos] / 2)
-                                            setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(2, pos), '', '', false);
-                                        setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                            setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [_pGlob.animateParamUpdate + getClimaglideManipulatorPos(2, pos), '', ''], false);
+                                        setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                     }, function () {
                                         if (i == frontSpecs.climaglidePanelAmount[pos] / 2) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6684,8 +6750,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == 0)
-                                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], 'position', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(2, pos), '', '', false);
-                                    setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                        setObjTransform(frontSpecs.climaglideManipulatorCache[pos1], false, "position", [_pGlob.animateParamUpdate + getClimaglideManipulatorPos(2, pos), '', ''], false);
+                                    setObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                 }, function () {
                                     if (i == 0) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6718,8 +6784,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * (rearSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == rearSpecs.climaglidePanelAmount[pos] - 1)
-                                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(3, pos), '', '', false);
-                                    setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [_pGlob.animateParamUpdate - getClimaglideManipulatorPos(3, pos), '', ''], false);
+                                    setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                 }, function () {
                                     if (i == rearSpecs.climaglidePanelAmount[pos] - 1) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6748,8 +6814,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * (rearSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == rearSpecs.climaglidePanelAmount[pos] / 2 - 1)
-                                            setObjTransform(rearSpecs.climaglideManipulatorCache[pos2], 'position', _pGlob.animateParamUpdate - getClimaglideManipulatorPos(3, pos), '', '', false);
-                                        setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                            setObjTransform(rearSpecs.climaglideManipulatorCache[pos2], false, "position", [_pGlob.animateParamUpdate - getClimaglideManipulatorPos(3, pos), '', ''], false);
+                                        setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                     }, function () {
                                         if (i == rearSpecs.climaglidePanelAmount[pos] / 2) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6773,8 +6839,8 @@ function createPL(v3d = window.v3d) {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                     function () {
                                         if (i == rearSpecs.climaglidePanelAmount[pos] / 2)
-                                            setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(3, pos), '', '', false);
-                                        setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                            setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [_pGlob.animateParamUpdate + getClimaglideManipulatorPos(3, pos), '', ''], false);
+                                        setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                     }, function () {
                                         if (i == rearSpecs.climaglidePanelAmount[pos] / 2) {
                                             registerSetTimeout(animationRenderStopDelay, function () {
@@ -6802,8 +6868,8 @@ function createPL(v3d = window.v3d) {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
                                 function () {
                                     if (i == 0)
-                                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], 'position', _pGlob.animateParamUpdate + getClimaglideManipulatorPos(3, pos), '', '', false);
-                                    setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', _pGlob.animateParamUpdate, '', '', false);
+                                        setObjTransform(rearSpecs.climaglideManipulatorCache[pos1], false, "position", [_pGlob.animateParamUpdate + getClimaglideManipulatorPos(3, pos), '', ''], false);
+                                    setObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", [_pGlob.animateParamUpdate, '', ''], false);
                                 }, function () {
                                     if (i == 0) {
                                         registerSetTimeout(animationRenderStopDelay, function () {
@@ -6852,7 +6918,7 @@ function createPL(v3d = window.v3d) {
                     if (horizontalScreenCache[y].length <= x) {
                         horizontalScreenCache[y][x] = cloneObject(horizontalScreenTypes[x], 50, false, false);
                     }
-                    setObjTransform(horizontalScreenCache[y][x], 'position', recenteredScreenPos + screenPositionList[y] / 1000, conservatoryDepth / 2, totalHeight, false);
+                    setObjTransform(horizontalScreenCache[y][x], false, "position", [recenteredScreenPos + screenPositionList[y] / 1000, conservatoryDepth / 2, totalHeight], false);
                     setMorphFactor(horizontalScreenCache[y][x], 'Width', (screenWidthList[y] / 1000 - 1) / 100);
                     setMorphFactor(horizontalScreenCache[y][x], 'Depth', (conservatoryDepth - 1) / 100);
                     changeVis(horizontalScreenCache[y][x], horizontalScreenEnabled[x]);
@@ -6877,7 +6943,7 @@ function createPL(v3d = window.v3d) {
                         if (horizontalScreenSupportCache[x][y].length <= i)
                             horizontalScreenSupportCache[x][y][i] = cloneObject(horizontalScreenSupport[i], 250, false, false);
 
-                        setObjTransform(horizontalScreenSupportCache[x][y][i], 'position', recenteredScreenPos + screenPositionList[y] / 1000, 0.2 + getPoleSize('x') + ((conservatoryDepth - 2 * getPoleSize('x') - 0.4) / (sideSupportAmount - 1) * x), totalHeight, false);
+                        setObjTransform(horizontalScreenSupportCache[x][y][i], false, "position", [recenteredScreenPos + screenPositionList[y] / 1000, 0.2 + getPoleSize('x') + ((conservatoryDepth - 2 * getPoleSize('x') - 0.4) / (sideSupportAmount - 1) * x), totalHeight], false);
                         setMorphFactor(horizontalScreenSupportCache[x][y][i], 'Width', (screenWidthList[y] / 1000 - 1) / 100);
                         changeVis(horizontalScreenSupportCache[x][y][i], horizontalScreenEnabled[i]);
                     }
@@ -6956,8 +7022,8 @@ function createPL(v3d = window.v3d) {
                 makeParent('movementManipulator', 'globalManipulator');
                 makeParent('rotationManipulator', 'globalManipulator');
 
-                setObjTransform("rotationManipulator", "position", '', conservatoryDepth / 2, 0.05, false);
-                setObjTransform("movementManipulator", "position", '', conservatoryDepth / 2, 0.05, false);
+                setObjTransform("rotationManipulator", false, "position", ['', conservatoryDepth / 2, 0.05], false);
+                setObjTransform("movementManipulator", false, "position", ['', conservatoryDepth / 2, 0.05], false);
 
                 makeParent('movementManipulator', '');
                 makeParent('rotationManipulator', '');
@@ -6972,8 +7038,8 @@ function createPL(v3d = window.v3d) {
                 makeParent('movementManipulator', 'globalManipulator');
                 makeParent('rotationManipulator', 'globalManipulator');
 
-                setObjTransform("globalManipulator", "position", 0, 0, 0, false);
-                setObjTransform("globalManipulator", "rotation", 0, 0, 0, false);
+                setObjTransform("globalManipulator", false, "position", [0, 0, 0], false);
+                setObjTransform("globalManipulator", false, "rotation", [0, 0, 0], false);
             }
             changeVis("rotationManipulator", overlayImageEnabled);
             changeVis("movementManipulator", overlayImageEnabled);
@@ -7010,28 +7076,28 @@ function createPL(v3d = window.v3d) {
             if ((side == "left" || side == "right" || side == "front" || side == "front") && environmentEnabled)
                 return;
             if (side == "left") {
-                setObjTransform("Camerapos", "position", conservatoryWidth + distanceFromSide, conservatoryDepth / 2, gutterHeight, false);
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, gutterHeight / 2, false);
+                setObjTransform("Camerapos", false, "position", [conservatoryWidth + distanceFromSide, conservatoryDepth / 2, gutterHeight], false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, gutterHeight / 2], false);
             }
             if (side == "right") {
-                setObjTransform("Camerapos", "position", -(conservatoryWidth + distanceFromSide), conservatoryDepth / 2, gutterHeight, false);
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, gutterHeight / 2, false);
+                setObjTransform("Camerapos", false, "position", [-(conservatoryWidth + distanceFromSide), conservatoryDepth / 2, gutterHeight], false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, gutterHeight / 2], false);
             }
             if (side == "front") {
-                setObjTransform("Camerapos", "position", 0, conservatoryDepth + distanceFromSide, gutterHeight, false);
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, gutterHeight / 2, false);
+                setObjTransform("Camerapos", false, "position", [0, conservatoryDepth + distanceFromSide, gutterHeight], false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, gutterHeight / 2], false);
             }
             if (side == "rear") {
-                setObjTransform("Camerapos", "position", 0, -(conservatoryDepth + distanceFromSide), gutterHeight, false);
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, gutterHeight / 2, false);
+                setObjTransform("Camerapos", false, "position", [0, -(conservatoryDepth + distanceFromSide), gutterHeight], false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, gutterHeight / 2], false);
             }
             if (side == "led") {
-                setObjTransform("Camerapos", "position", conservatoryWidth, conservatoryDepth / 2, gutterHeight / 2, false);
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, gutterHeight, false);
+                setObjTransform("Camerapos", false, "position", [conservatoryWidth, conservatoryDepth / 2, gutterHeight / 2], false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, gutterHeight], false);
             }
             if (side == "top") {
-                setObjTransform("Camerapos", "position", 0, conservatoryDepth / 2 + 4, 12, false);
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, gutterHeight, false);
+                setObjTransform("Camerapos", false, "position", [0, conservatoryDepth / 2 + 4, 12], false);
+                setObjTransform("Cameratarget", false, "position", [0, conservatoryDepth / 2, gutterHeight], false);
             }
             tweenCamera("Camerapos", "Cameratarget", animationTweenTime / 1.5);
         }
@@ -7185,7 +7251,7 @@ function createPL(v3d = window.v3d) {
                 setMorphFactor("Horizontal_Gutter_Front_Vertical sunblind_standalone", 'Correction', 0); // should be the same value as the width above ^
 
             setMorphFactor("Horizontal_Gutter_Front_Vertical sunblind_standalone", 'Height', (verticalScreenStandalone.height / 1000 - 0.275) / 100);
-            setObjTransform("Horizontal_Gutter_Front_Vertical sunblind_standalone", 'position', 0, 0.5, verticalScreenStandalone.height / 1000, false);
+            setObjTransform("Horizontal_Gutter_Front_Vertical sunblind_standalone", false, "position", [0, 0.5, verticalScreenStandalone.height / 1000], false);
             setMorphFactor("Horizontal_Gutter_Front_Vertical sunblind_standalone", "MotorSide", (verticalScreenStandalone.motor == 'left') ? 1 : 0);
 
             renderFrame();
