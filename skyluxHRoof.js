@@ -4,7 +4,7 @@ function createPL(v3d = window.v3d) {
 
     var _pGlob = {};
 
-    _pGlob.objCache = {};
+    _pGlob.objCache = new Map();
     _pGlob.fadeAnnotations = true;
     _pGlob.objClickInfo = [];
     _pGlob.pickedObject = '';
