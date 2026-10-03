@@ -1347,9 +1347,9 @@ function createPL(v3d = window.v3d) {
         }
 
         function planeAction() {
-            setObjTransform("orientationPicker_lowZ", false, "rotation", [getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), ''], false);
-            setObjTransform("grid", false, "rotation", [getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), ''], false);
-            setObjTransform("rotationManipulator", false, "rotation", [getObjTransform("orientationPicker_Y", 'rotation', 'x'), getObjTransform("orientationPicker_X", 'rotation', 'z'), ''], false);
+            setObjTransform("orientationPicker_lowZ", false, "rotation", [getObjTransform("orientationPicker_Y", false, "rotation", 'x'), getObjTransform("orientationPicker_X", false, "rotation", 'y'), ''], false);
+            setObjTransform("grid", false, "rotation", [getObjTransform("orientationPicker_Y", false, "rotation", 'x'), getObjTransform("orientationPicker_X", false, "rotation", 'y'), ''], false);
+            setObjTransform("rotationManipulator", false, "rotation", [getObjTransform("orientationPicker_Y", false, "rotation", 'x'), getObjTransform("orientationPicker_X", false, "rotation", 'y'), ''], false);
         }
 
         function dragMove(objSelector, mode, blockId, parentDragOverBlockId) {
@@ -5732,7 +5732,7 @@ function createPL(v3d = window.v3d) {
                     motorCircleHorizontalCache[x] = cloneObject("motorPosCircle_HorizontalScreen.0", 50, false, false);
                     motorImageHorizontalCache[x] = cloneObject("MotorImageHorizontal.0", 50, false, false);
 
-                    setObjTransform(motorImageHorizontalCache[x], false, "position", [getObjTransform(motorCircleHorizontalCache[x], "position", 'x'), getObjTransform(motorCircleHorizontalCache[x], "position", 'z'), getObjTransform(motorCircleHorizontalCache[x], "position", 'y')], false);
+                    setObjTransform(motorImageHorizontalCache[x], false, "position", [getObjTransform(motorCircleHorizontalCache[x], false, "position", 'x'), getObjTransform(motorCircleHorizontalCache[x], false, "position", 'y'), getObjTransform(motorCircleHorizontalCache[x], false, "position", 'z')], false);
                     makeParent(motorImageHorizontalCache[x], motorCircleHorizontalCache[x]);
                 }
                 setObjTransform(motorCircleHorizontalCache[x], false, "position", [((motorSideList[x] == 'L') ? recenteredScreenPos + screenWidthList[x] / 1000 / 2 - 0.1 : recenteredScreenPos - screenWidthList[x] / 1000 / 2 + 0.1) + screenPositionList[x] / 1000, 0, totalHeight + horizontalScreenMotorOffset], false);
@@ -6471,12 +6471,12 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; leftSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
-                        oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                        oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                         if (leftSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 0, pos);
                         else
-                            newPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[pos * 10], 'position', 'z');//y->z
+                            newPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[pos * 10], false, "position", 'y');
 
                         registerSetTimeout((animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * (leftSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6500,12 +6500,12 @@ function createPL(v3d = window.v3d) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
                         if (leftSpecs.climaglidePanelAmount[pos] / 2 > i) {
-                            oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                            oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                             if (leftSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 0, pos);
                             else
-                                newPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[pos * 10], 'position', 'z');//y->z
+                                newPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[pos * 10], false, "position", 'y');
 
                             registerSetTimeout((animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * (leftSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6524,12 +6524,12 @@ function createPL(v3d = window.v3d) {
                             });
                         }
                         else {
-                            oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                            oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                             if (leftSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 0, pos);
                             else
-                                newPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[leftSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], 'position', 'z');//y->z
+                                newPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[leftSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], false, "position", 'y');
 
                             registerSetTimeout((animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (leftSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
@@ -6553,7 +6553,7 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; leftSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
-                        oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                        oldPos[i] = getObjTransform(leftSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                         if (leftSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 0, pos);
@@ -6588,12 +6588,12 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; rightSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
-                        oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                        oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                         if (rightSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 1, pos);
                         else
-                            newPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[pos * 10], 'position', 'z');//y->z
+                            newPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[pos * 10], false, "position", 'y');
 
                         registerSetTimeout((animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * (rightSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6617,12 +6617,12 @@ function createPL(v3d = window.v3d) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
                         if (rightSpecs.climaglidePanelAmount[pos] / 2 > i) {
-                            oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                            oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                             if (rightSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 1, pos);
                             else
-                                newPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[pos * 10], 'position', 'z');//y->z
+                                newPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[pos * 10], false, "position", 'y');
 
                             registerSetTimeout((animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * (rightSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6641,12 +6641,12 @@ function createPL(v3d = window.v3d) {
                             });
                         }
                         else {
-                            oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                            oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                             if (rightSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 1, pos);
                             else
-                                newPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[rightSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], 'position', 'z');//y->z
+                                newPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[rightSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], false, "position", 'y');
 
                             registerSetTimeout((animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rightSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
@@ -6670,7 +6670,7 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; rightSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
-                        oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], 'position', 'z');//y->z
+                        oldPos[i] = getObjTransform(rightSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'y');
 
                         if (rightSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 1, pos);
@@ -6705,12 +6705,12 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; frontSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
-                        oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                        oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                         if (frontSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 2, pos);
                         else
-                            newPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[pos * 10], 'position', 'x');
+                            newPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[pos * 10], false, "position", 'x');
 
                         registerSetTimeout((animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * (frontSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6734,12 +6734,12 @@ function createPL(v3d = window.v3d) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
                         if (frontSpecs.climaglidePanelAmount[pos] / 2 > i) {
-                            oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                            oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                             if (frontSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 2, pos);
                             else
-                                newPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[pos * 10], 'position', 'x');
+                                newPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[pos * 10], false, "position", 'x');
 
                             registerSetTimeout((animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * (frontSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6758,12 +6758,12 @@ function createPL(v3d = window.v3d) {
                             });
                         }
                         else {
-                            oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                            oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                             if (frontSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 2, pos);
                             else
-                                newPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[frontSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], 'position', 'x');
+                                newPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[frontSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], false, "position", 'x');
 
                             registerSetTimeout((animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (frontSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
@@ -6787,7 +6787,7 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; frontSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
-                        oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                        oldPos[i] = getObjTransform(frontSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                         if (frontSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 2, pos);
@@ -6821,12 +6821,12 @@ function createPL(v3d = window.v3d) {
                 if (rearSpecs.climaglideOpeningDirection[pos] == "right") {
                     for (let i = 0; rearSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
-                        oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                        oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                         if (rearSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 3, pos);
                         else
-                            newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[pos * 10], 'position', 'x');
+                            newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[pos * 10], false, "position", 'x');
 
                         registerSetTimeout((animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * (rearSpecs.climaglidePanelAmount[pos] - 1 - i)) + climaglideAnimDelay, function () {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * (rearSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6850,13 +6850,13 @@ function createPL(v3d = window.v3d) {
                         pos1 = (pos + 1) * 2 - 2;
                         pos2 = (pos + 1) * 2 - 2 + 1;
                         if (rearSpecs.climaglidePanelAmount[pos] / 2 > i) {
-                            oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                            oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                             if (rearSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 3, pos);
 
                             else
-                                newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[pos * 10], 'position', 'x');
+                                newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[pos * 10], false, "position", 'x');
 
                             registerSetTimeout((animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * (rearSpecs.climaglidePanelAmount[pos] - 1 - i)) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * (rearSpecs.climaglidePanelAmount[pos] - 1 - i), 'Linear', 'InOut', 0, false,
@@ -6875,13 +6875,13 @@ function createPL(v3d = window.v3d) {
                             });
                         }
                         else {
-                            oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                            oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                             if (rearSpecs.climaglideIsOpen[pos])
                                 newPos[i] = getClimaglidePanelPos(i, 3, pos);
 
                             else
-                                newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[rearSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], 'position', 'x');
+                                newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[rearSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], false, "position", 'x');
 
                             registerSetTimeout((animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                                 animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
@@ -6904,13 +6904,13 @@ function createPL(v3d = window.v3d) {
                 else {
                     for (let i = 0; rearSpecs.climaglidePanelAmount[pos] > i; i++) {
                         pos1 = (pos + 1) * 2 - 2;
-                        oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], 'position', 'x');
+                        oldPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[i + pos * 10], false, "position", 'x');
 
                         if (rearSpecs.climaglideIsOpen[pos])
                             newPos[i] = getClimaglidePanelPos(i, 3, pos);
 
                         else
-                            newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[rearSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], 'position', 'x');
+                            newPos[i] = getObjTransform(rearSpecs.climaglidePanelCache[rearSpecs.climaglidePanelAmount[pos] - 1 + 10 * pos], false, "position", 'x');
 
                         registerSetTimeout((animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * i) + climaglideAnimDelay, function () {
                             animateParam(oldPos[i], newPos[i], animationTweenTime - animationTweenTime / (rearSpecs.climaglidePanelAmount[pos] - 1) * i, 'Linear', 'InOut', 0, false,
