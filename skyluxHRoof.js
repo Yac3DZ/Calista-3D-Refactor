@@ -1791,7 +1791,7 @@ function createPL(v3d = window.v3d) {
             return dest;
         }
 
-        function setObjTransform(objNames, mode, x, y, z, offset) {
+        /* function setObjTransform(objNames, mode, x, y, z, offset) {
             objNames = retrieveObjectNames(objNames);
             if (!objNames) return;
 
@@ -1826,6 +1826,88 @@ function createPL(v3d = window.v3d) {
                 setObjProp(obj, "z", z);
 
                 obj.updateMatrixWorld(true);
+            }
+        } */
+        function setObjTransform(objSelector, isWorldSpace, mode, vector, offset) {
+            const x = vector[0];
+            const y = vector[1];
+            const z = vector[2];
+
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                console.error('set transform puzzle: Invalid transform');
+                return;
+            }
+
+            const objNames = retrieveObjectNames(objSelector);
+            function setObjProp(obj, prop, val) {
+                if (!offset) {
+                    obj[mode][prop] = val;
+                } else {
+                    if (mode != "scale")
+                        obj[mode][prop] += val;
+                    else
+                        obj[mode][prop] *= val;
+                }
+            }
+
+            const inputsUsed = _pGlob.vec3Tmp.set(Number(x !== ''), Number(y !== ''), Number(z !== ''));
+            const coords = _pGlob.vec3Tmp2.set(x || 0, y || 0, z || 0);
+
+            if (mode === 'rotation')
+                coords.multiplyScalar(v3d.MathUtils.DEG2RAD);
+
+            const coordSystem = getSceneCoordSystem();
+
+            transformCoordsSpace(inputsUsed, coordSystem, 'Y_UP_RIGHT', true);
+            transformCoordsSpace(coords, coordSystem, 'Y_UP_RIGHT', mode === 'scale');
+
+            for (let i = 0; i < objNames.length; i++) {
+                const objName = objNames[i];
+                if (!objName) continue;
+
+                const obj = getObjectByName(objName);
+                if (!obj) continue;
+
+                if (isWorldSpace && obj.parent) {
+                    obj.matrixWorld.decomposeE(obj.position, obj.rotation, obj.scale);
+
+                    if (inputsUsed.x) setObjProp(obj, "x", coords.x);
+                    if (inputsUsed.y) setObjProp(obj, "y", coords.y);
+                    if (inputsUsed.z) setObjProp(obj, "z", coords.z);
+
+                    obj.matrixWorld.composeE(obj.position, obj.rotation, obj.scale);
+                    obj.matrix.multiplyMatrices(_pGlob.mat4Tmp.copy(obj.parent.matrixWorld).invert(), obj.matrixWorld);
+                    obj.matrix.decompose(obj.position, obj.quaternion, obj.scale);
+
+                } else if (mode === 'rotation' && coordSystem == 'Z_UP_RIGHT') {
+                    const euler = transformEulerV3dToBlenderShortest(obj.rotation,
+                        _pGlob.eulerTmp);
+                    transformCoordsSpace(euler, coordSystem, 'Y_UP_RIGHT');
+
+                    if (inputsUsed.x) euler.x = offset ? euler.x + coords.x : coords.x;
+                    if (inputsUsed.y) euler.y = offset ? euler.y + coords.y : coords.y;
+                    if (inputsUsed.z) euler.z = offset ? euler.z + coords.z : coords.z;
+
+                    euler.order = "YZX";
+                    euler.reorder(obj.rotation.order);
+                    obj.rotation.copy(euler);
+
+                } else if (mode === 'rotation' && coordSystem == 'Y_UP_RIGHT') {
+                    const rotUI = RotationInterface.initObject(obj);
+                    const euler = rotUI.getUserRotation(_pGlob.eulerTmp);
+
+                    if (inputsUsed.x) euler.x = offset ? euler.x + coords.x : coords.x;
+                    if (inputsUsed.y) euler.y = offset ? euler.y + coords.y : coords.y;
+                    if (inputsUsed.z) euler.z = offset ? euler.z + coords.z : coords.z;
+
+                    rotUI.setUserRotation(euler);
+                    rotUI.getActualRotation(obj.rotation);
+                } else {
+                    if (inputsUsed.x) setObjProp(obj, "x", coords.x);
+                    if (inputsUsed.y) setObjProp(obj, "y", coords.y);
+                    if (inputsUsed.z) setObjProp(obj, "z", coords.z);
+                }
+                obj.updateWorldMatrix(false, true);
             }
         }
 
