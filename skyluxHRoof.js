@@ -2010,6 +2010,84 @@ function createPL(v3d = window.v3d) {
             }
         }
 
+        function fitCameraToObjects(targets, direction, options = {}) {
+            if (options === null || typeof options !== "object") {
+                if (options !== undefined) console.warn("[fitCameraToObjects] 'options' must be an object, got:", options, "— using defaults");
+                options = {};
+            }
+            let { margin = 1, duration = 0, onDone = function () { } } = options;
+            if (typeof margin !== "number" || !isFinite(margin) || margin <= 0) { console.warn("[fitCameraToObjects] 'margin' must be a positive number, got:", options.margin, "— using 1"); margin = 1; }
+            if (typeof duration !== "number" || !isFinite(duration) || duration < 0) { console.warn("[fitCameraToObjects] 'duration' must be a number ≥ 0, got:", options.duration, "— using 0"); duration = 0; }
+            if (typeof onDone !== "function") { console.warn("[fitCameraToObjects] 'onDone' must be a function, got:", options.onDone, "— ignoring (no action)"); onDone = function () { }; }
+
+            if (targets == null) { console.warn("[fitCameraToObjects] 'targets' is missing — nothing to frame"); return; }
+            const objects = [];
+            (Array.isArray(targets) ? targets : [targets]).forEach(function (entry) {
+                if (entry == null) { console.warn("[fitCameraToObjects] skipping a null/undefined target entry"); return; }
+                const obj = (typeof entry === "string") ? getObjectByName(entry) : entry;
+                if (!obj) { console.warn("[fitCameraToObjects] target not found / invalid:", entry); return; }
+                objects.push(obj);
+            });
+            if (!objects.length) { console.warn("[fitCameraToObjects] nothing to frame — no valid objects resolved from 'targets'"); return; }
+
+            const camera = appInstance.getCamera();
+            if (!camera) { console.warn("[fitCameraToObjects] no active camera — appInstance.getCamera() returned nothing"); return; }
+
+            const fitPos = new v3d.Vector3(), center = new v3d.Vector3(), fitZoom = [camera.zoom];
+            v3d.CameraUtils.calcCameraZoomToObjectsParams(camera, objects, fitPos, center, fitZoom);
+            const fitDistance = fitPos.distanceTo(center) * margin;
+
+            const cameraDirection = new v3d.Vector3();
+            if (direction != null) {
+                if (direction.cameraPos != null || direction.cameraTarget != null) {
+                    if (direction.cameraPos == null || direction.cameraTarget == null) {
+                        console.warn("[fitCameraToObjects] direction needs BOTH cameraPos and cameraTarget; got:", direction, "— using current view");
+                    } else {
+                        const posObj = (typeof direction.cameraPos === "string") ? getObjectByName(direction.cameraPos) : direction.cameraPos;
+                        const targetObj = (typeof direction.cameraTarget === "string") ? getObjectByName(direction.cameraTarget) : direction.cameraTarget;
+                        if (!posObj) console.warn("[fitCameraToObjects] direction.cameraPos not found:", direction.cameraPos);
+                        if (!targetObj) console.warn("[fitCameraToObjects] direction.cameraTarget not found:", direction.cameraTarget);
+                        if (posObj && targetObj) {
+                            cameraDirection.copy(posObj.getWorldPosition(new v3d.Vector3())).sub(targetObj.getWorldPosition(new v3d.Vector3()));
+                            if (cameraDirection.lengthSq() === 0) console.warn("[fitCameraToObjects] cameraPos and cameraTarget share a position — no direction; using current view");
+                        }
+                    }
+                } else {
+                    const vec = Array.isArray(direction) ? direction : (direction.vector ?? direction);
+                    const x = vec?.[0] ?? vec?.x, y = vec?.[1] ?? vec?.y, z = vec?.[2] ?? vec?.z;
+                    if (![x, y, z].every(component => typeof component === "number" && isFinite(component))) {
+                        console.warn("[fitCameraToObjects] direction must be [x,y,z] / { vector } / Vector3 (3 finite numbers) or { cameraPos, cameraTarget }; got:", direction, "— using current view");
+                    } else {
+                        cameraDirection.set(x, y, z);
+                        cameraDirection.copy(coordsTransform(cameraDirection, getCoordSystem(), 'Y_UP_RIGHT'));
+                    }
+                }
+            }
+            if (cameraDirection.lengthSq() === 0) cameraDirection.copy(fitPos).sub(center);
+            cameraDirection.normalize();
+
+            const cameraPos = center.clone().add(cameraDirection.multiplyScalar(fitDistance));
+            const orthoZoom = camera.isOrthographicCamera ? fitZoom[0] / margin : null;
+            const setOrthoZoom = function () { camera.zoom = orthoZoom; camera.updateProjectionMatrix(); };
+
+            if (appInstance.controls && appInstance.controls.tween) {
+                if (!appInstance.controls.inTween) {
+                    if (orthoZoom != null) {
+                        if (duration > 0) animateParam(camera.zoom, orthoZoom, duration, 'Quadratic', 'InOut', 0, false,
+                            function () { camera.zoom = _pGlob.animateParamUpdate; camera.updateProjectionMatrix(); }, function () { });
+                        else setOrthoZoom();
+                    }
+                    appInstance.controls.tween(cameraPos, center, Math.max(0, duration), onDone);
+                }
+            } else {
+                if (orthoZoom != null) setOrthoZoom();
+                if (camera.parent) camera.parent.worldToLocal(cameraPos);
+                camera.position.copy(cameraPos);
+                camera.lookAt(center);
+                onDone();
+            }
+        }
+
         function initObjectPicking(callback, eventType, mouseDownUseTouchStart, mouseButtons) {
             var elem = appInstance.renderer.domElement;
             elem.addEventListener(eventType, pickListener);
