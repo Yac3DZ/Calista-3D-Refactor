@@ -120,8 +120,11 @@ function createPL(v3d = window.v3d) {
     let isMotorTextVis = false;
 
     let environmentLoaded = false;
+    let motorSideList = [];
+    let screenWidthList = [];
+    let screenPositionList = [];
 
-
+    let isLEDEnabled = [false];
 
     var sceneIsInitialized = false;
     var cameraZAngle = 0;
@@ -138,9 +141,17 @@ function createPL(v3d = window.v3d) {
     var measurementsStepEnabled = false;
     var environmentEnabled = false;
     var overlayImageEnabled = false;
+    // Tussenpaal (intermediate post) state shared across PL.init runs (2026-09-29). PL.init
+    // re-runs on every configurator value change and re-creates its inner functions; the
+    // handleEvents/handleFocus procedures Hive keeps calling may belong to an EARLIER run,
+    // so anything they read must live here, not inside PL.init, or the dimension bars are
+    // rebuilt from the positions of the run that registered the handler (stale labels).
+    var tussenpaalSpec = null;         // parsed _3d_tussenpalen JSON, set in enableScene
+    var tussenpaalMeasSide = null;     // side whose step is open, set in handleEvents
     var houseType;
     var additionalWallsSpecs = [];
     var hoverTimer = 0;
+    let isODHSConfig = false;
 
     var oldFocusData = -1;
     var selectedRoofRafterIndex = -1;
@@ -150,11 +161,22 @@ function createPL(v3d = window.v3d) {
     var horizontalRoofDivisionObjectCache = [];//rafter,ledSpotProfile,ledStrip,noLedStrip
     var horizontalScreenTopSideSupportCache = [["Horizontal screen zipper top depth supports.0", "Horizontal screen non zipper top depth supports.0"]];
     var horizontalScreenBottomSideSupportCache = ["Horizontal screen bottom depth supports.0"];
+
+    let horizontalScreenSupport = ["Horizontal screen zipper top depth supports.0", "Horizontal screen non zipper top depth supports.0", "Horizontal screen bottom depth supports.0"];
+    let horizontalScreenTypes = ["Horizontal screen zipper top.0", "Horizontal screen non zipper top.0", "Horizontal screen bottom.0"];
+
+    let horizontalScreenSupportCache = [];
+
+    //let horizontalScreenList = [];
+    let horizontalScreenCache = [];
+    let isHorizontalScreenOpen = [];
     var roofFillingCache = [];
     var horizontalVerandaPostSupportCache = [["Post bracket.0", "Post foundation.0"]];
     let postSupportType = [-1, -1, -1, -1];
     let horizontalScreenEnabled = []; //[top zipper, top non zipper,bottom]
     let horizontalScreenColors = [];
+
+    let horizontalScreenMotorOffset = 0;
 
     var climaglideOpeningDirection = ['left', 'left', 'left', 'left']
     var climaglideSegments = [];
@@ -162,6 +184,9 @@ function createPL(v3d = window.v3d) {
     var singleClickObjList = [];
 
     let roofSpecs;
+    // Motor
+    let motorCircleHorizontalCache = [];
+    let motorImageHorizontalCache = [];
 
     var oldOutsideColor = [-1, -1, -1];
     var oldVerticalScreenOpening = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -173,6 +198,20 @@ function createPL(v3d = window.v3d) {
     var isVerticalScreenConfigurator = false;
     var isCalistaConfigurator = false;
     let verticalScreenStandalone = false;
+    // #40956 surface-mounted ODVS (opbouw) on Calista Left/Right: tunables, scene metres, Blender axes
+    var SURFACE_SCREEN_ENABLED = true;
+    var SURFACE_SCREEN_GAP = 0;                 // outward offset of the frame's outer face from the post / beam outer face (0 = flush, Joren)
+    var SURFACE_SCREEN_BOX = { height: 0.15, depth: 0.15 };   // generated cassette
+    var SURFACE_SCREEN_BOX_PLACEMENT = "underBeam";   // underBeam (top = beam underside) | beamTop (top flush with beam top) | onBeam
+    var SURFACE_SCREEN_RAIL = { width: 0.045, depth: 0.045 }; // generated guide rails, inside the daylight edges
+    var SURFACE_SCREEN_ROLL_BELOW_ORIGIN = 0.11;   // vendor mesh: fabric-roll centre sits 110 mm below the mesh origin
+    var SURFACE_SCREEN_BAR_CLEARANCE = 0.275;   // vendor Height-morph constant: bottom bar ends ~15 mm above the floor
+    var SURFACE_SCREEN_SIDES = { Left: { sign: 1, rot: -90 }, Right: { sign: -1, rot: 90 } };   // rot maps the roll clone's depth INWARD
+
+    let anyLedStripOrSpotVisible = false;
+    let horizontalGutterLight = false;
+
+
 
     class sideSpecs {
         constructor(side) {
@@ -364,7 +403,7 @@ function createPL(v3d = window.v3d) {
         function handleButtons(data) {
             switch (data.type) {
                 case 'RELOAD_3D':
-                    takeSnapshot();
+                    cameraPosition();
                     break;
                 case 'FULL_SCREEN':
                     appInstance._resizeCb();
@@ -381,6 +420,7 @@ function createPL(v3d = window.v3d) {
                     environmentEnabled = !(data.active); //data.active is the state before change, so it is always opposite
                     enableEnvironment(environmentEnabled);
                     enableMeasurements();
+                    changeWorldLightForLED();
                     break;
                 case 'SHOW_ANIMATION':
                     overlayImageEnabled = !(data.active) && !disableOverlayImage;
@@ -389,7 +429,7 @@ function createPL(v3d = window.v3d) {
             }
         }
 
-        /*    function runAllAnimations(state) {
+        /*   function runAllAnimations(state) {
                 for (let i = 0; i < 5; i++) {
                     if (leftSpecs.isVerticalScreenEnabled(i) && !!oldVerticalScreenOpening[i] == state)
                         animateVerticalScreens(i);
@@ -419,6 +459,7 @@ function createPL(v3d = window.v3d) {
                       measurementsStepEnabled = false;
                       enableMeasurements();
                   }*/
+            tussenpaalMeasSide = TUSSENPAAL_STEP_SIDES[data.step.id] || null;
             switch (data.step.id) {
                 case '0b6319e5cf034ee3b60df7fc13b27412':
                     tweenCameraToSide("left");
@@ -434,6 +475,7 @@ function createPL(v3d = window.v3d) {
                     break;
             }
             updateMotorRotation();
+            enableTussenpaalMeasurements(false);
 
         }
 
@@ -460,6 +502,7 @@ function createPL(v3d = window.v3d) {
         }
 
         function handleFocus(data) {
+            tussenpaalOnFocus(data);
             if (data !== undefined)
                 if (!data && oldFocusData != -1) {
                     selectedRoofPanelIndex = -1;
@@ -505,8 +548,7 @@ function createPL(v3d = window.v3d) {
                         setMaterialValue("Measurements_Height", "Value", 1);
                     };
                 }
-            if (data !== undefined)
-                console.log(data);
+            //if (data !== undefined)
 
             enableScene();
 
@@ -514,6 +556,11 @@ function createPL(v3d = window.v3d) {
 
         function enableEnvironment(enabled) {
             enabled = enabled && !overlayImageEnabled;
+
+            setMorphFactor("Rear Wall_standalone", 'Width', ((conservatoryWidth - 1 + 0.4) / 99));
+            setMorphFactor("Rear Wall_standalone", 'Height', ((gutterHeight - 1 + 0.5) / 99));
+
+            changeVis("Rear Wall_standalone", !isFreestanding);
 
             loadEnvironment();
             renderFrame();
@@ -929,6 +976,7 @@ function createPL(v3d = window.v3d) {
                 changeVis("WalkThroughHeightMeasurementText", false);
                 changeVis("WalkThroughHeightMeasurementTextFlipped", false);
             }
+            enableTussenpaalMeasurements(justFlip);
             renderFrame();
 
             if (justFlip)
@@ -2067,8 +2115,58 @@ function createPL(v3d = window.v3d) {
             }, doubleClick ? 'dblclick' : 'mousedown', false, mouseButtons);
         } */
 
+
+        /* function registerOnClick(objNames, xRay, doubleClick, mouseButtons, cbDo, cbIfMissedDo) {
+    objNames = retrieveObjectNames(objNames) || [];
+    var objNamesFiltered = objNames.filter(function (name) {
+        return name;
+    });
+    _pGlob.objClickInfo.push({
+        objNames: objNamesFiltered,
+        callbacks: [cbDo, cbIfMissedDo]
+    });
+    initObjectPicking(function (intersects, event) {
+        var isPicked = false;
+        var maxIntersects = xRay ? intersects.length : Math.min(1, intersects.length);
+        for (var i = 0; i < maxIntersects; i++) {
+            var obj = intersects[i].object;
+            var objName = getPickedObjectName(obj);
+            if (objectsIncludeObj(objNamesFiltered, objName)) {
+                _pGlob.pickedObject = objName;
+                isPicked = true;
+                cbDo(event);
+            }
+        }
+        if (!isPicked) {
+            _pGlob.pickedObject = '';
+            cbIfMissedDo(event);
+        }
+    }, doubleClick ? 'dblclick' : 'mousedown', false, mouseButtons);
+} */
+
+        /* function registerOnClick(objSelector, xRay, doubleClick, mouseButtons, cbDo, cbIfMissedDo) {
+            _pGlob.objClickInfo = _pGlob.objClickInfo || [];
+            _pGlob.objClickInfo.push({
+                objSelector: objSelector,
+                xRay: xRay,
+                doubleClick: doubleClick,
+                mouseButtons: mouseButtons,
+                callbacks: [cbDo, cbIfMissedDo]
+            });
+        } */
+
         function registerOnClick(objSelector, xRay, doubleClick, mouseButtons, cbDo, cbIfMissedDo) {
             _pGlob.objClickInfo = _pGlob.objClickInfo || [];
+
+            const alreadyExists = _pGlob.objClickInfo.some(
+                item => item.objSelector === objSelector
+            );
+
+            if (alreadyExists) {
+                //console.warn(`registerOnClick: "${objSelector}" is already registered, skipping.`);
+                return;
+            }
+
             _pGlob.objClickInfo.push({
                 objSelector: objSelector,
                 xRay: xRay,
@@ -2155,9 +2253,38 @@ function createPL(v3d = window.v3d) {
                     mat.nodeValue[valIdx] = value;
                 } else
                     mat[valName] = value;
-                if (mat === appInstance.worldMaterial)
+                //if (mat === appInstance.worldMaterial)
+
+                if (mat === appInstance.worldMaterial || mat === appInstance.scene.worldMaterial)
                     appInstance.updateEnvironment(mat);
             }
+        }
+
+        function areaLightParameter(lightName, intensity, x, y) {
+            var areaLight = getObjectByName(lightName);
+            if (!areaLight) {
+                console.warn('areaLightParameter: object not found:', lightName);
+                return;
+            }
+            if (!areaLight.isRectAreaLight) {
+                console.warn('areaLightParameter: not a RectAreaLight:', lightName);
+                return;
+            }
+
+            areaLight.intensity = intensity;
+            areaLight.width = x;
+            areaLight.height = y;
+        }
+
+
+        function lightIntensity(lightName, intensity) {
+            var areaLight = getObjectByName(lightName);
+            if (!areaLight) {
+                console.warn('light intensity: object not found:=>', lightName);
+                return;
+            }
+
+            areaLight.intensity = intensity;
         }
 
         function matGetValues(matName) {
@@ -2358,88 +2485,18 @@ function createPL(v3d = window.v3d) {
             }
         }
 
-        function fitCameraToObjects(targets, direction, options = {}) {
-            if (options === null || typeof options !== "object") {
-                if (options !== undefined) console.warn("[fitCameraToObjects] 'options' must be an object, got:", options, "— using defaults");
-                options = {};
-            }
-            let { margin = 1, duration = 0, onDone = function () { } } = options;
-            if (typeof margin !== "number" || !isFinite(margin) || margin <= 0) { console.warn("[fitCameraToObjects] 'margin' must be a positive number, got:", options.margin, "— using 1"); margin = 1; }
-            if (typeof duration !== "number" || !isFinite(duration) || duration < 0) { console.warn("[fitCameraToObjects] 'duration' must be a number ≥ 0, got:", options.duration, "— using 0"); duration = 0; }
-            if (typeof onDone !== "function") { console.warn("[fitCameraToObjects] 'onDone' must be a function, got:", options.onDone, "— ignoring (no action)"); onDone = function () { }; }
-
-            if (targets == null) { console.warn("[fitCameraToObjects] 'targets' is missing — nothing to frame"); return; }
-            const objects = [];
-            (Array.isArray(targets) ? targets : [targets]).forEach(function (entry) {
-                if (entry == null) { console.warn("[fitCameraToObjects] skipping a null/undefined target entry"); return; }
-                const obj = (typeof entry === "string") ? getObjectByName(entry) : entry;
-                if (!obj) { console.warn("[fitCameraToObjects] target not found / invalid:", entry); return; }
-                objects.push(obj);
-            });
-            if (!objects.length) { console.warn("[fitCameraToObjects] nothing to frame — no valid objects resolved from 'targets'"); return; }
-
-            const camera = appInstance.getCamera();
-            if (!camera) { console.warn("[fitCameraToObjects] no active camera — appInstance.getCamera() returned nothing"); return; }
-
-            const fitPos = new v3d.Vector3(), center = new v3d.Vector3(), fitZoom = [camera.zoom];
-            v3d.CameraUtils.calcCameraZoomToObjectsParams(camera, objects, fitPos, center, fitZoom);
-            const fitDistance = fitPos.distanceTo(center) * margin;
-
-            const cameraDirection = new v3d.Vector3();
-            if (direction != null) {
-                if (direction.cameraPos != null || direction.cameraTarget != null) {
-                    if (direction.cameraPos == null || direction.cameraTarget == null) {
-                        console.warn("[fitCameraToObjects] direction needs BOTH cameraPos and cameraTarget; got:", direction, "— using current view");
-                    } else {
-                        const posObj = (typeof direction.cameraPos === "string") ? getObjectByName(direction.cameraPos) : direction.cameraPos;
-                        const targetObj = (typeof direction.cameraTarget === "string") ? getObjectByName(direction.cameraTarget) : direction.cameraTarget;
-                        if (!posObj) console.warn("[fitCameraToObjects] direction.cameraPos not found:", direction.cameraPos);
-                        if (!targetObj) console.warn("[fitCameraToObjects] direction.cameraTarget not found:", direction.cameraTarget);
-                        if (posObj && targetObj) {
-                            cameraDirection.copy(posObj.getWorldPosition(new v3d.Vector3())).sub(targetObj.getWorldPosition(new v3d.Vector3()));
-                            if (cameraDirection.lengthSq() === 0) console.warn("[fitCameraToObjects] cameraPos and cameraTarget share a position — no direction; using current view");
-                        }
-                    }
-                } else {
-                    const vec = Array.isArray(direction) ? direction : (direction.vector ?? direction);
-                    const x = vec?.[0] ?? vec?.x, y = vec?.[1] ?? vec?.y, z = vec?.[2] ?? vec?.z;
-                    if (![x, y, z].every(component => typeof component === "number" && isFinite(component))) {
-                        console.warn("[fitCameraToObjects] direction must be [x,y,z] / { vector } / Vector3 (3 finite numbers) or { cameraPos, cameraTarget }; got:", direction, "— using current view");
-                    } else {
-                        cameraDirection.set(x, y, z);
-                        cameraDirection.copy(coordsTransform(cameraDirection, getCoordSystem(), 'Y_UP_RIGHT'));
-                    }
-                }
-            }
-            if (cameraDirection.lengthSq() === 0) cameraDirection.copy(fitPos).sub(center);
-            cameraDirection.normalize();
-
-            const cameraPos = center.clone().add(cameraDirection.multiplyScalar(fitDistance));
-            const orthoZoom = camera.isOrthographicCamera ? fitZoom[0] / margin : null;
-            const setOrthoZoom = function () { camera.zoom = orthoZoom; camera.updateProjectionMatrix(); };
-
-            if (appInstance.controls && appInstance.controls.tween) {
-                if (!appInstance.controls.inTween) {
-                    if (orthoZoom != null) {
-                        if (duration > 0) animateParam(camera.zoom, orthoZoom, duration, 'Quadratic', 'InOut', 0, false,
-                            function () { camera.zoom = _pGlob.animateParamUpdate; camera.updateProjectionMatrix(); }, function () { });
-                        else setOrthoZoom();
-                    }
-                    appInstance.controls.tween(cameraPos, center, Math.max(0, duration), onDone);
-                }
-            } else {
-                if (orthoZoom != null) setOrthoZoom();
-                if (camera.parent) camera.parent.worldToLocal(cameraPos);
-                camera.position.copy(cameraPos);
-                camera.lookAt(center);
-                onDone();
-            }
-        }
-
         function cameraPosition(onFinish) {
+
             // Camera spot for whichever perspective the snapshot needs.
-            let camPosX, camPosY, camPosZ;
             let scaleX, scaleY, scaleZ;
+            let camPosX, camPosY, camPosZ;
+            let width = 0;
+            let zPos = (isODHSConfig) ? totalHeight / 2 : 0;
+
+            for (let x = 0; x < screenWidthList.length; x++) {
+                width += screenWidthList[x];
+            }
+
             if (ssrPerspective == "perspective") {
                 camPosX = conservatoryWidth + (conservatoryWidth + conservatoryDepth + totalHeight) / 10 + 5;
                 camPosY = conservatoryWidth + (conservatoryWidth + conservatoryDepth + totalHeight) / 10 + 8;
@@ -2456,34 +2513,23 @@ function createPL(v3d = window.v3d) {
                 camPosX = 0;
                 camPosY = conservatoryDepth / 2;
                 camPosZ = totalHeight + 16;
-            } else { // default + "main"    
+            } else { // default + "main"
                 camPosX = conservatoryWidth + (conservatoryWidth + conservatoryDepth + totalHeight) / 10 + 2;
                 camPosY = conservatoryWidth + (conservatoryWidth + conservatoryDepth + totalHeight) / 10 + 8;
                 camPosZ = totalHeight + (conservatoryWidth + conservatoryDepth + totalHeight) / 10 + 2;
             }
 
-            setObjTransform("Camerapos", "position", camPosX, camPosY, camPosZ, false);
-
-            if (isHorizontalScreenConfigurator)
+            /* if (isHorizontalScreenConfigurator)
                 setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, totalHeight, false);
             else
-                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, totalHeight / 2, false);
-
+                setObjTransform("Cameratarget", "position", 0, conservatoryDepth / 2, totalHeight / 2, false); */
+            setObjTransform("Camerapos", "position", camPosX, camPosY, camPosZ, false);
+            setObjTransform("Cameratarget", "position", (width - screenWidthList[0]) / 1000 / 2, conservatoryDepth / 2, totalHeight / 2 + zPos, false);
             // Wrap ScaleCube around the building so zoomCamera frames it to a consistent size.
+            setObjTransform("ScaleCube", "position", (width - screenWidthList[0]) / 1000 / 2, conservatoryDepth / 2, zPos, false);
+            setObjTransform("ScaleCube", "scale", width / 1000, conservatoryDepth, totalHeight, false);
 
-            // check if it is a calista config or ODHS or ODVS and set the camera position accordingly!
-            if (isHorizontalScreenConfigurator) {
-                setObjTransform("ScaleCube", "position", 0, conservatoryDepth / 2, totalHeight - 0.2 / 2, false);
-                setObjTransform("ScaleCube", "scale", conservatoryWidth, conservatoryDepth, 0.2, false);
-            }
-            else if (isVerticalScreenConfigurator) {
-                setObjTransform('ScaleCube', 'position', 0, 0.4, 0, false);
-                setObjTransform('ScaleCube', 'scale', verticalScreenStandalone.width / 1000, 0.15, verticalScreenStandalone.height / 1000, false);
-            }
-            else {
-                setObjTransform("ScaleCube", "position", 0, conservatoryDepth / 2, 0, false);
-                setObjTransform("ScaleCube", "scale", conservatoryWidth, conservatoryDepth, totalHeight, false);
-            }
+            //changeVis("ScaleCube", true);
 
             // Move the camera into place; SSR snaps instantly, live tweens.
             // On finish: zoom-to-fit (fire-and-forget, never gates the snapshot), then hand off.
@@ -3882,24 +3928,6 @@ function createPL(v3d = window.v3d) {
         }
 
         function verticalScreenColors() {
-            /* if (frontSpecs.isVerticalScreenEnabled(1) || frontSpecs.isIntegratedVerticalScreenEnabled(1)) {
-                let color1 = new v3d.Color(parseInt("0x" + frontSpecs.verticalScreenColors[0][0])); let color2 = new v3d.Color(parseInt("0x" + frontSpecs.verticalScreenColors[0][1])); let color3 = new v3d.Color(parseInt("0x" + frontSpecs.verticalScreenColors[0][2]));
-
-                if (!color2)
-                    color2 = color1;
-                if (!color3)
-                    color3 = color1;
-
-                console.log(color1.r, color1.g, color1.b);
-
-                setMaterialColor('ScreenFabricFront.000', 'Color 1', color1.r, color1.g, color1.b, '');
-                setMaterialColor('ScreenFabricFront.000', 'Color 2', color2.r, color2.g, color2.b, '');
-                setMaterialColor('ScreenFabricFront.000', 'Color 3', color3.r, color3.g, color3.b, '');
-
-                setMaterialColor('ScreenFabricFront_round', 'Color 1', color1.r, color1.g, color1.b, '');
-                setMaterialColor('ScreenFabricFront_round', 'Color 2', color2.r, color2.g, color2.b, '');
-                setMaterialColor('ScreenFabricFront_round', 'Color 3', color3.r, color3.g, color3.b, '');
-            } */
             for (let i = 0; leftSpecs.poleAmount >= i; i++) {
                 if (leftSpecs.isVerticalScreenEnabled(i) || leftSpecs.isIntegratedVerticalScreenEnabled(i)) {
                     let color1 = new v3d.Color(parseInt("0x" + leftSpecs.verticalScreenColors[i][0])); let color2 = new v3d.Color(parseInt("0x" + leftSpecs.verticalScreenColors[i][1])); let color3 = new v3d.Color(parseInt("0x" + leftSpecs.verticalScreenColors[i][2]));
@@ -3982,18 +4010,21 @@ function createPL(v3d = window.v3d) {
                 setMorphFactor(singleClickObjList[side], 'Opening', ((((totalHeight - 0.32) / 99)) / 100) * percentage);
         }
 
-        function setHorizontalScreenOpening(percentage, side) {
+        function setHorizontalScreenOpening(percentage, side) {   ////////////////////
             if (percentage > 100)
                 percentage = 100;
             else if (percentage < 0)
                 percentage = 0;
 
-            if (side == 0)
+            setMorphFactor("Horizontal screen bottom.1", 'Opening', ((((conservatoryDepth - 0.25 - getPoleSize("y") * 2) / 99)) / 100) * percentage);
+
+
+            /* if (side == 0)
                 setMorphFactor("Horizontal screen zipper top.0", 'Opening', ((((conservatoryDepth - 0.25) / 99)) / 100) * percentage);
             if (side == 1)
                 setMorphFactor("Horizontal screen non zipper top.0", 'Opening', ((((conservatoryDepth - 0.25) / 99)) / 100) * percentage);
             else
-                setMorphFactor("Horizontal screen bottom.0", 'Opening', ((((conservatoryDepth - 0.25 - getPoleSize("y") * 2) / 99)) / 100) * percentage);
+                setMorphFactor("Horizontal screen bottom.0", 'Opening', ((((conservatoryDepth - 0.25 - getPoleSize("y") * 2) / 99)) / 100) * percentage); */
         }
 
         function calculatePolePos() {
@@ -4031,14 +4062,14 @@ function createPL(v3d = window.v3d) {
                 changeVis(horizontalVerandaPostSupportCache[1][1], true);
 
             if (postSupportType[2] == "bracket" || postSupportType[2] == "bracket_under")//left back
-                changeVis(horizontalVerandaPostSupportCache[2][0], true);
+                changeVis(horizontalVerandaPostSupportCache[2][0], isFreestanding);
             else if (postSupportType[2] == "foundation")
-                changeVis(horizontalVerandaPostSupportCache[2][1], true);
+                changeVis(horizontalVerandaPostSupportCache[2][1], isFreestanding);
 
             if (postSupportType[3] == "bracket" || postSupportType[3] == "bracket_under")//right back
-                changeVis(horizontalVerandaPostSupportCache[3][0], true);
+                changeVis(horizontalVerandaPostSupportCache[3][0], isFreestanding);
             else if (postSupportType[3] == "foundation")
-                changeVis(horizontalVerandaPostSupportCache[3][1], true);
+                changeVis(horizontalVerandaPostSupportCache[3][1], isFreestanding);
         }
 
         function enableHorizontalVerandaPostAccessories() {
@@ -4048,29 +4079,29 @@ function createPL(v3d = window.v3d) {
                 setMorphFactor(objList[i], 'Height', (((totalHeight) - 1) / 99));
 
             if (leftSpecs.isIntegratedVerticalScreenEnabled(-1)) {
-                changeVis("Horizontal_Corner_Post_Front_Left_Left_Integrated screen rail", true);
-                changeVis("Horizontal_Corner_Post_Rear_Left_Left_Integrated screen rail", true);
+                changeVis("Horizontal_Corner_Post_Front_Left_Left_Integrated screen rail", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Left_Left_Integrated screen rail", isFreestanding);
             }
             else if (leftSpecs.isPartitionWallEnabled(-1) == 1) {
-                changeVis("Horizontal_Corner_Post_Front_Left_Left_Integrated wall rail", true);
-                changeVis("Horizontal_Corner_Post_Rear_Left_Left_Integrated wall rail", true);
+                changeVis("Horizontal_Corner_Post_Front_Left_Left_Integrated wall rail", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Left_Left_Integrated wall rail", isFreestanding);
             }
             else {
-                changeVis("Horizontal_Corner_Post_Front_Left_Left_Rail plug", true);
-                changeVis("Horizontal_Corner_Post_Rear_Left_Left_Rail plug", true);
+                changeVis("Horizontal_Corner_Post_Front_Left_Left_Rail plug", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Left_Left_Rail plug", isFreestanding);
             }
 
             if (rightSpecs.isIntegratedVerticalScreenEnabled(-1)) {
-                changeVis("Horizontal_Corner_Post_Front_Right_Right_Integrated screen rail", true);
-                changeVis("Horizontal_Corner_Post_Rear_Right_Right_Integrated screen rail", true);
+                changeVis("Horizontal_Corner_Post_Front_Right_Right_Integrated screen rail", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Right_Right_Integrated screen rail", isFreestanding);
             }
             else if (rightSpecs.isPartitionWallEnabled(-1) == 1) {
-                changeVis("Horizontal_Corner_Post_Front_Right_Right_Integrated wall rail", true);
-                changeVis("Horizontal_Corner_Post_Rear_Right_Right_Integrated wall rail", true);
+                changeVis("Horizontal_Corner_Post_Front_Right_Right_Integrated wall rail", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Right_Right_Integrated wall rail", isFreestanding);
             }
             else {
-                changeVis("Horizontal_Corner_Post_Front_Right_Right_Rail plug", true);
-                changeVis("Horizontal_Corner_Post_Rear_Right_Right_Rail plug", true);
+                changeVis("Horizontal_Corner_Post_Front_Right_Right_Rail plug", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Right_Right_Rail plug", isFreestanding);
             }
 
             if (frontSpecs.isIntegratedVerticalScreenEnabled(-1)) {
@@ -4087,46 +4118,75 @@ function createPL(v3d = window.v3d) {
             }
 
             if (rearSpecs.isIntegratedVerticalScreenEnabled(-1)) {
-                changeVis("Horizontal_Corner_Post_Rear_Right_Rear_Integrated screen rail", true);
-                changeVis("Horizontal_Corner_Post_Rear_Left_Rear_Integrated screen rail", true);
+                changeVis("Horizontal_Corner_Post_Rear_Right_Rear_Integrated screen rail", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Left_Rear_Integrated screen rail", isFreestanding);
             }
             else if (rearSpecs.isPartitionWallEnabled(-1) == 1) {
-                changeVis("Horizontal_Corner_Post_Rear_Left_Rear_Integrated wall rail", true);
-                changeVis("Horizontal_Corner_Post_Rear_Right_Rear_Integrated wall rail", true);
+                changeVis("Horizontal_Corner_Post_Rear_Left_Rear_Integrated wall rail", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Right_Rear_Integrated wall rail", isFreestanding);
             }
             else {
-                changeVis("Horizontal_Corner_Post_Rear_Left_Rear_Rail plug", true);
-                changeVis("Horizontal_Corner_Post_Rear_Right_Rear_Rail plug", true);
+                changeVis("Horizontal_Corner_Post_Rear_Left_Rear_Rail plug", isFreestanding);
+                changeVis("Horizontal_Corner_Post_Rear_Right_Rear_Rail plug", isFreestanding);
             }
         }
 
         function enableHorizontalVerandaCrownbeamAccessories() {
             let objList = ["Horizontal_Gutter_Front_LED strip integrated", "Horizontal_Gutter_Front_LED strip integrated plug", "Horizontal_Gutter_Front_Rail plug", "Horizontal_Gutter_Front_Integrated wall", "Horizontal_Gutter_Front_Vertical sunblind", "Horizontal_Gutter_Left_Integrated wall", "Horizontal_Gutter_Left_LED strip integrated", "Horizontal_Gutter_Left_LED strip integrated plug", "Horizontal_Gutter_Left_Rail plug", "Horizontal_Gutter_Left_Vertical sunblind", "Horizontal_Gutter_Rear_Integrated wall", "Horizontal_Gutter_Rear_LED strip integrated", "Horizontal_Gutter_Rear_LED strip integrated plug", "Horizontal_Gutter_Rear_Rail plug", "Horizontal_Gutter_Rear_Vertical sunblind", "Horizontal_Gutter_Right_Integrated wall", "Horizontal_Gutter_Right_LED strip integrated", "Horizontal_Gutter_Right_LED strip integrated plug", "Horizontal_Gutter_Right_Rail plug", "Horizontal_Gutter_Right_Vertical sunblind"];
+            horizontalGutterLight = false;
+
+            // enable lights
+            let lightList = ['Horizontal_Gutter_Left_Light_Source', 'Horizontal_Gutter_Right_Light_Source', 'Horizontal_Gutter_Front_Light_Source', 'Horizontal_Gutter_Rear_Light_Source'];
+            changeVis(lightList, true);
+            areaLightParameter("Horizontal_Gutter_Left_Light_Source", 0, 0.03, conservatoryDepth - 2 * getPoleSize('x'));
+            areaLightParameter("Horizontal_Gutter_Right_Light_Source", 0, 0.03, conservatoryDepth - 2 * getPoleSize('x'));
+            areaLightParameter("Horizontal_Gutter_Front_Light_Source", 0, 0.03, conservatoryDepth - 2 * getPoleSize('x'));
+            areaLightParameter("Horizontal_Gutter_Rear_Light_Source", 0, 0.03, conservatoryDepth - 2 * getPoleSize('x'));
+
+
 
             for (let i = 0; objList[i] != undefined; i++) {
-                if (objList[i].indexOf('Left') != -1 || objList[i].indexOf('Right') != -1)
+                if (objList[i].indexOf('Left') != -1 || objList[i].indexOf('Right') != -1) {
                     setMorphFactor(objList[i], 'Width', (((conservatoryDepth - 2 * getPoleSize('x')) - 1) / 100));
-                else
+                }
+                else {
                     setMorphFactor(objList[i], 'Width', (((conservatoryWidth - 2 * getPoleSize('x')) - 1) / 100));
+                }
             }
 
-            if (leftSpecs.isIntegratedLEDStripEnabled(-1))
+            if (leftSpecs.isIntegratedLEDStripEnabled(-1)) {
                 changeVis("Horizontal_Gutter_Left_LED strip integrated", true);
+                areaLightParameter("Horizontal_Gutter_Left_Light_Source", 80, 0.03, conservatoryDepth - 2 * getPoleSize('x'));
+
+                horizontalGutterLight = true;
+            }
             else
                 changeVis("Horizontal_Gutter_Left_LED strip integrated plug", true);
 
-            if (rightSpecs.isIntegratedLEDStripEnabled(-1))
+            if (rightSpecs.isIntegratedLEDStripEnabled(-1)) {
                 changeVis("Horizontal_Gutter_Right_LED strip integrated", true);
+                areaLightParameter("Horizontal_Gutter_Right_Light_Source", 80, 0.03, conservatoryDepth - 2 * getPoleSize('x'));
+
+                horizontalGutterLight = true;
+            }
             else
                 changeVis("Horizontal_Gutter_Right_LED strip integrated plug", true);
 
-            if (frontSpecs.isIntegratedLEDStripEnabled(-1))
+            if (frontSpecs.isIntegratedLEDStripEnabled(-1)) {
                 changeVis("Horizontal_Gutter_Front_LED strip integrated", true);
+                areaLightParameter("Horizontal_Gutter_Front_Light_Source", 80, 0.03, conservatoryWidth - 2 * getPoleSize('x'));
+
+                horizontalGutterLight = true;
+            }
             else
                 changeVis("Horizontal_Gutter_Front_LED strip integrated plug", true);
 
-            if (rearSpecs.isIntegratedLEDStripEnabled(-1))
+            if (rearSpecs.isIntegratedLEDStripEnabled(-1)) {
                 changeVis("Horizontal_Gutter_Rear_LED strip integrated", true);
+                areaLightParameter("Horizontal_Gutter_Rear_Light_Source", 80, 0.03, conservatoryWidth - 2 * getPoleSize('x'));
+
+                horizontalGutterLight = true;
+            }
             else
                 changeVis("Horizontal_Gutter_Rear_LED strip integrated plug", true);
 
@@ -4153,10 +4213,770 @@ function createPL(v3d = window.v3d) {
             //LED strips available just for front/back, needs sides added in config logic
         }
 
+        //=== TUSSENPALEN (intermediate posts) ===============================
+        // Fed by the configurator OUTPUT_DATA node `_3d_tussenpalen`:
+        //   { poleWidth: 100, cornerInset: 150, front: [..], back: [..], left: [..], right: [..] }
+        // A position is mm from the INNER face of the corner post at the section-1 end of
+        // that side (the LEFT corner post when looking at that side from the outside, see
+        // tussenpaalOrigin) to the pole's CENTRE, the same reference the questionnaire fields use.
+        // Deliberately NOT routed through *Specs.poleAmount: that variable also drives
+        // optionSpacing/optionCenterPos/optionXposSE and would re-lay every screen, wall
+        // and Climaglide into N+1 bays. Per-bay options are a separate piece of work.
+        // tussenpaalSpec itself is declared at module level (shared across PL.init runs).
+        var TUSSENPAAL_MAX = 3; // the questionnaire offers 3 position fields per side
+        // Body extents of Horizontal_Corner_Post_Front_Left in the GLB (three.js frame, metres; y = height
+        // omitted): x -0.1516..-0.0016, z 0..0.15. Verified from the live glb.xz accessor bounds 2026-09-30.
+        var TUSSENPAAL_SRC_BOX = { x0: -0.1516, x1: -0.0016, z0: 0, z1: 0.15 };
+        // Which physical end of each side is position 0. Rule (Thiebout 2026-09-22, INTPST
+        // #40256 r3, and #35113): the order entry always looks at a side FROM THE OUTSIDE
+        // and counts left to right, so position 0 is the corner post on the viewer's LEFT.
+        //   front: seen from the garden, left = Front_Left  (+x)   -> +1
+        //   rear:  seen from behind,     left = Rear_Right  (-x)   -> -1
+        //   left:  seen from the left,   left = the wall end (y 0) -> -1  (= #35113 Left section 1 at the wall)
+        //   right: seen from the right,  left = the front end (y D) -> +1 (= #35113 Right section 1 at the front post)
+        var tussenpaalOrigin = { front: 1, rear: -1, left: -1, right: 1 };
+
+        function getTussenpaalPositions(side) {
+            if (!tussenpaalSpec)
+                return [];
+            let raw = (side == "rear") ? tussenpaalSpec.back : tussenpaalSpec[side];
+            if (!Array.isArray(raw))
+                return [];
+            return raw.map(Number).filter(v => !isNaN(v) && v > 0);
+        }
+
+        //--- shade: intermediate posts get a slightly different tint than the structure ---------
+        // (Thiebout 2026-09-30: a pole flush against a corner post was unreadable as a separate
+        // part.) The posts share the node material "Powdercoat", which the colour picker recolours
+        // through setMaterialColor / tweenMaterialHexColor by material NAME. A pole therefore gets
+        // its own clone under another name (so the tween leaves it alone) and, in onBeforeRender,
+        // copies every RGB node of the source material with a fixed shade rule: dark structures
+        // are lightened, light ones darkened, so the tint stays visible for any RAL.
+        var TUSSENPAAL_SHADE_LIGHTEN = 1.6;   // factor on a dark structure colour (luminance < 0.25)
+        var TUSSENPAAL_SHADE_DARKEN = 0.78;   // factor on a light structure colour
+        var TUSSENPAAL_SHADE_SUFFIX = "_tussenpaal";
+
+        function tussenpaalShadeOf(x, y, z) {
+            let lum = 0.2126 * x + 0.7152 * y + 0.0722 * z;
+            let f = lum < 0.25 ? TUSSENPAAL_SHADE_LIGHTEN : TUSSENPAAL_SHADE_DARKEN;
+            return [Math.min(1, x * f), Math.min(1, y * f), Math.min(1, z * f)];
+        }
+
+        function syncTussenpaalShade(mesh) {
+            let srcs = mesh.userData.tussenpaalSrcMaterials;
+            let dsts = mesh.userData.tussenpaalShadeMaterials;
+            if (!srcs || !dsts)
+                return;
+            for (let k = 0; k < srcs.length; k++) {
+                let s = srcs[k], d = dsts[k];
+                if (!s || !d)
+                    continue;
+                let changed = false;
+                if (s.isMeshNodeMaterial && s.nodeRGB && d.nodeRGB) {
+                    for (let i = 0; i < s.nodeRGB.length && i < d.nodeRGB.length; i++) {
+                        let c = tussenpaalShadeOf(s.nodeRGB[i].x, s.nodeRGB[i].y, s.nodeRGB[i].z);
+                        if (d.nodeRGB[i].x != c[0] || d.nodeRGB[i].y != c[1] || d.nodeRGB[i].z != c[2]) {
+                            d.nodeRGB[i].x = c[0]; d.nodeRGB[i].y = c[1]; d.nodeRGB[i].z = c[2];
+                            changed = true;
+                        }
+                    }
+                }
+                else if (s.color && d.color) {
+                    let c = tussenpaalShadeOf(s.color.r, s.color.g, s.color.b);
+                    if (d.color.r != c[0] || d.color.g != c[1] || d.color.b != c[2]) {
+                        d.color.r = c[0]; d.color.g = c[1]; d.color.b = c[2];
+                        changed = true;
+                    }
+                }
+                if (changed)
+                    d.needsUpdate = true;   // same cost the vendor pays in setMaterialColor
+            }
+        }
+
+        function applyTussenpaalShade(root) {
+            root.traverse(o => {
+                if (!o.isMesh || !o.material)
+                    return;
+                let srcs = Array.isArray(o.material) ? o.material : [o.material];
+                let dsts = srcs.map(m => {
+                    if (!m || !m.clone)
+                        return m;
+                    let d = m.clone();
+                    d.name = (m.name || "") + TUSSENPAAL_SHADE_SUFFIX;
+                    return d;
+                });
+                o.userData.tussenpaalSrcMaterials = srcs;
+                o.userData.tussenpaalShadeMaterials = dsts;
+                o.material = Array.isArray(o.material) ? dsts : dsts[0];
+                o.onBeforeRender = function () { syncTussenpaalShade(o); };
+                syncTussenpaalShade(o);
+            });
+        }
+
+        function getTussenpaalName(side, i) {
+            // Deterministic name: cloneObject() cannot be used here. Its
+            // generateUniqueName() helper does `if (r[2] > warning)` right after the
+            // `if (!r)` branch, so any source name not ending in a digit throws. Every
+            // other clone source in this scene is called "<something>.0", the corner
+            // post is not.
+            let name = "Tussenpaal_" + side + "_" + i;
+            if (getObjectByName(name))
+                return name;
+
+            // The GLB has no dedicated intermediate post, so the corner post is cloned.
+            // Front_Left is the only corner post without a gutter-corner child.
+            let src = getObjectByName("Horizontal_Corner_Post_Front_Left");
+            if (!src)
+                return null;
+
+            let obj = src.clone();
+            obj.name = name;
+            applyTussenpaalShade(obj);
+            // The corner post (VPPH02) is 150 x 150. A tussenpaal is 100 mm WIDE along its
+            // side, which is what the configurator's geometry assumes (openings = netSpan -
+            // 100 * N). Its DEPTH is drawn equal to the corner post (150) so it fills the
+            // beam depth and shows no step next to a corner post (Thiebout 2026-09-30);
+            // the real article depth is not known here. Height is the Y axis and stays on
+            // the Height morph. Along-axis = x for front/rear, depth (three.js z) for left/right.
+            // Drop this if a real tussenpaal mesh is ever added to the GLB.
+            let alongScale = 100 / 150;
+            if (side == "front" || side == "rear")
+                obj.scale.set(alongScale, 1, 1);
+            else
+                obj.scale.set(1, 1, alongScale);
+            // Children keep their source names in a clone, so they cannot be reached by
+            // name: plug both rail grooves by traversing the clone itself.
+            obj.traverse(o => {
+                if (o == obj || !o.name)
+                    return;
+                if (o.name.indexOf("Rail plug") != -1)
+                    o.visible = true;
+                else if (o.name.indexOf("Integrated screen rail") != -1 || o.name.indexOf("Integrated wall rail") != -1)
+                    o.visible = false;
+            });
+            appInstance.scene.add(obj);
+
+            // A corner post's geometry is anchored at the OUTER corner, not at its centre:
+            // its local box runs -151.6..-1.6 on one axis and 0..150 on the other. Measure
+            // the clone's own footprint centre once, at the origin, so positioning can be
+            // expressed as "put the middle of the post here" without assuming axis signs.
+            obj.position.set(0, 0, 0);
+            obj.rotation.set(0, 0, 0);
+            // Anchor = footprint centre of the (scaled) post body relative to the node origin, in
+            // Blender x / y (setObjTransform swizzles Blender y to three.js -z). Taken from the corner
+            // post's GLB geometry (TUSSENPAAL_SRC_BOX, three.js frame) times the clone's scale, NOT from
+            // geometry.boundingBox at runtime: in the server-side render that box came back empty
+            // (diagnostic label "A NaN/NaN P0/0/0", 2026-09-30), so the pole never left the origin and
+            // every quote-PDF render showed the tussenpalen at the back-middle.
+            obj.userData.tussenpaalAnchor = {
+                x: (TUSSENPAAL_SRC_BOX.x0 + TUSSENPAAL_SRC_BOX.x1) / 2 * obj.scale.x,
+                y: -(TUSSENPAAL_SRC_BOX.z0 + TUSSENPAAL_SRC_BOX.z1) / 2 * obj.scale.z
+            };
+
+            return name;
+        }
+
+        // Kill switch (2026-09-23, Thiebout): set to false to hide the intermediate posts AND
+        // their dimension bars in 3D. Re-enabled 2026-09-29 together with the per-side origin fix.
+        var TUSSENPAAL_3D_ENABLED = true;
+
+        // Both tussenpaal entry points are wrapped: an exception here must never abort
+        // PL.init before takeSnapshot(), or the server-side render (quote PDF image) fails
+        // with SSR_SNAP_ERROR. Seen 2026-09-30: a TOP config rendered with 0 poles and
+        // failed with 1 pole.
+        function enableIntermediatePosts() {
+            try {
+                enableIntermediatePostsUnsafe();
+            }
+            catch (e) {
+                console.log("tussenpalen: posts skipped after error", e);
+            }
+        }
+
+        function enableIntermediatePostsUnsafe() {
+            if (!isCalistaConfigurator || !TUSSENPAAL_3D_ENABLED)
+                return;
+
+            let inset = getPoleSize('x');   // 0.15, the same 150 mm corner inset the configurator assumes
+            let axisInset = inset / 2;      // corner posts are 150 deep, so their centre line sits 75 mm in
+
+            ["front", "rear", "left", "right"].forEach(side => {
+                let positions = getTussenpaalPositions(side);
+
+                for (let i = 0; positions.length > i; i++) {
+                    let p = positions[i] / 1000;
+                    let name = getTussenpaalName(side, i);
+                    let obj = name ? getObjectByName(name) : null;
+                    if (!obj)
+                        continue;
+
+                    // where the MIDDLE of the post has to end up
+                    let targetX;
+                    let targetY;
+                    if (side == "front" || side == "rear") {
+                        targetX = tussenpaalOrigin[side] > 0
+                            ? conservatoryWidth / 2 - inset - p
+                            : -conservatoryWidth / 2 + inset + p;
+                        targetY = (side == "front") ? conservatoryDepth - axisInset : axisInset;
+                    }
+                    else {
+                        targetX = (side == "left") ? conservatoryWidth / 2 - axisInset : -conservatoryWidth / 2 + axisInset;
+                        targetY = tussenpaalOrigin[side] > 0
+                            ? conservatoryDepth - inset - p
+                            : inset + p;
+                    }
+
+                    let anchor = obj.userData.tussenpaalAnchor || { x: 0, y: 0 };
+                    setObjTransform(name, "position", targetX - anchor.x, targetY - anchor.y, 0, false);
+                    // An intermediate post stops at the UNDERSIDE of the crown beam, unlike a
+                    // corner post which runs to totalHeight (= gutterHeight + 0.26) and hides its
+                    // top plate inside the gutter corner. The post mesh carries a 3 mm aluminium
+                    // cap that rides on its top, so 20 mm of overlap buries it in the beam
+                    // instead of leaving it proud or z-fighting with the beam's underside.
+                    // setMorphFactor() reaches an object's multi-material parts through
+                    // resolveMultiMaterial(), which matches children by NAME. The clone's rail
+                    // children kept their corner-post names, so they stayed at the corner post's
+                    // full Height morph and the rail plugs stuck up through the beam (2026-09-29).
+                    // Morph the whole clone subtree directly instead.
+                    let hFactor = ((gutterHeight + 0.02) - 1) / 99;
+                    obj.traverse(o => {
+                        if (o.morphTargetDictionary && 'Height' in o.morphTargetDictionary && o.morphTargetInfluences)
+                            o.morphTargetInfluences[o.morphTargetDictionary['Height']] = hFactor;
+                    });
+                    changeVis(name, true);
+                }
+
+                // hide clones left over from a higher count
+                for (let i = positions.length; TUSSENPAAL_MAX > i; i++)
+                    if (getObjectByName("Tussenpaal_" + side + "_" + i))
+                        changeVis("Tussenpaal_" + side + "_" + i, false);
+            });
+            enableTussenpaalMeasurements(false);
+        }
+
+        //=== TUSSENPAAL MEASUREMENTS ==========================================
+        // One ground-level dimension bar per intermediate post, running from the
+        // INNER face of the corner post at the section-1 end of that side to the
+        // post's CENTRE, labelled with the value the user typed in the position
+        // field (mm). The bar mesh (GLB vertex dump) draws its solid line 0.19 m BELOW
+        // its origin with dotted ticks from the origin level to 0.25 m below it. The bar
+        // is a vertical ribbon placed IN THE PLANE OF THE POLE'S OUTER FACE (3 mm in
+        // front of it), so the dotted tick lies on that face, in its middle: the only
+        // placement free of parallax. Every offset tried before (0.3 m out, flush with
+        // the corner post face, flat extension lines to the pole axis) read half a pole
+        // off or collapsed to a dot in the side view. Since r12 (2026-09-30) the bar lies FLAT on the floor:
+        // ticks from the pole centre plane outward, solid line TUSSENPAAL_MEAS_LINE outside it, each
+        // next bar of the side TUSSENPAAL_MEAS_OUT_STEP further out.
+        // Shown while the step of that side is open, or whenever the general
+        // measurements are on (toolbar button / dimensions step).
+        // Front/rear clone `widthMeasurement` (centred bar), left/right clone
+        // `depthMeasurement` (bar anchored at its start). The width bar's text twins are
+        // CHILDREN in the GLB, the depth bar's are top-level: the clones' texts are all
+        // made top-level (scene.attach) so bar scaling never squashes a label and both
+        // families position their label the same way. GLB dump in README_tussenpaal_3d.md.
+        // Length: the mesh is built for 1 m and its morph moves each end group RIGIDLY
+        // (arrowheads included) by 49.5 m per unit, so a negative factor for a bar under
+        // 1 m pushes the arrowheads through the centre and out the other side (seen at
+        // 50 mm). Under 1 m the bar is therefore SCALED along its length instead: ticks
+        // stay exact, arrowheads shrink in proportion.
+        // tussenpaalMeasSide is declared at module level (shared across PL.init runs).
+        var TUSSENPAAL_MEAS_LINE = 0.19;             // m, mesh constant: solid line sits this far below the origin
+        var TUSSENPAAL_MEAS_ZFLOOR = 0.003;          // m above the floor: the bar lies FLAT on the ground (Thiebout 2026-09-30)
+        var TUSSENPAAL_MEAS_OUT0 = 0.19;             // m outside the pole centre plane for the first bar's ORIGIN (Thiebout 2026-09-30:
+                                                     // "move it a bit more outward"); the solid line lies TICK further out
+        var TUSSENPAAL_MEAS_OUT_STEP = 0.12;         // m further out for every next bar of the same side
+        var TUSSENPAAL_MEAS_TICK = 0.06;             // m from the bar origin to its solid line: short tick stubs, no extension lines
+                                                     // back to the pole (they read as arrows overshooting the pole)
+        var TUSSENPAAL_MEAS_TEXT_SCALE = 1.8;        // label size vs the vendor's dimension labels
+        var TUSSENPAAL_MEAS_COLOR = [0.95, 0.55, 0.05];   // amber, bar + labels, so they stand out from the structure and the floor
+        var TUSSENPAAL_MEAS_TEXT_Z = 0.04;           // m above the floor for the upright label on the solid line
+        var TUSSENPAAL_MEAS_RENDER_ORDER = 1000;     // bars are annotations: drawn last, depth test off
+        var TUSSENPAAL_MEAS_TEXT_DZ = -0.15;         // label offset from the origin (4 cm above the line), as the vendor's depth label
+        var TUSSENPAAL_STEP_SIDES = {                // step ids from handleEvents' camera switch
+            '0b6319e5cf034ee3b60df7fc13b27412': 'left',
+            '49d117e0f820471da9864895f81fca81': 'right',
+            'eff99be6146d44e4ac4efba7dc0c0646': 'front',
+            'bb7c1e530ea2474692f4dd5affec1ff6': 'rear'
+        };
+
+        function isTussenpaalMeasVisible(side) {
+            // Thiebout 2026-09-29: only while the step of that side is open (set in handleEvents),
+            // hidden in every other step, unaffected by the general measurements toggle. Dragging
+            // the camera only re-runs the flip pass, so the bars stay.
+            if (!isCalistaConfigurator || !tussenpaalSpec || overlayImageEnabled)
+                return false;
+            return tussenpaalMeasSide == side;
+        }
+
+        function getTussenpaalMeasName(side, i) {
+            let name = "Tussenpaal_meas_" + side + "_" + i;
+            if (getObjectByName(name))
+                return name;
+
+            let isWidthBar = (side == "front" || side == "rear");
+            let src = getObjectByName(isWidthBar ? "widthMeasurement" : "depthMeasurement");
+            if (!src)
+                return null;
+
+            // Direct clone, same reason as the posts: cloneObject() throws on a
+            // source name that does not end in a digit.
+            let bar = src.clone();
+            bar.name = name;
+            // The bar runs in the poles' CENTRE plane and ends at the pole centre, so its last
+            // 50 mm and the arrowhead lie inside the pole. Draw it as an annotation on top of the
+            // geometry (own material, depth test off, rendered last) so the tip is seen at the
+            // centre instead of stopping at the pole face (Thiebout 2026-09-29).
+            appInstance.scene.add(bar);
+            tintTussenpaalMeas(name);
+            // The width bar carries its text twins as children. Rename the MESHES
+            // only (Verge3D proxy wrappers have no geometry) and move them to the
+            // scene root keeping their world transform, so scaling the bar leaves them.
+            let hasText = false;
+            let hasFlipped = false;
+            let texts = [];
+            bar.traverse(o => {
+                if (o == bar || !o.name || !o.geometry)
+                    return;
+                if (o.name.indexOf("TextFlipped") != -1) {
+                    o.name = name + "_textFlipped";
+                    hasFlipped = true;
+                    texts.push(o);
+                }
+                else if (o.name.indexOf("Text") != -1) {
+                    o.name = name + "_text";
+                    hasText = true;
+                    texts.push(o);
+                }
+            });
+            texts.forEach(o => {
+                if (appInstance.scene.attach)
+                    appInstance.scene.attach(o);
+            });
+
+            // The depth bar's text twins are top-level objects: clone them as well.
+            if (!hasText) {
+                let t = getObjectByName(isWidthBar ? "widthMeasurementText" : "depthMeasurementText");
+                if (t) {
+                    let c = t.clone();
+                    c.name = name + "_text";
+                    appInstance.scene.add(c);
+                }
+            }
+            if (!hasFlipped) {
+                let t = getObjectByName(isWidthBar ? "widthMeasurementTextFlipped" : "depthMeasurementTextFlipped");
+                if (t) {
+                    let c = t.clone();
+                    c.name = name + "_textFlipped";
+                    appInstance.scene.add(c);
+                }
+            }
+            [name + "_text", name + "_textFlipped"].forEach(tn => {
+                tintTussenpaalMeas(tn);
+                let t = getObjectByName(tn);
+                if (t && t.scale)
+                    t.scale.set(TUSSENPAAL_MEAS_TEXT_SCALE, TUSSENPAAL_MEAS_TEXT_SCALE, TUSSENPAAL_MEAS_TEXT_SCALE);
+            });
+            return name;
+        }
+
+        function setTussenpaalMeasLength(name, isWidthBar, p) {
+            let bar = getObjectByName(name);
+            if (!bar)
+                return;
+            // width bar length runs along its local z, depth bar along its local x
+            let axis = isWidthBar ? 'z' : 'x';
+            if (p >= 1) {
+                bar.scale[axis] = 1;
+                setMorphFactor(name, isWidthBar ? 'Width' : 'Depth', (p - 1) / 99);
+            }
+            else {
+                setMorphFactor(name, isWidthBar ? 'Width' : 'Depth', 0);
+                bar.scale[axis] = p;
+            }
+        }
+
+        function hideTussenpaalMeas(side, i) {
+            let name = "Tussenpaal_meas_" + side + "_" + i;
+            if (!getObjectByName(name))
+                return;
+            changeVis(name, false);
+            changeVis(name + "_text", false);
+            changeVis(name + "_textFlipped", false);
+        }
+
+        function enableTussenpaalMeasurements(justFlip) {
+            if (!isCalistaConfigurator || !TUSSENPAAL_3D_ENABLED)
+                return;
+            // The bars are step UI. Like the vendor's own measurements (enableMeasurements
+            // is only called when !isSSR), they are never built in the server-side render:
+            // text rebuilding (cloneWithText) and material cloning are not needed there and
+            // are the prime suspects for the SSR_SNAP_ERROR of 2026-09-30.
+            if (typeof scope != "undefined" && scope && scope['_ssrEnvironment'])
+                return;
+            try {
+                enableTussenpaalMeasurementsUnsafe(justFlip);
+            }
+            catch (e) {
+                console.log("tussenpalen: bars skipped after error", e);
+            }
+        }
+
+        function tussenpaalOutward(side) {
+            // unit vector (Blender x / y) pointing away from the frame on that side
+            return side == "front" ? { x: 0, y: 1 } : side == "rear" ? { x: 0, y: -1 } : side == "left" ? { x: 1, y: 0 } : { x: -1, y: 0 };
+        }
+
+        // Lay the vendor's vertical ribbon FLAT on the floor: after the GLB rotation its tick axis
+        // (local y) points world-down; a 90 deg turn about the world length axis makes it point
+        // outward, away from the frame. The ticks are stretched so they run from the pole centre
+        // plane (bar origin) to the solid line at lineOut, like CAD extension lines.
+        function layTussenpaalMeasFlat(name, side, tick) {
+            let bar = getObjectByName(name);
+            if (!bar || !bar.quaternion)
+                return;
+            if (!bar.userData.tussenpaalBaseQ)
+                bar.userData.tussenpaalBaseQ = bar.quaternion.clone();
+            // three.js world axes: x = width (front/rear bars run along it), z = -depth (left/right bars)
+            let axis = (side == "front" || side == "rear") ? new v3d.Vector3(1, 0, 0) : new v3d.Vector3(0, 0, 1);
+            let angle = (side == "front" || side == "left") ? Math.PI / 2 : -Math.PI / 2;
+            let q = new v3d.Quaternion().setFromAxisAngle(axis, angle);
+            bar.quaternion.copy(bar.userData.tussenpaalBaseQ).premultiply(q);
+            bar.scale.y = tick / TUSSENPAAL_MEAS_LINE;   // solid line `tick` outside the origin, ticks 0.25/0.19 x tick long
+            bar.updateMatrixWorld(true);
+        }
+
+        // Own material in the tussenpaal colour, drawn over the geometry (bar and labels alike).
+        function tintTussenpaalMeas(objName) {
+            let o = getObjectByName(objName);
+            if (!o || !o.material)
+                return;
+            let mats = Array.isArray(o.material) ? o.material : [o.material];
+            let tinted = mats.map(m => {
+                if (!m || !m.clone)
+                    return m;
+                let d = m.clone();
+                d.name = (m.name || "") + "_tussenpaal";
+                if (d.isMeshNodeMaterial && d.nodeRGB) {
+                    for (let i = 0; i < d.nodeRGB.length; i++) {
+                        d.nodeRGB[i].x = TUSSENPAAL_MEAS_COLOR[0];
+                        d.nodeRGB[i].y = TUSSENPAAL_MEAS_COLOR[1];
+                        d.nodeRGB[i].z = TUSSENPAAL_MEAS_COLOR[2];
+                    }
+                }
+                else if (d.color) {
+                    d.color.r = TUSSENPAAL_MEAS_COLOR[0];
+                    d.color.g = TUSSENPAAL_MEAS_COLOR[1];
+                    d.color.b = TUSSENPAAL_MEAS_COLOR[2];
+                }
+                d.depthTest = false;
+                d.depthWrite = false;
+                d.transparent = true;
+                d.needsUpdate = true;
+                return d;
+            });
+            o.material = Array.isArray(o.material) ? tinted : tinted[0];
+            o.renderOrder = TUSSENPAAL_MEAS_RENDER_ORDER;
+        }
+
+        function enableTussenpaalMeasurementsUnsafe(justFlip) {
+
+            let inset = getPoleSize('x');   // 0.15, the corner inset the positions are measured from
+            let axisInset = inset / 2;      // the poles' centre plane, same as enableIntermediatePosts
+            let faceOut = axisInset;        // bar plane = the pole centre plane (tip at the pole centre)
+            // Always on the ground (Thiebout 2026-09-29); the annotation material keeps the bar
+            // visible even where the environment floor overlaps it.
+            let zBase = 0;
+
+            ["front", "rear", "left", "right"].forEach(side => {
+                let positions = getTussenpaalPositions(side);
+                let visible = isTussenpaalMeasVisible(side) && positions.length > 0;
+                let isWidthBar = (side == "front" || side == "rear");
+                // same twin polarity as the vendor's widthMeasurement / depthMeasurement
+                let showText = isWidthBar ? isTextElementFlipped(270) : isTextElementFlipped(180);
+
+                for (let i = 0; positions.length > i; i++) {
+                    let name = getTussenpaalMeasName(side, i);
+                    if (!name)
+                        continue;
+                    changeVis(name, visible);
+                    changeVis(name + "_text", visible && showText);
+                    changeVis(name + "_textFlipped", visible && !showText);
+                    // Geometry and label are refreshed even while hidden, so a later
+                    // visibility-only pass (camera flip, step event) never shows a stale bar.
+                    if (justFlip)
+                        continue;
+
+                    let p = positions[i] / 1000;
+                    let label = Math.round(positions[i]) + "mm";
+                    setTussenpaalMeasLength(name, isWidthBar, p);
+                    // flat on the floor; the bar origin lies originOut outside the pole centre plane,
+                    // its solid line TICK further out, the label on the line
+                    let originOut = TUSSENPAAL_MEAS_OUT0 + i * TUSSENPAAL_MEAS_OUT_STEP;
+                    let lineOut = originOut + TUSSENPAAL_MEAS_TICK;
+                    layTussenpaalMeasFlat(name, side, TUSSENPAAL_MEAS_TICK);
+                    let z = zBase + TUSSENPAAL_MEAS_ZFLOOR;
+                    let out = tussenpaalOutward(side);
+                    let tx, ty;
+
+                    if (isWidthBar) {
+                        // centred bar: place its middle halfway between origin and post centre
+                        let x0 = tussenpaalOrigin[side] > 0 ? conservatoryWidth / 2 - inset : -conservatoryWidth / 2 + inset;
+                        let xc = tussenpaalOrigin[side] > 0 ? x0 - p / 2 : x0 + p / 2;
+                        let y = ((side == "front") ? conservatoryDepth - faceOut : faceOut) + out.y * originOut;
+                        setObjTransform(name, 'position', xc, y, z, false);
+                        tx = xc; ty = y + out.y * TUSSENPAAL_MEAS_TICK;
+                    }
+                    else {
+                        // bar anchored at its start and growing along +y
+                        let yStart = tussenpaalOrigin[side] > 0 ? conservatoryDepth - inset - p : inset;
+                        let x = ((side == "left") ? conservatoryWidth / 2 - faceOut : -conservatoryWidth / 2 + faceOut) + out.x * originOut;
+                        setObjTransform(name, 'position', x, yStart, z, false);
+                        tx = x + out.x * TUSSENPAAL_MEAS_TICK; ty = yStart + p / 2;
+                    }
+                    // upright label on the solid line
+                    setObjTransform(name + "_text", 'position', tx, ty, zBase + TUSSENPAAL_MEAS_TEXT_Z, false);
+                    setObjTransform(name + "_textFlipped", 'position', tx, ty, zBase + TUSSENPAAL_MEAS_TEXT_Z, false);
+                    updateTextObj(name + "_text", label);
+                    updateTextObj(name + "_textFlipped", label);
+                }
+
+                for (let i = positions.length; TUSSENPAAL_MAX > i; i++)
+                    hideTussenpaalMeas(side, i);
+            });
+            applyTussenpaalHighlight();
+        }
+
+        //--- highlight: the pole whose position field has focus turns amber -----------
+        // Hive fires handleFocus({uniqueLabel}) for a field focus and handleFocus(null)
+        // when focus is released. Labels of the 12 position fields (Calista TOP 20.0.0):
+        var TUSSENPAAL_FIELD_LABELS = {
+            tuss_1: ['front', 0], tuss_2: ['front', 1], tuss_3: ['front', 2],
+            tuss_5: ['left', 0], tuss_6: ['left', 1], tuss_7: ['left', 2],
+            tuss_1_1: ['right', 0], tuss_2_1: ['right', 1], tuss_3_1: ['right', 2],
+            tuss_1_2: ['rear', 0], tuss_2_2: ['rear', 1], tuss_3_2: ['rear', 2]
+        };
+        // Highlight OFF (Thiebout 2026-09-29): the amber pole stuck after moving to the next field.
+        // Root cause: tussenpaalFocus / tussenpaalHlSaved live inside PL.init, which re-runs on
+        // every configurator value change (typing a position), so the saved originals are lost
+        // while the mesh still carries the amber material. Fix = module-level state + original
+        // material kept in mesh.userData; until then the focus handler is a no-op.
+        var TUSSENPAAL_HIGHLIGHT_ENABLED = false;
+        var tussenpaalFocus = null;                  // { side, i } of the focused field, or null
+        var tussenpaalHlMaterial = null;
+        var tussenpaalHlSaved = {};                  // objName -> [{ mesh, material }] to restore
+
+        function getTussenpaalHlMaterial() {
+            if (!tussenpaalHlMaterial)
+                tussenpaalHlMaterial = new v3d.MeshStandardMaterial({
+                    color: new v3d.Color('#F2C400'), emissive: new v3d.Color('#3A2F08'),
+                    metalness: 0.2, roughness: 0.5
+                });
+            return tussenpaalHlMaterial;
+        }
+
+        function setTussenpaalHighlight(objName, on) {
+            var obj = getObjectByName(objName);
+            if (!obj)
+                return;
+            if (on) {
+                if (tussenpaalHlSaved[objName])
+                    return;
+                var saved = [];
+                obj.traverse(o => {
+                    if (o.isMesh && o.material) {
+                        saved.push({ mesh: o, material: o.material });
+                        o.material = getTussenpaalHlMaterial();
+                    }
+                });
+                tussenpaalHlSaved[objName] = saved;
+            }
+            else {
+                var s = tussenpaalHlSaved[objName];
+                if (!s)
+                    return;
+                s.forEach(e => { e.mesh.material = e.material; });
+                delete tussenpaalHlSaved[objName];
+            }
+        }
+
+        function applyTussenpaalHighlight() {
+            if (!isCalistaConfigurator || !TUSSENPAAL_3D_ENABLED)
+                return;
+            Object.keys(tussenpaalHlSaved).forEach(n => setTussenpaalHighlight(n, false));
+            if (!tussenpaalFocus)
+                return;
+            var suffix = tussenpaalFocus.side + "_" + tussenpaalFocus.i;
+            setTussenpaalHighlight("Tussenpaal_" + suffix, true);       // the pole
+            setTussenpaalHighlight("Tussenpaal_meas_" + suffix, true);  // its dimension bar
+        }
+
+        // Called first thing in handleFocus.
+        function tussenpaalOnFocus(data) {
+            if (!isCalistaConfigurator || !TUSSENPAAL_3D_ENABLED || !TUSSENPAAL_HIGHLIGHT_ENABLED)
+                return;
+            console.log("tussenpaal focus event", data ? JSON.stringify(data) : data); // TEMP diagnostic (r5): does blur arrive as {uniqueLabel:null}?
+            var next = null;
+            if (data && typeof data.uniqueLabel == 'string' && TUSSENPAAL_FIELD_LABELS[data.uniqueLabel]) {
+                var f = TUSSENPAAL_FIELD_LABELS[data.uniqueLabel];
+                next = { side: f[0], i: f[1] };
+            }
+            var same = (!next && !tussenpaalFocus) || (next && tussenpaalFocus && next.side == tussenpaalFocus.side && next.i == tussenpaalFocus.i);
+            if (same)
+                return;
+            tussenpaalFocus = next;
+            applyTussenpaalHighlight();
+            renderFrame();
+        }
+        //=== END TUSSENPAAL MEASUREMENTS ======================================
+
+        //=== SURFACE SCREEN (#40956: opbouw ODVS on a Calista Left/Right section, sloping-roof frame in front of the posts)
+        // Frame = generated boxes (cassette on top, two guide rails to the floor) in the shared Powdercoat material, so
+        // frameColors() recolours them with the structure. Roll + fabric + bottom bar = clone of the vendor's standalone
+        // sunblind mesh (Horizontal_Gutter_Front_Vertical sunblind_standalone, morphs Height / Width / Opening / MotorSide;
+        // its own 100 mm profile sits inside the generated cassette). Everything sits OUTSIDE the post face (surface-
+        // mounted); rails inside the daylight edges (a wall-mounted side has a wall at y = 0), fabric between the rails.
+        // Reads no scope[] directly (SSR calls PL.init with scope = null). Tunables are the SURFACE_SCREEN_* constants.
+
+        // Clone a source object once under a deterministic name. cloneObject() cannot be used: generateUniqueName()
+        // null-derefs on names without a trailing digit (tussenpaal trap 1). Parts with geometry get unique names so
+        // clearScene() and getObjectByName() never confuse them with the source; ScreenFabric* materials are cloned
+        // per clone so Left and Right can carry different canvas colours (Powdercoat stays shared).
+        function ensureSurfaceScreenClone(srcName, cloneName) {
+            let existing = getObjectByName(cloneName);
+            if (existing)
+                return existing;
+            let src = getObjectByName(srcName);
+            if (!src)
+                return null;
+            let clone = src.clone();
+            clone.name = cloneName;
+            let partIdx = 0;
+            clone.traverse(function (o) {
+                if (o !== clone && o.geometry)
+                    o.name = cloneName + "_p" + (partIdx++);
+                if (!o.material)
+                    return;
+                let mats = Array.isArray(o.material) ? o.material : [o.material];
+                let cloned = mats.map(function (m) {
+                    if (!m || !m.name || m.name.indexOf("ScreenFabric") !== 0)
+                        return m;
+                    let c = m.clone();
+                    c.name = m.name + "_" + cloneName;
+                    return c;
+                });
+                o.material = Array.isArray(o.material) ? cloned : cloned[0];
+            });
+            appInstance.scene.add(clone);
+            return clone;
+        }
+
+        // A unit box (scaled per call) in the material of an existing Powdercoat mesh. Sizes / positions are given in
+        // Blender axes (x, y, z-up); scale maps to three.js (x, z-up -> y, y -> z), position goes through setObjTransform.
+        function ensureSurfaceScreenBox(name, materialSrcName) {
+            let existing = getObjectByName(name);
+            if (existing)
+                return existing;
+            let src = getObjectByName(materialSrcName);
+            if (!src || !src.material || !v3d.BoxGeometry)
+                return null;
+            let mesh = new v3d.Mesh(new v3d.BoxGeometry(1, 1, 1), Array.isArray(src.material) ? src.material[0] : src.material);
+            mesh.name = name;
+            mesh.castShadow = src.castShadow;
+            mesh.receiveShadow = src.receiveShadow;
+            appInstance.scene.add(mesh);
+            return mesh;
+        }
+
+        function placeSurfaceScreenBox(name, sizeX, sizeY, sizeZ, cx, cy, cz) {
+            let box = ensureSurfaceScreenBox(name, "Integrated wall_doorway post.0");
+            if (!box)
+                return;
+            box.visible = true;
+            box.scale.set(sizeX, sizeZ, sizeY);
+            setObjTransform(name, "position", cx, cy, cz, false);
+        }
+
+        function enableSurfaceScreens() {
+            if (!SURFACE_SCREEN_ENABLED || !isCalistaConfigurator)
+                return;
+            let sides = [["Left", leftSpecs], ["Right", rightSpecs]];
+            for (let s = 0; s < sides.length; s++) {
+                let side = sides[s][0];
+                let specs = sides[s][1];
+                let spec = specs.surfaceScreen;
+                let rootName = "SurfaceScreen_" + side;
+                let boxName = rootName + "_Box";
+                let railNames = [rootName + "_Rail_0", rootName + "_Rail_1"];
+                if (!spec) {
+                    changeVis(rootName, false);
+                    changeVis(boxName, false);
+                    changeVis(railNames[0], false);
+                    changeVis(railNames[1], false);
+                    continue;
+                }
+                let geo = SURFACE_SCREEN_SIDES[side];
+                let span = specs.optionSpacing[0];       // daylight between the posts (wall -> front post on a wall-mounted side)
+                let centerY = specs.optionCenterPos[0];
+                let box = SURFACE_SCREEN_BOX;
+                let rail = SURFACE_SCREEN_RAIL;
+
+                // Joren 2026-09-29: the whole frame stays INSIDE the Calista. Outer faces of cassette and rails are flush
+                // with the beam / post outer face (x = +-W/2), the parts extend inward from there. Rails stand inside the
+                // daylight against the post (or wall) faces, the fabric runs between them, the cassette spans the daylight.
+                let outerX = geo.sign * (conservatoryWidth / 2 + SURFACE_SCREEN_GAP);
+                let inward = -geo.sign;
+                let y0 = centerY - span / 2;
+                let y1 = centerY + span / 2;
+                let railY = [y0 + rail.width / 2, y1 - rail.width / 2];
+                let fabricW = span - 2 * rail.width;
+
+                // Cassette height: under the beam (top = beam underside), top flush with the beam top, or on the beam.
+                let boxTop = gutterHeight;
+                if (SURFACE_SCREEN_BOX_PLACEMENT == "beamTop")
+                    boxTop = totalHeight;
+                else if (SURFACE_SCREEN_BOX_PLACEMENT == "onBeam")
+                    boxTop = totalHeight + box.height;
+                let boxBottom = boxTop - box.height;
+                placeSurfaceScreenBox(boxName, box.depth, span, box.height,
+                    outerX + inward * box.depth / 2, centerY, boxBottom + box.height / 2);
+
+                // Guide rails: floor -> cassette underside.
+                let railH = boxBottom;
+                for (let r = 0; r < 2; r++)
+                    placeSurfaceScreenBox(railNames[r], rail.depth, rail.width, railH,
+                        outerX + inward * rail.depth / 2, railY[r], railH / 2);
+
+                // Roll + fabric + bottom bar between the rails, fabric just inside the outer face, roll behind it
+                // (the clone's rotation maps its cassette depth inward); roll centre at the cassette centre.
+                let originZ = boxBottom + box.height / 2 + SURFACE_SCREEN_ROLL_BELOW_ORIGIN;
+                let root = ensureSurfaceScreenClone("Horizontal_Gutter_Front_Vertical sunblind_standalone", rootName);
+                if (!root)
+                    continue;
+                root.traverse(function (o) { o.visible = true; });
+                setObjTransform(rootName, "rotation", 0, 0, geo.rot, false);
+                setObjTransform(rootName, "position", outerX, centerY, originZ, false);
+                setMorphFactor(rootName, "Width", (fabricW - 1) / 100);
+                setMorphFactor(rootName, "Height", (originZ - SURFACE_SCREEN_BAR_CLEARANCE) / 100);
+                setMorphFactor(rootName, "Opening", 0);
+                setMorphFactor(rootName, "MotorSide", (String(spec.motor || "").toLowerCase().indexOf("left") >= 0) ? 1 : 0);
+
+                let hexArr = spec.hexArr || [];
+                let hex1 = hexArr[0] || "FFFFFF";
+                let colors = [hex1, hexArr[1] || hex1, hexArr[2] || hex1].map(function (h) { return new v3d.Color(parseInt("0x" + h)); });
+                ["ScreenFabricStandalone", "ScreenFabricFront_round"].forEach(function (m) {
+                    let matName = m + "_" + rootName;
+                    for (let c = 0; c < 3; c++)
+                        setMaterialColor(matName, "Color " + (c + 1), colors[c].r, colors[c].g, colors[c].b, "");
+                });
+                setMaterialValue("ScreenFabricFront_round_" + rootName, "Scale", fabricW);
+            }
+        }
+        //=== END SURFACE SCREEN
+
         function enableCalistaStructure() {
             //left,right,front,rear
-            if (!isHorizontalRoof)
-                return;
+            //if (!isHorizontalRoof)
+            //return;
 
             //Posts
             setObjTransform("Horizontal_Corner_Post_Front_Left", "position", conservatoryWidth / 2, conservatoryDepth, 0, false);
@@ -4166,13 +4986,13 @@ function createPL(v3d = window.v3d) {
 
             setMorphFactor("Horizontal_Corner_Post_Front_Left", 'Height', (((totalHeight) - 1) / 99));
             setMorphFactor("Horizontal_Corner_Post_Front_Right", 'Height', (((totalHeight) - 1) / 99));
-            setMorphFactor("Horizontal_Corner_Post_Rear_Left", 'Height', (((totalHeight) - 1) / 99));
-            setMorphFactor("Horizontal_Corner_Post_Rear_Right", 'Height', (((totalHeight) - 1) / 99));
+            setMorphFactor("Horizontal_Corner_Post_Rear_Left", 'Height', (((totalHeight) - 1) / 99)); setMorphFactor("Horizontal_Corner_Gutter_Corner_Rear_Left", 'Height', (((totalHeight) - 1) / 99));
+            setMorphFactor("Horizontal_Corner_Post_Rear_Right", 'Height', (((totalHeight) - 1) / 99)); setMorphFactor("Horizontal_Corner_Gutter_Corner_Rear_Right", 'Height', (((totalHeight) - 1) / 99));
 
             changeVis("Horizontal_Corner_Post_Front_Left", true);
             changeVis("Horizontal_Corner_Post_Front_Right", true);
-            changeVis("Horizontal_Corner_Post_Rear_Left", true);
-            changeVis("Horizontal_Corner_Post_Rear_Right", true);
+            changeVis("Horizontal_Corner_Post_Rear_Left", isFreestanding); changeVis("Horizontal_Corner_Gutter_Corner_Rear_Left", !isFreestanding);
+            changeVis("Horizontal_Corner_Post_Rear_Right", isFreestanding); changeVis("Horizontal_Corner_Gutter_Corner_Rear_Right", !isFreestanding);
 
             enableHorizontalVerandaPostAccessories();
             enableHorizontalVerandaPostSupports();
@@ -4195,6 +5015,7 @@ function createPL(v3d = window.v3d) {
 
             enableHorizontalVerandaCrownbeamAccessories();
             calculatePolePos();
+            enableIntermediatePosts();
         }
 
         function enableRoof() {
@@ -4206,6 +5027,10 @@ function createPL(v3d = window.v3d) {
             let position = conservatoryWidth / 2 - 0.11 - 0.04;
             if (roofSpecs == null)
                 return;
+
+            let lightBrightness = 0;
+            anyLedStripOrSpotVisible = false;
+
             for (let i = 0; roofSpecs[0].rafter.length > i; i++) {
                 let selection = 0;
                 if (selectedRoofRafterIndex == i)
@@ -4246,9 +5071,14 @@ function createPL(v3d = window.v3d) {
                 }
                 changeVis(horizontalRoofDivisionObjectCache[i][selection][0], true);
 
-                if (roofSpecs[0].rafter[i].ledStrip)
+                if (roofSpecs[0].rafter[i].ledStrip) {
                     changeVis(horizontalRoofDivisionObjectCache[i][selection][2], true);
+                    anyLedStripOrSpotVisible = true;
+                    lightBrightness += 2.5;
+                }
                 else if (roofSpecs[0].rafter[i].ledSpot.length) {
+                    anyLedStripOrSpotVisible = true;
+
                     let depthPos = 0;
 
                     setObjTransform(horizontalRoofDivisionObjectCache[i][selection][1], 'position', position, conservatoryDepth / 2, totalHeight, false);
@@ -4263,11 +5093,26 @@ function createPL(v3d = window.v3d) {
 
                         setObjTransform(horizontalRoofDivisionObjectCache[i][selection][4][j], 'position', position, depthPos, totalHeight, false);
                         changeVis(horizontalRoofDivisionObjectCache[i][selection][4][j], true);
+                        lightBrightness += 0.5;
                     }
                 }
                 else
                     changeVis(horizontalRoofDivisionObjectCache[i][selection][3], true);
             }
+
+            setObjTransform("Spot", "position", 0, conservatoryDepth / 2, totalHeight - 0.2, false);
+
+            if (anyLedStripOrSpotVisible == true) {
+                lightIntensity("Spot", 6 + lightBrightness);
+                changeVis("Spot", true);
+            }
+
+            else {
+                lightIntensity("Spot", 0);
+                changeVis("Spot", false);
+            }
+
+
         }
 
         function deselectGroupedRoofObjects(label, i, x) {
@@ -4587,30 +5432,41 @@ function createPL(v3d = window.v3d) {
                 return 'Text missing!';
             for (let i = 0; i < tree.length; i++) {
                 if (side == 'back') {
-                    if (tree[i].uniqueLabel == 'opti_3')
+                    if (tree[i].uniqueLabel == 'tran_optionsBack')
                         return tree[i].name;
                 }
                 else if (side == 'left') {
-                    if (tree[i].uniqueLabel == 'left')
+                    if (tree[i].uniqueLabel == 'tran_optionsLeft')
                         return tree[i].name;
                 }
                 else if (side == 'right') {
-                    if (tree[i].uniqueLabel == 'opti_2')
+                    if (tree[i].uniqueLabel == 'tran_optionsRight')
                         return tree[i].name;
                 }
                 else if (side == 'front') {
-                    if (tree[i].uniqueLabel == 'opti_1')
+                    if (tree[i].uniqueLabel == 'tran_optionsMiddle')
                         return tree[i].name;
                 }
             }
-            console.log(tree)
+        }
+
+        function enableMotorIndicationODHS() {
+            let recenteredScreenPos = (isODHSConfig) ? 0 : (conservatoryWidth / 2 - (screenWidthList[0] / 1000 / 2));
+
+            for (let x = 0; x < screenWidthList.length; x++) {
+                if (motorCircleHorizontalCache.length <= x) {
+                    motorCircleHorizontalCache[x] = cloneObject("motorPosCircle_HorizontalScreen.0", 50, false, false);
+                    motorImageHorizontalCache[x] = cloneObject("MotorImageHorizontal.0", 50, false, false);
+
+                    setObjTransform(motorImageHorizontalCache[x], 'position', getObjTransform(motorCircleHorizontalCache[x], "position", 'x'), getObjTransform(motorCircleHorizontalCache[x], "position", 'z'), getObjTransform(motorCircleHorizontalCache[x], "position", 'y'), false);
+                    makeParent(motorImageHorizontalCache[x], motorCircleHorizontalCache[x]);
+                }
+                setObjTransform(motorCircleHorizontalCache[x], 'position', ((motorSideList[x] == 'L') ? recenteredScreenPos + screenWidthList[x] / 1000 / 2 - 0.1 : recenteredScreenPos - screenWidthList[x] / 1000 / 2 + 0.1) + screenPositionList[x] / 1000, 0, totalHeight + horizontalScreenMotorOffset, false);
+                changeVis([motorCircleHorizontalCache[x], motorImageHorizontalCache[x]], true);
+            }
         }
 
         function enableInfoText() {
-
-            if (!scope['_3d_optionsLeft'] || !scope['_3d_optionsRight'] || !scope['_3d_optionsMiddle'] || !scope['_3d_optionsBack'])
-                return;
-
             let offset = 0.6;
 
             let leftSpecsL1 = (scope['_3d_optionsLeft']) ? JSON.parse(scope['_3d_optionsLeft']).level_1 : {};
@@ -4618,7 +5474,7 @@ function createPL(v3d = window.v3d) {
             let frontSpecsL1 = (scope['_3d_optionsMiddle']) ? JSON.parse(scope['_3d_optionsMiddle']).level_1 : {};
             let backSpecsL1 = (scope['_3d_optionsBack']) ? JSON.parse(scope['_3d_optionsBack']).level_1 : {};
 
-            //let sideTranslations = (scope["_3d_side_translations"]) ? JSON.parse(scope["_3d_side_translations"]) : {};
+            let sideTranslations = (scope["_3d_side_translations"]) ? JSON.parse(scope["_3d_side_translations"]) : {};
 
             setObjTransform('Text_Back', 'position', '', -offset, '', false);
             setObjTransform('Text_Front', 'position', '', conservatoryDepth + offset, '', false);
@@ -4636,11 +5492,14 @@ function createPL(v3d = window.v3d) {
             updateTextObj('Text_Left', getTextFromTree(tree, 'left')/* sideTranslations.left */);
 
             //Roof screen motor indication
-            if (horizontalScreenEnabled.includes(true)) {
-                changeVis('motorPosCircle_RoofScreen', true);
-                changeVis('MotorImageRoof', true);
-                setObjTransform('motorPosCircle_RoofScreen', 'position', (roofScreenSide == 'L') ? conservatoryWidth / 2 : -conservatoryWidth / 2, 0.05, totalHeight + 0.15, false);
-            }
+            /* if (horizontalScreenEnabled.includes(true)) {
+                changeVis('motorPosCircle_HorizontalScreen.0', true);
+                changeVis('MotorImageHorizontal.0', true);
+                setObjTransform('motorPosCircle_HorizontalScreen.0', 'position', (roofScreenMotorSide == 'L') ? conservatoryWidth / 2 : -conservatoryWidth / 2, 0.05, totalHeight , false);
+            } */
+
+
+
 
             //Side screen motor indication
             if (leftSpecsL1.option == 'optionsScreens') {
@@ -4668,7 +5527,10 @@ function createPL(v3d = window.v3d) {
         }
 
         function updateMotorRotation() {
-            setObjTransform('motorPosCircle_RoofScreen', 'rotation', '', '', cameraZAngle - 90, false);
+            for (let x = 0; x < motorImageHorizontalCache.length; x++) {
+                setObjTransform(motorCircleHorizontalCache[x], 'rotation', '', '', cameraZAngle - 90, false);
+            }
+            //setObjTransform('motorPosCircle_HorizontalScreen.0', 'rotation', '', '', cameraZAngle - 90, false);
             setObjTransform('motorPosCircle_left', 'rotation', '', '', cameraZAngle - 90, false);
             setObjTransform('motorPosCircle_right', 'rotation', '', '', cameraZAngle - 90, false);
             setObjTransform('motorPosCircle_front', 'rotation', '', '', cameraZAngle - 90, false);
@@ -5183,21 +6045,17 @@ function createPL(v3d = window.v3d) {
                     if (glassIncludedClimaglide == 'none') {
                         setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'NoGlass', 0.5);
                         setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'Tint', 0.25);
-                        console.log("no glass", standaloneSpecs.climaglidePanelCache[counter + i * 10]);
                     }
                     else {
                         if (glassIncludedClimaglide == 'glass_Clear') {
-                            console.log("clear glass");
                             setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'NoGlass', 0);
                             setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'Tint', 0);
                         }
                         else if (glassIncludedClimaglide == 'glass_Opal') {
-                            console.log("opal glass");
                             setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'NoGlass', 0);
                             setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'Tint', 0.8);
                         }
                         else {
-                            console.log("tinted glass");
                             setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'NoGlass', 0.5);
                             setMaterialValue(getObjectMaterial(standaloneSpecs.climaglidePanelCache[counter + i * 10], 2, true), 'Tint', 0.25);
                         }
@@ -5245,7 +6103,7 @@ function createPL(v3d = window.v3d) {
             if (!enableAnimation)
                 return;
 
-            singleClickObjList = [/* 'Vertical_Sunblind_Left.000', 'Vertical_Sunblind_Left.001', 'Vertical_Sunblind_Left.002', 'Vertical_Sunblind_Left.003', 'Vertical_Sunblind_Left.004', 'Vertical_Sunblind_Right.000', 'Vertical_Sunblind_Right.001', 'Vertical_Sunblind_Right.002', 'Vertical_Sunblind_Right.003', 'Vertical_Sunblind_Right.004', 'Vertical_Sunblind_Front.000', 'Vertical_Sunblind_Front.001', 'Vertical_Sunblind_Front.002', 'Vertical_Sunblind_Front.003', 'Vertical_Sunblind_Front.004', 'Vertical_Sunblind_Rear.000', 'Vertical_Sunblind_Rear.001', 'Vertical_Sunblind_Rear.002', 'Vertical_Sunblind_Rear.003', 'Vertical_Sunblind_Rear.004', 'Horizontal_Gutter_Left_Vertical sunblind', */ 'Horizontal_Gutter_Left_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Right_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Front_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Rear_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Front_Vertical sunblind_standalone'];
+            singleClickObjList = [/* 'Vertical_Sunblind_Left.000', 'Vertical_Sunblind_Left.001', 'Vertical_Sunblind_Left.002', 'Vertical_Sunblind_Left.003', 'Vertical_Sunblind_Left.004', 'Vertical_Sunblind_Right.000', 'Vertical_Sunblind_Right.001', 'Vertical_Sunblind_Right.002', 'Vertical_Sunblind_Right.003', 'Vertical_Sunblind_Right.004', 'Vertical_Sunblind_Front.000', 'Vertical_Sunblind_Front.001', 'Vertical_Sunblind_Front.002', 'Vertical_Sunblind_Front.003', 'Vertical_Sunblind_Front.004', 'Vertical_Sunblind_Rear.000', 'Vertical_Sunblind_Rear.001', 'Vertical_Sunblind_Rear.002', 'Vertical_Sunblind_Rear.003', 'Vertical_Sunblind_Rear.004', 'Horizontal_Gutter_Left_Vertical sunblind', */ 'Horizontal_Gutter_Left_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Right_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Front_Vertical sunblind', '', '', '', '', 'Horizontal_Gutter_Rear_Vertical sunblind', '', '', '', ''];
 
             for (let i = 0; singleClickObjList[i] != undefined; i++) {
 
@@ -5255,7 +6113,7 @@ function createPL(v3d = window.v3d) {
             }
         }
 
-        function animateHorizontalScreens(side) {
+        function animateHorizontalScreens(object, side) {  /////////////////////////////////
             if (!enableAnimation || isTweeningAnimations[side])
                 return;
 
@@ -5277,15 +6135,17 @@ function createPL(v3d = window.v3d) {
                 });
         }
 
-        function onClickActionHorizontalScreen() {
+        function onClickActionHorizontalScreen() {  ///////////////////////////////////
             if (!enableAnimation)
                 return;
 
-            let singleClickObjList = ['Horizontal screen zipper top.0', 'Horizontal screen non zipper top.0', 'Horizontal screen bottom.0',];
+            let singleClickObjList = ['Horizontal screen zipper top.0', 'Horizontal screen non zipper top.0', 'Horizontal screen bottom.0', 'Horizontal screen bottom.1', 'Horizontal screen bottom.2'];
+            singleClickObjList.push(...horizontalScreenCache);
 
+            console.log("CLICKED OBJECT: ", singleClickObjList)
             for (let i = 0; singleClickObjList[i] != undefined; i++) {
                 registerOnClick(singleClickObjList[i], false, false, [2], function () {
-                    animateHorizontalScreens(i);
+                    animateHorizontalScreens(singleClickObjList[i], i);
                 }, function () { });
             }
         }
@@ -5810,59 +6670,62 @@ function createPL(v3d = window.v3d) {
             return 0;
         }
 
-        function enableHorizontalScreen(horizontalScreenEnabled, horizontalScreenColors) {
 
+        function enableHorizontalScreen(horizontalScreenEnabled, horizontalScreenColors) {
             if (!horizontalScreenEnabled[0] && !horizontalScreenEnabled[1] && !horizontalScreenEnabled[2])
                 return;
 
-            setObjTransform("Horizontal screen zipper top.0", 'position', 0, conservatoryDepth / 2, totalHeight, false);
-            setMorphFactor("Horizontal screen zipper top.0", 'Depth', (conservatoryDepth - 1) / 100);
-            setMorphFactor("Horizontal screen zipper top.0", 'Width', (conservatoryWidth - 1) / 100);
+            //let sideSupportAmount = parseInt(conservatoryDepth - 0.001) + 2;
+            let sideSupportAmount = Math.round(conservatoryDepth - 0.001) + 2;
+            //let horizontalScreenAmount = (screenWidthList)? screenWidthList.length: 1;
+            let recenteredScreenPos = (isODHSConfig) ? 0 : (conservatoryWidth / 2 - (screenWidthList[0] / 1000 / 2));
 
-            setObjTransform("Horizontal screen non zipper top.0", 'position', 0, conservatoryDepth / 2, totalHeight, false);
-            setMorphFactor("Horizontal screen non zipper top.0", 'Depth', (conservatoryDepth - 1) / 100);
-            setMorphFactor("Horizontal screen non zipper top.0", 'Width', (conservatoryWidth - 1) / 100);
+            // ODHS Standalone multipe Screes optoin
+            for (let y = 0; y < screenWidthList.length; y++) {
+                if (horizontalScreenCache.length <= y) {
+                    isHorizontalScreenOpen.push(1);
+                    horizontalScreenCache[y] = [];
+                }
 
-            let sideSupportAmount = parseInt(conservatoryDepth - 0.001) + 2;
-            if (horizontalScreenEnabled[1])
-                sideSupportAmount = parseInt((conservatoryDepth - 0.001) / 1.5) + 2;
-            for (let i = 0; i < sideSupportAmount; i++) {
-                if (horizontalScreenTopSideSupportCache.length <= i)
-                    horizontalScreenTopSideSupportCache[i] = [cloneObject(horizontalScreenTopSideSupportCache[0][0], 50), cloneObject(horizontalScreenTopSideSupportCache[0][1], 50)];
-
-                setObjTransform(horizontalScreenTopSideSupportCache[i][0], 'position', 0, 0.2 + ((conservatoryDepth - 0.4) / (sideSupportAmount - 1) * i), totalHeight, false);
-                setMorphFactor(horizontalScreenTopSideSupportCache[i][0], 'Width', (conservatoryWidth - 1) / 100);
-
-                setObjTransform(horizontalScreenTopSideSupportCache[i][1], 'position', 0, 0.2 + ((conservatoryDepth - 0.4) / (sideSupportAmount - 1) * i), totalHeight, false);
-                setMorphFactor(horizontalScreenTopSideSupportCache[i][1], 'Width', (conservatoryWidth - 1) / 100);
-
-                changeVis(horizontalScreenTopSideSupportCache[i][0], horizontalScreenEnabled[0]);
-                changeVis(horizontalScreenTopSideSupportCache[i][1], horizontalScreenEnabled[1]);
+                // go through all 3 screen types (top zipper, top non zipper, bottom)
+                for (let x = 0; x < horizontalScreenEnabled.length; x++) {
+                    if (horizontalScreenCache[y].length <= x) {
+                        horizontalScreenCache[y][x] = cloneObject(horizontalScreenTypes[x], 50, false, false);
+                    }
+                    setObjTransform(horizontalScreenCache[y][x], 'position', recenteredScreenPos + screenPositionList[y] / 1000, conservatoryDepth / 2, totalHeight, false);
+                    setMorphFactor(horizontalScreenCache[y][x], 'Width', (screenWidthList[y] / 1000 - 1) / 100);
+                    setMorphFactor(horizontalScreenCache[y][x], 'Depth', (conservatoryDepth - 1) / 100);
+                    changeVis(horizontalScreenCache[y][x], horizontalScreenEnabled[x]);
+                    // adapte the screen opening to depth change
+                    if (isHorizontalScreenOpen[y] == 0)
+                        setMorphFactor(horizontalScreenCache[y][x], 'Opening', (conservatoryDepth - 0.27) / 100);
+                    else
+                        setMorphFactor(horizontalScreenCache[y][x], 'Opening', 0);
+                }
             }
 
-            setObjTransform("Horizontal screen bottom.0", 'position', 0, conservatoryDepth / 2, totalHeight, false);
-            setMorphFactor("Horizontal screen bottom.0", 'Depth', (conservatoryDepth - 1 - 2 * getPoleSize('y')) / 100);
-            setMorphFactor("Horizontal screen bottom.0", 'Width', (conservatoryWidth - 1 - 2 * getPoleSize('x')) / 100);
+            // Screen Support
+            for (let x = 0; x < sideSupportAmount; x++) {
+                if (horizontalScreenSupportCache.length <= x)
+                    horizontalScreenSupportCache[x] = [];
 
-            sideSupportAmount = parseInt((conservatoryDepth - 2 * getPoleSize('y')) - 0.001) + 2;
-            for (let i = 1; i < sideSupportAmount; i++) {
-                if (!getObjectByName(horizontalScreenBottomSideSupportCache[i]))
-                    horizontalScreenBottomSideSupportCache[i] = cloneObject(horizontalScreenBottomSideSupportCache[0], 50);
+                for (let y = 0; y < screenWidthList.length; y++) {
+                    if (horizontalScreenSupportCache[x].length <= y)
+                        horizontalScreenSupportCache[x][y] = [];
 
-                setObjTransform(horizontalScreenBottomSideSupportCache[i], 'position', 0, 0.2 + getPoleSize('x') + ((conservatoryDepth - 2 * getPoleSize('x') - 0.4) / (sideSupportAmount - 1) * i), totalHeight, false);
-                setMorphFactor(horizontalScreenBottomSideSupportCache[i], 'Width', (conservatoryWidth - 1 - getPoleSize('x') * 2) / 100);
+                    for (let i = 0; i < horizontalScreenSupport.length; i++) {
+                        if (horizontalScreenSupportCache[x][y].length <= i)
+                            horizontalScreenSupportCache[x][y][i] = cloneObject(horizontalScreenSupport[i], 250, false, false);
 
-                changeVis(horizontalScreenBottomSideSupportCache[i], horizontalScreenEnabled[2]);
+                        setObjTransform(horizontalScreenSupportCache[x][y][i], 'position', recenteredScreenPos + screenPositionList[y] / 1000, 0.2 + getPoleSize('x') + ((conservatoryDepth - 2 * getPoleSize('x') - 0.4) / (sideSupportAmount - 1) * x), totalHeight, false);
+                        setMorphFactor(horizontalScreenSupportCache[x][y][i], 'Width', (screenWidthList[y] / 1000 - 1) / 100);
+                        changeVis(horizontalScreenSupportCache[x][y][i], horizontalScreenEnabled[i]);
+                    }
+                }
             }
+
+            // set Horizontal Screen Color
             setHorizontalScreenColors(horizontalScreenColors);
-            setHorizontalScreenOpening(oldHorizontalScreenOpening[0], 0);
-            setHorizontalScreenOpening(oldHorizontalScreenOpening[1], 1);
-
-            changeVis("Horizontal screen zipper top.0", horizontalScreenEnabled[0]);
-            changeVis("Horizontal screen non zipper top.0", horizontalScreenEnabled[1]);
-            changeVis("Horizontal screen bottom.0", horizontalScreenEnabled[2]);
-
-
 
             function setHorizontalScreenColors(horizontalScreenColors) {
                 let color1 = new v3d.Color(parseInt("0x" + horizontalScreenColors[0])); let color2 = new v3d.Color(parseInt("0x" + horizontalScreenColors[1])); let color3 = new v3d.Color(parseInt("0x" + horizontalScreenColors[2]));
@@ -5879,8 +6742,34 @@ function createPL(v3d = window.v3d) {
                 let color = new v3d.Color(parseInt("0x" + (colorOutside.slice(1))));
                 setMaterialColor("Powdercoat", "RGB", color.r, color.g, color.b, '');
             }
+        }
 
+        function animateHorizontalScreensOnClick() {
+            for (let y = 0; y < horizontalScreenCache.length; y++) {
 
+                /* for (let x = 0; x < horizontalScreenCache.length; x++) { */
+                let animationComplete = true;
+
+                registerOnClick(horizontalScreenCache[y][horizontalScreenEnabled.findIndex(index => index == true)], false, false, [2],
+                    function () {
+                        if (animationComplete)
+                            animateParam((isHorizontalScreenOpen[y] == 1) ? 0 : 1, isHorizontalScreenOpen[y], 1, 'Linear', 'InOut', 0, false,
+                                function () {
+                                    setMorphFactor(horizontalScreenCache[y][horizontalScreenEnabled.findIndex(index => index == true)], 'Opening', (conservatoryDepth - 0.27) / 100 * _pGlob.animateParamUpdate/* isHorizontalScreenOpen[x]  */);
+                                    renderFrame();
+                                    animationComplete = false;
+
+                                }, function () {
+                                    if (isHorizontalScreenOpen[y] < 1)
+                                        isHorizontalScreenOpen[y] = 1;
+                                    else
+                                        isHorizontalScreenOpen[y] = 0;
+
+                                    animationComplete = true;
+                                });
+                    }
+                )
+            }
         }
 
         function overlayImage() {
@@ -5932,12 +6821,27 @@ function createPL(v3d = window.v3d) {
 
         function takeSnapshot() {
             // Single snapshot entry point: position the camera for the active
+            // perspective, then grab the frame 250 ms after it settles.
             cameraPosition(function () {
                 registerSetTimeout(0.25, function () {
                     renderFrame();
                     snapshot(appInstance.renderer.domElement.toDataURL("image/png"), 0);
                 });
             });
+        }
+        function changeWorldLightForLED() {
+            if ((horizontalGutterLight == true || anyLedStripOrSpotVisible == true))
+                lightIntensity("Sun_modern", 0);
+            else
+                lightIntensity("Sun_modern", 4);
+
+
+            if ((horizontalGutterLight == true || anyLedStripOrSpotVisible == true) && environmentEnabled) {
+                setMaterialValue("Verge3D_Environment_World", "Value", 1);
+            }
+            else {
+                setMaterialValue("Verge3D_Environment_World", "Value", 3);
+            }
         }
 
         function tweenCameraToSide(side) {
@@ -5976,7 +6880,7 @@ function createPL(v3d = window.v3d) {
             if (!specs)
                 return 0;
 
-            if (selection == 'optionsL1') {
+            if (JSON.parse(specs).level_1 && selection == 'optionsL1') {
                 if (JSON.parse(specs).level_1.option != "optionsNone")
                     return [JSON.parse(specs).level_1.option, null, null, null, null];
                 if (JSON.parse(specs).level_1.screen)
@@ -5984,8 +6888,9 @@ function createPL(v3d = window.v3d) {
                 if (JSON.parse(specs).level_1.wall)
                     return ["optionsWallPartitions", null, null, null, null];
                 return ["optionsNone", null, null, null, null];
+
             }
-            if (selection == 'optionsL2') {
+            if (JSON.parse(specs).level_2 && selection == 'optionsL2') {
                 if (JSON.parse(specs).level_2.option != "optionsNone")
                     return [JSON.parse(specs).level_2.option, null, null, null, null];
                 if (JSON.parse(specs).level_1.wall)
@@ -5993,6 +6898,12 @@ function createPL(v3d = window.v3d) {
                 return ["optionsNone", null, null, null, null];
             }
 
+            if (selection == "surfaceScreen") {
+                let l2 = JSON.parse(specs).level_2;
+                if (!l2 || l2.option != "optionsScreensSurface" || !l2.screen)
+                    return null;
+                return l2.screen;   // { width, height, motor, hexArr } from the ODVS screen_v_info_out node
+            }
             if (selection == "wallSpecs") {
                 if (JSON.parse(specs).level_1.wall)
                     return JSON.parse(specs).level_1.wall.partitions;
@@ -6015,32 +6926,33 @@ function createPL(v3d = window.v3d) {
                     return true;
                 return false;
             }
-            if (selection == 'screenInCrown') {
+            if (JSON.parse(specs).level_1 && selection == 'screenInCrown') {
                 if (JSON.parse(specs).level_1.screen)
                     return true;
                 return false;
             }
-            if (selection == "screenHexColor1") {
+            if (JSON.parse(specs).level_1 && selection == "screenHexColor1") {
                 if (!JSON.parse(specs).level_1.screen)
                     return ["FFFFFF", null, null, null, null];
                 return [JSON.parse(specs).level_1.screen.hexArr[0], null, null, null, null];
             }
-            if (selection == "screenHexColor2") {
+            if (JSON.parse(specs).level_1 && selection == "screenHexColor2") {
                 if (!JSON.parse(specs).level_1.screen)
                     return ["FFFFFF", null, null, null, null];
                 return [JSON.parse(specs).level_1.screen.hexArr[1], null, null, null, null];
             }
-            if (selection == "screenHexColor3") {
+            if (JSON.parse(specs).level_1 && selection == "screenHexColor3") {
                 if (!JSON.parse(specs).level_1.screen)
                     return ["FFFFFF", null, null, null, null];
                 return [JSON.parse(specs).level_1.screen.hexArr[2], null, null, null, null];
             }
-            if (selection == "glassColor") {
+            if (JSON.parse(specs).level_1 && selection == "glassColor") {
                 if (!JSON.parse(specs).level_2.climaglide || !(JSON.parse(specs).level_2.climaglide.partitions[0].glassColor))
                     return ['glass_Clear', null, null, null, null];
                 return [JSON.parse(specs).level_2.climaglide.partitions[0].glassColor, null, null, null, null];
             }
         }
+
 
         function enableScene() {
             clearScene();
@@ -6049,8 +6961,10 @@ function createPL(v3d = window.v3d) {
             calistaConfigurator();
             horizontalScreenConfigurator();
             enableVerticalScreenStandalone();
-
+            animateHorizontalScreensOnClick();
             updateMotorRotation();
+            changeWorldLightForLED();
+
             //console.log(scope["_tree"])
         }
 
@@ -6065,10 +6979,37 @@ function createPL(v3d = window.v3d) {
             renderFrame();
         }
 
+        function wallConfigurator() {
+            if (!isWallConfigurator)
+                return;
+
+            enablePartitionWalls();
+            renderFrame();
+        }
+
+        function calistaConfigurator() {
+            if (isWallConfigurator || isClimaglideConfigurator || !isCalistaConfigurator)
+                return;
+
+            enableRoof();
+            enableCalistaStructure();
+            enableIntegratedVerticalScreen();
+            enablePartitionWalls();
+            enableClimaglide(climaglideOpeningDirection);
+            enableSurfaceScreens();
+            frameColors();
+            enableHorizontalScreen(horizontalScreenEnabled, horizontalScreenColors);
+            enableMotorIndicationODHS();
+            enableMeasurements();
+            enableEnvironment(environmentEnabled);
+            enableInfoText();
+        }
+
         function horizontalScreenConfigurator() {
-            if (!isHorizontalScreenConfigurator)
+            if (!isODHSConfig)
                 return;
             enableHorizontalScreen(horizontalScreenEnabled, horizontalScreenColors);
+            enableMotorIndicationODHS();
             renderFrame();
         }
 
@@ -6077,7 +7018,7 @@ function createPL(v3d = window.v3d) {
                 return;
 
             changeVis("Horizontal_Gutter_Front_Vertical sunblind_standalone", true);
-            setMorphFactor("Horizontal_Gutter_Front_Vertical sunblind_standalone", 'Width', (verticalScreenStandalone.width / 1000 - 1) / 100);      // 
+            setMorphFactor("Horizontal_Gutter_Front_Vertical sunblind_standalone", 'Width', (verticalScreenStandalone.width / 1000 - 1) / 100);// 
             if (verticalScreenStandalone.motor == 'left')
                 setMorphFactor("Horizontal_Gutter_Front_Vertical sunblind_standalone", 'Correction', (verticalScreenStandalone.width / 1000 - 1) / 100); // should be the same value as the width above ^
             else
@@ -6102,36 +7043,10 @@ function createPL(v3d = window.v3d) {
 
             setMaterialValue("ScreenFabricFront_round", "Scale", verticalScreenStandalone.width / 1000);
 
-
             let color = new v3d.Color(parseInt("0x" + (colorOutside.slice(1))));
             setMaterialColor("Powdercoat", "RGB", color.r, color.g, color.b, '');
-
         }
 
-        function wallConfigurator() {
-            if (!isWallConfigurator)
-                return;
-
-            enablePartitionWalls();
-            renderFrame();
-        }
-
-        function calistaConfigurator() {
-            if (isWallConfigurator || isClimaglideConfigurator || isHorizontalScreenConfigurator || isVerticalScreenConfigurator)
-                return;
-
-            console.log("/////////// calista is working/////");
-            enableRoof();
-            enableCalistaStructure();
-            enableIntegratedVerticalScreen();
-            enablePartitionWalls();
-            enableClimaglide(climaglideOpeningDirection);
-            frameColors();
-            enableHorizontalScreen(horizontalScreenEnabled, horizontalScreenColors);
-            enableMeasurements();
-            enableEnvironment(environmentEnabled);
-            enableInfoText();
-        }
         function resetMeasurementColor() {
             setMaterialValue("Measurements_Width", "Value", 0);
             setMaterialValue("Measurements_Depth", "Value", 0);
@@ -6140,6 +7055,7 @@ function createPL(v3d = window.v3d) {
 
         /// tree
         let tree = scope['_tree'];
+
 
         //Environment control
         let enableAnimation = true;
@@ -6150,6 +7066,9 @@ function createPL(v3d = window.v3d) {
         let disableAdditionaWalls = false;
         let pixelRatioSet = [1.6, 1.6];
         let disableOverlayImage = false;
+
+        // roof screen motor side
+        let roofScreenMotorSide = scope['_3d_screen_H_motor'];
 
         if (scope['_3d_optionsRoof'] && scope['_3d_optionsRoof'] != "undefined")
             isCalistaConfigurator = true;
@@ -6172,6 +7091,53 @@ function createPL(v3d = window.v3d) {
             isVerticalScreenConfigurator = true;
             verticalScreenStandalone = JSON.parse(scope['_3d_screen_V']);
         }
+
+        if (scope['_3d_screen_H_widths'] != undefined) {
+            screenWidthList = JSON.parse(scope['_3d_screen_H_widths']);
+        }
+        else {
+            conservatoryWidth = scope['_3d_conservatoryWidthBmm'];
+            screenWidthList = [conservatoryWidth];
+        }
+
+        // check if it's a HODS (horizontal screen) configurator
+        console.log("Screens Width: ", scope['_3d_screen_H_widths'])
+        if (scope['_3d_screen_H_widths'] != undefined && !isCalistaConfigurator)
+            isODHSConfig = true;
+        else
+            isODHSConfig = false;
+
+        //screenWidthList = [2600, 2000, 2880, 1505]; //scope['_3d_screen_H_widths'];
+
+        if (scope['_3d_screen_H_motorsides'] != undefined)
+            motorSideList = /* ["R", "L", "R", "R"]; // */JSON.parse(scope['_3d_screen_H_motorsides']);
+        else
+            motorSideList = [roofScreenMotorSide];
+
+        let screenPos = 0;
+        screenPositionList = [];
+
+        for (let i = 0; i < screenWidthList.length; i++) {
+            if (scope['_3d_screen_H_widths'] == undefined) {
+                screenPositionList = [0];
+                break;
+            }
+            if (i > 0) {
+                screenPos -= (screenWidthList[i] / 2 + screenWidthList[i - 1] / 2);
+            }
+            screenPositionList.push(screenPos);
+        }
+
+        /* for (let i = 0; i < screenWidthList.length; i++) {
+            if (scope['_3d_screen_H_widths'] == undefined)
+                screenPositionList = [0];
+            else
+                if (i > 0)
+                    screenPos += (screenWidthList[i] / 2 + screenWidthList[i - 1] / 2);
+            screenPositionList.push(screenPos)
+        } */
+
+        console.log("motors: ", motorSideList, "widths: ", screenWidthList)
 
         //Construction type
         isFreestanding = false;
@@ -6196,16 +7162,33 @@ function createPL(v3d = window.v3d) {
         frontSpecs.poleAmount = scope['_3d_polesFrontAmount'];
         rearSpecs.poleAmount = scope['_3d_polesBackAmount'];
 
-        // roof screen motor side
-        let roofScreenSide = scope['_3d_screen_H_motor'];
+        tussenpaalSpec = null;
+        if (scope['_3d_tussenpalen'] && scope['_3d_tussenpalen'] != "undefined") {
+            try {
+                tussenpaalSpec = (typeof scope['_3d_tussenpalen'] == "string") ? JSON.parse(scope['_3d_tussenpalen']) : scope['_3d_tussenpalen'];
+            }
+            catch (e) {
+                console.log("tussenpalen: could not parse _3d_tussenpalen", e);
+            }
+        }
+
+
 
         //Options
         horizontalScreenEnabled = [scope['_3d_screen_H_location'] == "horizontalScreenPositionAboveRoof" && scope['_3d_screen_H_type'] == "screenType_Zip", scope['_3d_screen_H_location'] == "horizontalScreenPositionAboveRoof" && scope['_3d_screen_H_type'] == "screenType_NonZip", scope['_3d_screen_H_location'] == "horizontalScreenPositionUnderRoof"]; //[top,bottom]
 
+        if (horizontalScreenEnabled)
+            if (horizontalScreenEnabled[0] || horizontalScreenEnabled[0] == true)
+                horizontalScreenMotorOffset = 0.1;
+        if (horizontalScreenEnabled[1] || horizontalScreenEnabled[1] == true)
+            horizontalScreenMotorOffset = 0.1;
+        if (horizontalScreenEnabled[2] || horizontalScreenEnabled[2] == true)
+            horizontalScreenMotorOffset = -0.3;
+
+
+
         if (scope['_3d_screen_H_canvas'])
             horizontalScreenColors = JSON.parse(scope['_3d_screen_H_canvas']);
-
-
 
         let climaglideEnabled = [false, false, [false, false, false, false, false], [false, false, false, false, false]];
         let climaglidePanelOverhang = 0.03;
@@ -6226,22 +7209,28 @@ function createPL(v3d = window.v3d) {
         leftSpecs.optionsL3 = [getSideSpecs(scope['_3d_optionsLeft'], 'ledStripInCrown'), getSideSpecs(scope['_3d_optionsLeft'], 'screenInCrown')];
         leftSpecs.wallSpecs = getSideSpecs(scope['_3d_optionsLeft'], "wallSpecs");
         leftSpecs.getVerticalScreenColors(getSideSpecs(scope['_3d_optionsLeft'], 'screenHexColor1'), getSideSpecs(scope['_3d_optionsLeft'], 'screenHexColor2'), getSideSpecs(scope['_3d_optionsLeft'], 'screenHexColor3'));
-        leftSpecs.calculateOptionSpacing(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof);
-        leftSpecs.calculateOptionCenterPos(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof);
+        // #35113: wall-mounted Calista has no post at the wall end (y = 0), so the side option runs from the wall
+        // to the front post: pass poleInWay = false there (existing one-post branch, depth - 1 post).
+        leftSpecs.calculateOptionSpacing(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof && isFreestanding);
+        leftSpecs.calculateOptionCenterPos(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof && isFreestanding);
         leftSpecs.getClimaglideOpeningDirection(getSideSpecs(scope['_3d_optionsLeft'], 'climaglidePanelOpeningDirection'));
         leftSpecs.getClimaglidePanelAmount(getSideSpecs(scope['_3d_optionsLeft'], 'climaglidePanelAmount'));
         leftSpecs.getGlassColor(getSideSpecs(scope['_3d_optionsLeft'], 'glassColor'));
+        leftSpecs.surfaceScreen = getSideSpecs(scope['_3d_optionsLeft'], 'surfaceScreen');
 
         rightSpecs.optionsL1 = getSideSpecs(scope['_3d_optionsRight'], 'optionsL1');
         rightSpecs.optionsL2 = getSideSpecs(scope['_3d_optionsRight'], 'optionsL2');
         rightSpecs.optionsL3 = [getSideSpecs(scope['_3d_optionsRight'], 'ledStripInCrown'), getSideSpecs(scope['_3d_optionsRight'], 'screenInCrown')];
         rightSpecs.wallSpecs = getSideSpecs(scope['_3d_optionsRight'], "wallSpecs");
         rightSpecs.getVerticalScreenColors(getSideSpecs(scope['_3d_optionsRight'], 'screenHexColor1'), getSideSpecs(scope['_3d_optionsRight'], 'screenHexColor2'), getSideSpecs(scope['_3d_optionsRight'], 'screenHexColor3'));
-        rightSpecs.calculateOptionSpacing(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof);
-        rightSpecs.calculateOptionCenterPos(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof);
+        // #35113: wall-mounted Calista has no post at the wall end (y = 0), so the side option runs from the wall
+        // to the front post: pass poleInWay = false there (existing one-post branch, depth - 1 post).
+        rightSpecs.calculateOptionSpacing(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof && isFreestanding);
+        rightSpecs.calculateOptionCenterPos(getPoleSize('x'), getPoleSize('y'), isHorizontalRoof && isFreestanding);
         rightSpecs.getClimaglideOpeningDirection(getSideSpecs(scope['_3d_optionsRight'], 'climaglidePanelOpeningDirection'));
         rightSpecs.getClimaglidePanelAmount(getSideSpecs(scope['_3d_optionsRight'], 'climaglidePanelAmount'));
         rightSpecs.getGlassColor(getSideSpecs(scope['_3d_optionsRight'], 'glassColor'));
+        rightSpecs.surfaceScreen = getSideSpecs(scope['_3d_optionsRight'], 'surfaceScreen');
 
         frontSpecs.optionsL1 = getSideSpecs(scope['_3d_optionsMiddle'], 'optionsL1');
         frontSpecs.optionsL2 = getSideSpecs(scope['_3d_optionsMiddle'], 'optionsL2');
@@ -6277,11 +7266,8 @@ function createPL(v3d = window.v3d) {
 
             totalHeight = Math.round(gutterHeight * 100 + 26) / 100;
 
-
             ///////// Glass
             //glassIncluded = JSON.parse(scope['_3d_fixedWall_out']).glassIncluded;
-
-            console.log("glassIncluded SIDES: " + glassIncluded);
 
             standaloneSpecs.optionsL1 = ['optionsWallPartitions', null, null, null, null];
             standaloneSpecs.wallSpecs = JSON.parse(scope['_3d_fixedWall_out']).partitions;
@@ -6291,7 +7277,6 @@ function createPL(v3d = window.v3d) {
 
         if (isClimaglideConfigurator) {
             let specs = (JSON.parse(scope['_3d_climaglide'])).partitions[0];
-            console.log(specs)
 
             glassIncludedClimaglide = specs.glassColor;
 
@@ -6329,7 +7314,7 @@ function createPL(v3d = window.v3d) {
             additionalWallsSpecs[2] = true;
         if (scope['_3d_walls'] == "additionOneWall" || scope['_3d_walls'] == "additionOneWallOneSideLeft" || scope['_3d_walls'] == "additionOneWallTwoSide" || scope['_3d_walls'] == "additionFourWalls" || scope['_3d_walls'] == "additionOneWallOneSideRight" || scope['_3d_walls'] == "additionBack" || scope['_3d_walls'] == "additionFrontBack")
             additionalWallsSpecs[3] = true;
-
+        //additionalWallsSpecs = [true, true, true, true]//.//hardcoded
         glassIncluded = scope['_3d_glassIncluded'];
 
         let ssrPerspective = scope['_perspective'];
@@ -6343,7 +7328,7 @@ function createPL(v3d = window.v3d) {
 
         if (!sceneIsInitialized) {
 
-            changeVis( "Spot", true);
+            //changeVis(["Sun_modern", "Sun_classic"], false);
             for (let i = 0; i <= 100; i++) {
                 setTimeout(() => {
                     getJSFunction('getLoadPercentageFrom3D')(i);
@@ -6355,7 +7340,7 @@ function createPL(v3d = window.v3d) {
                 appInstance.disableRendering(0);
             });
             onClickActionVerticalScreen();
-            onClickActionHorizontalScreen();
+            //onClickActionHorizontalScreen();
             //cameraPosition();
             initializeDragActions();
 
