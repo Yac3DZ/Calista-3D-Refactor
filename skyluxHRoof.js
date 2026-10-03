@@ -1102,20 +1102,32 @@ function createPL(v3d = window.v3d) {
         }
 
         function getObjectByName(objName) {
-            var objFound;
-            var runTime = _pGlob !== undefined;
-            objFound = runTime ? _pGlob.objCache[objName] : null;
+            let objFound = null;
+            const isID = v3d.MathUtils.checkUUID ? v3d.MathUtils.checkUUID(objName) : false;
+            const pGlobAvailable = _pGlob !== undefined;
 
-            if (objFound && objFound.name === objName)
+            if (pGlobAvailable)
+                objFound = _pGlob.objCache.get(objName);
+
+            if (objFound && (isID ? objFound.uuid === objName : objFound.name === objName))
                 return objFound;
-            appInstance.scene.traverse(function (obj) {
-                if (!objFound && notIgnoredObj(obj) && (obj.name == objName)) {
-                    objFound = obj;
-                    if (runTime) {
-                        _pGlob.objCache[objName] = objFound;
-                    }
+
+            function findValidByName(obj, objName) {
+                if ((isID ? obj.uuid === objName : obj.name === objName) && isObjectWorthProcessing(obj))
+                    return obj;
+                for (let i = 0; i < obj.children.length; i++) {
+                    const child = obj.children[i];
+                    const object = findValidByName(child, objName);
+                    if (object !== null)
+                        return object;
                 }
-            });
+                return null;
+            }
+            if (appInstance.scene) {
+                objFound = findValidByName(appInstance.scene, objName);
+                if (objFound && pGlobAvailable)
+                    _pGlob.objCache.set(objName, objFound);
+            }
             return objFound;
         }
 
