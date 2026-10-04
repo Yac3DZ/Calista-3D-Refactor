@@ -1452,13 +1452,14 @@ function createPL(v3d = window.v3d) {
             var info = _pGlob.objDragOverInfoByBlock[parentDragOverBlockId];
             if (!info) return;
 
-            var coordSystem = getCoordSystem();
+            var coordSystem = getSceneCoordSystem();
 
             for (var i = 0; i < objNames.length; i++) {
                 var obj = getObjectByName(objNames[i]);
                 if (!obj) {
                     continue;
                 }
+
                 if (mode == "X" || mode == "Y" || mode == "Z") {
                     var objPos = obj.getWorldPosition(_pGlob.vec3Tmp);
                     objPos.project(camera);
@@ -1470,12 +1471,15 @@ function createPL(v3d = window.v3d) {
 
                     if (coordSystem == 'Z_UP_RIGHT')
                         var axis = _pGlob.vec3Tmp.copy(mode == "X" ? _pGlob.AXIS_X
-                            : (mode == "Y" ? _pGlob.AXIS_Z : _pGlob.AXIS_Y));
+                                : (mode == "Y" ? _pGlob.AXIS_Z : _pGlob.AXIS_Y));
                     else
                         var axis = _pGlob.vec3Tmp.copy(mode == "X" ? _pGlob.AXIS_X
-                            : (mode == "Y" ? _pGlob.AXIS_Y : _pGlob.AXIS_Z));
+                                : (mode == "Y" ? _pGlob.AXIS_Y : _pGlob.AXIS_Z));
 
                     var quat = _pGlob.quatTmp.setFromAxisAngle(axis, vecTo.angle() - vecFrom.angle());
+
+                    // a rotation axis pointing backwards (i.e. co-directionally
+                    // aligned with the view vector) should have inverted rotation
                     var objToCalcSpace = isParentSpace && obj.parent ? obj.parent : obj;
                     axis.applyQuaternion(objToCalcSpace.getWorldQuaternion(_pGlob.quatTmp2));
 
@@ -1483,12 +1487,13 @@ function createPL(v3d = window.v3d) {
                     if (viewVec.dot(axis) > 0) {
                         quat.conjugate();
                     }
+
                     if (isParentSpace) {
                         obj.quaternion.premultiply(quat);
                     } else {
                         obj.quaternion.multiply(quat);
                     }
-                    obj.updateMatrixWorld(true);
+                    obj.updateWorldMatrix(false, true);
                 }
             }
         }
@@ -1773,17 +1778,35 @@ function createPL(v3d = window.v3d) {
             return accum.filter(name => name !== '');
         }
 
-        function setMorphFactor(objName, targetName, factor) {
-            if (objName && targetName) {
-                var obj = getObjectByName(objName);
-                if (obj) {
-                    obj.resolveMultiMaterial().forEach(function (objR) {
-                        if (objR.morphTargetDictionary && targetName in objR.morphTargetDictionary) {
-                            var idx = objR.morphTargetDictionary[targetName];
-                            objR.morphTargetInfluences[idx] = Number(factor);
+        function setMorphFactor(objSelector, targetName, factor) {
+            if (!targetName)
+                return;
+
+            const objNames = retrieveObjectNames(objSelector);
+
+            for (let i = 0; i < objNames.length; i++) {
+                const objName = objNames[i]
+                if (!objName)
+                    continue;
+                let obj = getObjectByName(objName);
+                if (!obj)
+                    continue;
+
+                obj.resolveMultiMaterial().forEach(function(objR) {
+                    if (objR.morphTargetDictionary && targetName in objR.morphTargetDictionary) {
+                        const idx = objR.morphTargetDictionary[targetName];
+                        objR.morphTargetInfluences[idx] = Number(factor);
+                    }
+                });
+
+                obj.resolveMultiMaterial().forEach(function(objR) {
+                    objR.getAuxClippingMeshes().forEach(function(objC) {
+                        if (objC.morphTargetDictionary && targetName in objC.morphTargetDictionary) {
+                            const idx = objC.morphTargetDictionary[targetName];
+                            objC.morphTargetInfluences[idx] = Number(factor);
                         }
                     });
-                }
+                });
             }
         }
 
@@ -2660,10 +2683,9 @@ function createPL(v3d = window.v3d) {
                 return function () { };
         }
 
-        function changeVis(objNames, bool) {
-            objNames = retrieveObjectNames(objNames);
-            if (!objNames)
-                return;
+        function changeVis(objSelector, bool) {
+            var objNames = retrieveObjectNames(objSelector);
+
             for (var i = 0; i < objNames.length; i++) {
                 var objName = objNames[i]
                 if (!objName)
@@ -2672,6 +2694,9 @@ function createPL(v3d = window.v3d) {
                 if (!obj)
                     continue;
                 obj.visible = bool;
+                obj.resolveMultiMaterial().forEach(function(objR) {
+                    objR.visible = bool;
+                });
             }
         }
 
@@ -2698,7 +2723,7 @@ function createPL(v3d = window.v3d) {
                 if (!targetObj)
                     return;
             } else {
-                obj.traverseAncestors(function (ancObj) {
+                obj.traverseAncestors(function(ancObj) {
                     if (ancObj.type == "Scene")
                         targetObj = ancObj;
                 });
@@ -2709,7 +2734,7 @@ function createPL(v3d = window.v3d) {
             matOffset.decompose(obj.position, obj.quaternion, obj.scale);
             targetObj.add(obj);
 
-            obj.updateMatrixWorld(true);
+            obj.updateWorldMatrix(false, true);
         }
 
         function setScreenScale(notMoving) {
