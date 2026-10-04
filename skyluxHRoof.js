@@ -2805,14 +2805,9 @@ function createPL(v3d = window.v3d) {
 
             //changeVis("ScaleCube", true);
 
-            // Move the camera into place; SSR snaps instantly, live tweens.
-            // On finish: zoom-to-fit (fire-and-forget, never gates the snapshot), then hand off.
-            tweenCamera("Camerapos", "Cameratarget", isSSR ? 0 : 1, function () {
-                if (!isSSR) enableMeasurements(true);
-                zoomCamera("ScaleCube", isSSR ? 0 : 0.5);
-                renderFrame();
-                if (onFinish) onFinish();
-            });
+            let animTime = (sceneIsInitialized) ? 1 : 0;
+            
+            fitCameraToObjects("ScaleCube", { cameraPos: "Camerapos", cameraTarget: "Cameratarget" }, { duration: animTime, onDone: function () { if (onFinish) onFinish(); console.log("FIT TO CAMERA")} });
         }
 
         function clearScene() {
@@ -7375,7 +7370,6 @@ function createPL(v3d = window.v3d) {
         }
 
         // check if it's a HODS (horizontal screen) configurator
-        console.log("Screens Width: ", scope['_3d_screen_H_widths'])
         if (scope['_3d_screen_H_widths'] != undefined && !isCalistaConfigurator)
             isODHSConfig = true;
         else
@@ -7410,8 +7404,6 @@ function createPL(v3d = window.v3d) {
                     screenPos += (screenWidthList[i] / 2 + screenWidthList[i - 1] / 2);
             screenPositionList.push(screenPos)
         } */
-
-        console.log("motors: ", motorSideList, "widths: ", screenWidthList)
 
         //Construction type
         isFreestanding = false;
