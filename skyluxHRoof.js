@@ -1471,10 +1471,10 @@ function createPL(v3d = window.v3d) {
 
                     if (coordSystem == 'Z_UP_RIGHT')
                         var axis = _pGlob.vec3Tmp.copy(mode == "X" ? _pGlob.AXIS_X
-                                : (mode == "Y" ? _pGlob.AXIS_Z : _pGlob.AXIS_Y));
+                            : (mode == "Y" ? _pGlob.AXIS_Z : _pGlob.AXIS_Y));
                     else
                         var axis = _pGlob.vec3Tmp.copy(mode == "X" ? _pGlob.AXIS_X
-                                : (mode == "Y" ? _pGlob.AXIS_Y : _pGlob.AXIS_Z));
+                            : (mode == "Y" ? _pGlob.AXIS_Y : _pGlob.AXIS_Z));
 
                     var quat = _pGlob.quatTmp.setFromAxisAngle(axis, vecTo.angle() - vecFrom.angle());
 
@@ -1752,7 +1752,7 @@ function createPL(v3d = window.v3d) {
         }
 
 
-        
+
 
         function retrieveObjectNamesAccum(currObjNames, namesAccum) {
             if (typeof currObjNames === 'string') {
@@ -1792,15 +1792,15 @@ function createPL(v3d = window.v3d) {
                 if (!obj)
                     continue;
 
-                obj.resolveMultiMaterial().forEach(function(objR) {
+                obj.resolveMultiMaterial().forEach(function (objR) {
                     if (objR.morphTargetDictionary && targetName in objR.morphTargetDictionary) {
                         const idx = objR.morphTargetDictionary[targetName];
                         objR.morphTargetInfluences[idx] = Number(factor);
                     }
                 });
 
-                obj.resolveMultiMaterial().forEach(function(objR) {
-                    objR.getAuxClippingMeshes().forEach(function(objC) {
+                obj.resolveMultiMaterial().forEach(function (objR) {
+                    objR.getAuxClippingMeshes().forEach(function (objC) {
                         if (objC.morphTargetDictionary && targetName in objC.morphTargetDictionary) {
                             const idx = objC.morphTargetDictionary[targetName];
                             objC.morphTargetInfluences[idx] = Number(factor);
@@ -2694,7 +2694,7 @@ function createPL(v3d = window.v3d) {
                 if (!obj)
                     continue;
                 obj.visible = bool;
-                obj.resolveMultiMaterial().forEach(function(objR) {
+                obj.resolveMultiMaterial().forEach(function (objR) {
                     objR.visible = bool;
                 });
             }
@@ -2723,7 +2723,7 @@ function createPL(v3d = window.v3d) {
                 if (!targetObj)
                     return;
             } else {
-                obj.traverseAncestors(function(ancObj) {
+                obj.traverseAncestors(function (ancObj) {
                     if (ancObj.type == "Scene")
                         targetObj = ancObj;
                 });
@@ -2735,100 +2735,6 @@ function createPL(v3d = window.v3d) {
             targetObj.add(obj);
 
             obj.updateWorldMatrix(false, true);
-        }
-
-        // Sorts transparent meshes by the camera distance to the centre of their own
-        // geometry (morph-aware) instead of the object origin. Call once after the scene loads.
-        function enableTransparencySorting() {
-            const renderer = appInstance.renderer;
-            const camPos = new v3d.Vector3();
-            const tmpVec = new v3d.Vector3();
-            const geomCache = new WeakMap(); // geometry -> { center, morphDeltas }
-            const distCache = new WeakMap(); // object -> { frame, dist }
-            let currFrame = -1;
-
-            function vertexCenter(attr, dest) {
-                dest.set(0, 0, 0);
-                const count = attr.count;
-                for (let i = 0; i < count; i++) {
-                    dest.x += attr.getX(i);
-                    dest.y += attr.getY(i);
-                    dest.z += attr.getZ(i);
-                }
-                return count ? dest.divideScalar(count) : dest;
-            }
-
-            function getGeomInfo(geometry) {
-                let info = geomCache.get(geometry);
-                if (info)
-                    return info;
-
-                const center = vertexCenter(geometry.attributes.position, new v3d.Vector3());
-                const morphDeltas = [];
-                const morphPos = geometry.morphAttributes.position;
-                if (morphPos) {
-                    for (let i = 0; i < morphPos.length; i++) {
-                        const delta = vertexCenter(morphPos[i], new v3d.Vector3());
-                        if (!geometry.morphTargetsRelative)
-                            delta.sub(center);
-                        morphDeltas.push(delta);
-                    }
-                }
-                info = { center: center, morphDeltas: morphDeltas };
-                geomCache.set(geometry, info);
-                return info;
-            }
-
-            function getCamDist(item) {
-                const obj = item.object;
-                let entry = distCache.get(obj);
-                if (entry && entry.frame === currFrame)
-                    return entry.dist;
-
-                const info = getGeomInfo(item.geometry);
-                tmpVec.copy(info.center);
-
-                // follow morphs (e.g. the 'Width' / 'Height' shape keys) so the centre moves with the glass
-                const influences = obj.morphTargetInfluences;
-                if (influences) {
-                    for (let i = 0; i < influences.length; i++) {
-                        if (influences[i] && info.morphDeltas[i])
-                            tmpVec.addScaledVector(info.morphDeltas[i], influences[i]);
-                    }
-                }
-
-                tmpVec.applyMatrix4(obj.matrixWorld);
-                const dist = tmpVec.distanceToSquared(camPos);
-
-                if (!entry) {
-                    entry = {};
-                    distCache.set(obj, entry);
-                }
-                entry.frame = currFrame;
-                entry.dist = dist;
-                return dist;
-            }
-
-            renderer.setTransparentSort(function (a, b) {
-                if (renderer.info.render.frame !== currFrame) {
-                    currFrame = renderer.info.render.frame;
-                    const camera = appInstance.getCamera(true);
-                    if (camera)
-                        camera.getWorldPosition(camPos);
-                }
-
-                // manual overrides still win
-                if (a.groupOrder !== b.groupOrder)
-                    return a.groupOrder - b.groupOrder;
-                if (a.renderOrder !== b.renderOrder)
-                    return a.renderOrder - b.renderOrder;
-
-                const distA = getCamDist(a);
-                const distB = getCamDist(b);
-                if (distA !== distB)
-                    return distB - distA; // far to near
-                return a.id - b.id;
-            });
         }
 
         function setScreenScale(notMoving) {
@@ -2925,8 +2831,8 @@ function createPL(v3d = window.v3d) {
             //changeVis("ScaleCube", true);
 
             let animTime = (sceneIsInitialized) ? 1 : 0;
-            
-            fitCameraToObjects("ScaleCube", { cameraPos: "Camerapos", cameraTarget: "Cameratarget" }, { duration: animTime, onDone: function () { if (onFinish) onFinish();} });
+
+            fitCameraToObjects("ScaleCube", { cameraPos: "Camerapos", cameraTarget: "Cameratarget" }, { duration: animTime, onDone: function () { if (onFinish) onFinish(); } });
         }
 
         function clearScene() {
@@ -4871,10 +4777,10 @@ function createPL(v3d = window.v3d) {
         var TUSSENPAAL_MEAS_LINE = 0.19;             // m, mesh constant: solid line sits this far below the origin
         var TUSSENPAAL_MEAS_ZFLOOR = 0.003;          // m above the floor: the bar lies FLAT on the ground (Thiebout 2026-09-30)
         var TUSSENPAAL_MEAS_OUT0 = 0.19;             // m outside the pole centre plane for the first bar's ORIGIN (Thiebout 2026-09-30:
-                                                     // "move it a bit more outward"); the solid line lies TICK further out
+        // "move it a bit more outward"); the solid line lies TICK further out
         var TUSSENPAAL_MEAS_OUT_STEP = 0.12;         // m further out for every next bar of the same side
         var TUSSENPAAL_MEAS_TICK = 0.06;             // m from the bar origin to its solid line: short tick stubs, no extension lines
-                                                     // back to the pole (they read as arrows overshooting the pole)
+        // back to the pole (they read as arrows overshooting the pole)
         var TUSSENPAAL_MEAS_TEXT_SCALE = 1.8;        // label size vs the vendor's dimension labels
         var TUSSENPAAL_MEAS_COLOR = [0.95, 0.55, 0.05];   // amber, bar + labels, so they stand out from the structure and the floor
         var TUSSENPAAL_MEAS_TEXT_Z = 0.04;           // m above the floor for the upright label on the solid line
@@ -5838,7 +5744,7 @@ function createPL(v3d = window.v3d) {
             }
         }
 
-        function enableMotorIndicationODHS() {
+        function enableMotorIndicationODHS() { // missing 3d objects "MotorImageHorizontal.0" ,  "motorPosCircle_HorizontalScreen.0"
             let recenteredScreenPos = (isODHSConfig) ? 0 : (conservatoryWidth / 2 - (screenWidthList[0] / 1000 / 2));
 
             for (let x = 0; x < screenWidthList.length; x++) {
@@ -7729,7 +7635,6 @@ function createPL(v3d = window.v3d) {
             //onClickActionHorizontalScreen();
             //cameraPosition();
             initializeDragActions();
-            enableTransparencySorting();
 
             initObjectPicking(function (intersects, downEvent) {
                 _pGlob.objDragOverInfoGlobal.forEach(function (el) {
