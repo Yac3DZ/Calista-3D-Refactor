@@ -2832,7 +2832,7 @@ function createPL(v3d = window.v3d) {
 
             let animTime = (sceneIsInitialized) ? 1 : 0;
             
-            fitCameraToObjects("ScaleCube", { cameraPos: "Camerapos", cameraTarget: "Cameratarget" }, { duration: animTime, onDone: function () { if (onFinish) onFinish(); console.log("FIT TO CAMERA")} });
+            fitCameraToObjects("ScaleCube", { cameraPos: "Camerapos", cameraTarget: "Cameratarget" }, { duration: animTime, onDone: function () { if (onFinish) onFinish();} });
         }
 
         function clearScene() {
@@ -7259,6 +7259,7 @@ function createPL(v3d = window.v3d) {
             updateMotorRotation();
             changeWorldLightForLED();
 
+            changeVis("Gizmo", true);
             //console.log(scope["_tree"])
         }
 
