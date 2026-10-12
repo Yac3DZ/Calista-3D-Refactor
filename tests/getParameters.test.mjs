@@ -1,6 +1,6 @@
 // Tests for the scope ingestion of skyluxHRoof.js (parseSceneParameters / resolveScope).
 // No Verge3D needed. Run from the JS folder:
-//     node --test tests/
+//     node --test        (from the JS folder)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
