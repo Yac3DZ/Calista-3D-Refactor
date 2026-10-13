@@ -12,11 +12,12 @@
 //   2 · createPL               Verge3D puzzle globals + state that SURVIVES PL.init re-runs
 //   3 · VERGE3D 4.13 HELPERS   #region — puzzle library, newest API only; grown milestone by milestone
 //   4 · FOUNDATIONS            anchors, ObjectPool, SceneComponent base class, render gate
-//   5 · OUTPUT + HANDLERS      snapshot, screenshot, handleButtons / handleEvents / handleFocus / handleValue
-//   6 · ORCHESTRATION          enableScene → getParameters → enableScene3D
-//   7 · ENTRY                  PL.init
-//   8 · INGESTION              #region — pure functions, no Verge3D: scope → sceneParameters (validated,
-//                              defaulted). Called from getParameters() in section 6.
+//   5 · CAMERA                 fitCameraToObjects (zoom-fit), cameraPosition, look at the origin while empty
+//   6 · OUTPUT + HANDLERS      snapshot, screenshot, handleButtons / handleEvents / handleFocus / handleValue
+//   7 · ORCHESTRATION          enableScene → getParameters → enableScene3D
+//   8 · ENTRY                  PL.init
+//   9 · INGESTION              #region — pure functions, no Verge3D: scope → sceneParameters (validated,
+//                              defaulted). Called from getParameters() in section 7.
 //   DEV_SCOPES                 #region — bundled example scopes
 //
 // CONVENTIONS
@@ -743,6 +744,7 @@ function createPL(v3d = window.v3d) {
         constructor() {
             this.anchor = createAnchor();
             this.pools = new Map();
+            this.isVisible = false;
         }
 
         // `key` lets one template feed several independent pools (e.g. the same mesh in two roles).
@@ -756,6 +758,7 @@ function createPL(v3d = window.v3d) {
         }
 
         beginBuild() {
+            this.isVisible = true;
             changeVis(this.anchor, true);
             this.pools.forEach(pool => pool.reset());
         }
@@ -771,6 +774,7 @@ function createPL(v3d = window.v3d) {
         }
 
         hide() {
+            this.isVisible = false;
             changeVis(this.anchor, false);
         }
     }
@@ -823,7 +827,145 @@ function createPL(v3d = window.v3d) {
 
 
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 5 · RENDERING OUTPUT + CONFIGURATOR HANDLERS
+    // 5 · CAMERA — framing through fitCameraToObjects (zoom-fit on the objects' bounds), never through
+    //     hand-placed camera positions. Per-opening framing on step changes comes with the handlers. [Logic #9]
+    //══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // The camera looks along Camerapos → Cameratarget (two empties in the GLB) when it frames the build.
+    const CAMERA_DIRECTION = { cameraPos: 'Camerapos', cameraTarget: 'Cameratarget' };
+    // What the camera looks at while nothing is built: the scene origin, where the Gizmo sits (Blender X/Y/Z).
+    const SCENE_ORIGIN = [0, 0, 0];
+
+    /**
+     * Frame the given objects: the camera moves along `direction` until they fill the view.
+     *   targets    object name, object, or a list of them
+     *   direction  [x, y, z] (scene coordinates) or { cameraPos, cameraTarget } (object names); default: current view
+     *   options    { margin = 1, duration = 0 (s), onDone }
+     * Ported from brustor.js (identical to the legacy Calista version); only the coordinate helpers use their
+     * Verge3D 4.13 names (getSceneCoordSystem / transformCoordsSpace), and an orthographic zoom is set directly
+     * instead of tweened (Calista's camera is perspective).
+     */
+    function fitCameraToObjects(targets, direction, options = {}) {
+        if (options === null || typeof options !== "object") {
+            if (options !== undefined) console.warn("[fitCameraToObjects] 'options' must be an object, got:", options, "— using defaults");
+            options = {};
+        }
+        let { margin = 1, duration = 0, onDone = function () { } } = options;
+        if (typeof margin !== "number" || !isFinite(margin) || margin <= 0) { console.warn("[fitCameraToObjects] 'margin' must be a positive number, got:", options.margin, "— using 1"); margin = 1; }
+        if (typeof duration !== "number" || !isFinite(duration) || duration < 0) { console.warn("[fitCameraToObjects] 'duration' must be a number ≥ 0, got:", options.duration, "— using 0"); duration = 0; }
+        if (typeof onDone !== "function") { console.warn("[fitCameraToObjects] 'onDone' must be a function, got:", options.onDone, "— ignoring (no action)"); onDone = function () { }; }
+
+        if (targets == null) { console.warn("[fitCameraToObjects] 'targets' is missing — nothing to frame"); return; }
+        const objects = [];
+        (Array.isArray(targets) ? targets : [targets]).forEach(function (entry) {
+            if (entry == null) { console.warn("[fitCameraToObjects] skipping a null/undefined target entry"); return; }
+            const obj = (typeof entry === "string") ? getObjectByName(entry) : entry;
+            if (!obj) { console.warn("[fitCameraToObjects] target not found / invalid:", entry); return; }
+            objects.push(obj);
+        });
+        if (!objects.length) { console.warn("[fitCameraToObjects] nothing to frame — no valid objects resolved from 'targets'"); return; }
+
+        const camera = appInstance.getCamera();
+        if (!camera) { console.warn("[fitCameraToObjects] no active camera — appInstance.getCamera() returned nothing"); return; }
+
+        const fitPos = new v3d.Vector3(), center = new v3d.Vector3(), fitZoom = [camera.zoom];
+        v3d.CameraUtils.calcCameraZoomToObjectsParams(camera, objects, fitPos, center, fitZoom);
+        const fitDistance = fitPos.distanceTo(center) * margin;
+
+        const cameraDirection = new v3d.Vector3();
+        if (direction != null) {
+            if (direction.cameraPos != null || direction.cameraTarget != null) {
+                if (direction.cameraPos == null || direction.cameraTarget == null) {
+                    console.warn("[fitCameraToObjects] direction needs BOTH cameraPos and cameraTarget; got:", direction, "— using current view");
+                } else {
+                    const posObj = (typeof direction.cameraPos === "string") ? getObjectByName(direction.cameraPos) : direction.cameraPos;
+                    const targetObj = (typeof direction.cameraTarget === "string") ? getObjectByName(direction.cameraTarget) : direction.cameraTarget;
+                    if (!posObj) console.warn("[fitCameraToObjects] direction.cameraPos not found:", direction.cameraPos);
+                    if (!targetObj) console.warn("[fitCameraToObjects] direction.cameraTarget not found:", direction.cameraTarget);
+                    if (posObj && targetObj) {
+                        cameraDirection.copy(posObj.getWorldPosition(new v3d.Vector3())).sub(targetObj.getWorldPosition(new v3d.Vector3()));
+                        if (cameraDirection.lengthSq() === 0) console.warn("[fitCameraToObjects] cameraPos and cameraTarget share a position — no direction; using current view");
+                    }
+                }
+            } else {
+                const vec = Array.isArray(direction) ? direction : (direction.vector ?? direction);
+                const x = vec?.[0] ?? vec?.x, y = vec?.[1] ?? vec?.y, z = vec?.[2] ?? vec?.z;
+                if (![x, y, z].every(component => typeof component === "number" && isFinite(component))) {
+                    console.warn("[fitCameraToObjects] direction must be [x,y,z] / { vector } / Vector3 (3 finite numbers) or { cameraPos, cameraTarget }; got:", direction, "— using current view");
+                } else {
+                    cameraDirection.set(x, y, z);
+                    cameraDirection.copy(transformCoordsSpace(cameraDirection, getSceneCoordSystem(), 'Y_UP_RIGHT'));
+                }
+            }
+        }
+        if (cameraDirection.lengthSq() === 0) cameraDirection.copy(fitPos).sub(center);
+        cameraDirection.normalize();
+
+        const cameraPos = center.clone().add(cameraDirection.multiplyScalar(fitDistance));
+        const orthoZoom = camera.isOrthographicCamera ? fitZoom[0] / margin : null;
+        const setOrthoZoom = function () { camera.zoom = orthoZoom; camera.updateProjectionMatrix(); };
+
+        if (appInstance.controls && appInstance.controls.tween) {
+            if (!appInstance.controls.inTween) {
+                if (orthoZoom != null) setOrthoZoom();
+                appInstance.controls.tween(cameraPos, center, Math.max(0, duration), onDone);
+            }
+        } else {
+            if (orthoZoom != null) setOrthoZoom();
+            if (camera.parent) camera.parent.worldToLocal(cameraPos);
+            camera.position.copy(cameraPos);
+            camera.lookAt(center);
+            onDone();
+        }
+    }
+
+    // Turn the camera towards a point (scene coordinates, metres) without moving it.
+    function cameraLookAt(point, options = {}) {
+        const { duration = 0, onDone = function () { } } = options;
+        const camera = appInstance.getCamera();
+        if (!camera)
+            return;
+        const target = transformCoordsSpace(new v3d.Vector3().fromArray(point), getSceneCoordSystem(), 'Y_UP_RIGHT');
+        const position = camera.getWorldPosition(new v3d.Vector3());
+
+        if (appInstance.controls && appInstance.controls.tween) {
+            if (!appInstance.controls.inTween)
+                appInstance.controls.tween(position, target, Math.max(0, duration), onDone);
+        } else {
+            camera.lookAt(target);
+            onDone();
+        }
+    }
+
+    // Every object the current build shows: the in-use clones of every visible instance.
+    function getFramingTargets() {
+        const names = [];
+        [structureSectionCache, sideOpeningCache].forEach(cache => cache.forEach(component => {
+            if (!component || !component.isVisible)
+                return;
+            component.pools.forEach(pool => names.push(...pool.names.slice(0, pool.used)));
+        }));
+        return names.filter(Boolean);
+    }
+
+    /**
+     * The single entry point for positioning the camera (same name as in brustor.js and the legacy file).
+     * Frames the whole build; while nothing is built, looks at the scene origin instead.
+     *   options    { duration = 0 (s), margin = 1, onDone } — passed on to fitCameraToObjects / cameraLookAt.
+     *              New options (SSR perspectives, per-opening framing, …) are added here as named fields,
+     *              so existing calls keep working.
+     */
+    function cameraPosition(options = {}) {
+        renderFrame((options.duration ?? 0) + 0.5);
+        const targets = getFramingTargets();
+        if (targets.length)
+            fitCameraToObjects(targets, CAMERA_DIRECTION, options);
+        else
+            cameraLookAt(SCENE_ORIGIN, options);
+    }
+
+
+    //══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // 6 · RENDERING OUTPUT + CONFIGURATOR HANDLERS
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     // The configurator waits for this snapshot after every build (quote PDF / SSR).
     function takeSnapshot(snapshot) {
@@ -859,7 +1001,9 @@ function createPL(v3d = window.v3d) {
             case 'DOWNLOAD_IMAGE':
                 generateScreenshot();
                 break;
-            case 'RELOAD_3D':           // camera framing [M9]
+            case 'RELOAD_3D':
+                cameraPosition({ duration: 1 });
+                break;
             case 'SHOW_MEASUREMENTS':   // measurement module [M9]
             case 'SHOW_ENVIRONMENT':    // environment from its own GLB [M10]
             case 'SHOW_ANIMATION':
@@ -880,7 +1024,7 @@ function createPL(v3d = window.v3d) {
 
 
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 6 · ORCHESTRATION
+    // 7 · ORCHESTRATION
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     // The single ingestion point: nothing below this function reads scope[] directly.
     function getParameters(scope) {
@@ -932,7 +1076,7 @@ function createPL(v3d = window.v3d) {
 
 
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 7 · ENTRY — PL.init runs on load and again on every configurator change
+    // 8 · ENTRY — PL.init runs on load and again on every configurator change
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     PL.init = function (app, scope, snapshot) {
         // A new app (scene reloaded) invalidates every cached clone and anchor: start from scratch.
@@ -959,6 +1103,8 @@ function createPL(v3d = window.v3d) {
             SceneComponent: SceneComponent,
             hideLeftovers: hideLeftovers,
             renderFrame: renderFrame,
+            cameraPosition: cameraPosition,
+            fitCameraToObjects: fitCameraToObjects,
             getObjectByName: getObjectByName,
             setObjTransform: setObjTransform,
             getObjTransform: getObjTransform,
@@ -966,6 +1112,9 @@ function createPL(v3d = window.v3d) {
 
         setCameraOptions();
         enableScene(scope);
+        // Frame on the first load only: later changes keep the user's view. RELOAD_3D reframes on demand.
+        if (!sceneIsInitialized)
+            cameraPosition();
         takeSnapshot(snapshot);
 
         if (!sceneIsInitialized) {
@@ -983,9 +1132,9 @@ function createPL(v3d = window.v3d) {
 }
 
 
-//#region 8 · INGESTION
+//#region 9 · INGESTION
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
-// 8 · INGESTION — the only place scope[] is read
+// 9 · INGESTION — the only place scope[] is read
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Every field is read guarded (validate → default), so one malformed value can never abort the build.
 // Problems are collected in sceneParameters.issues and logged once, instead of throwing.

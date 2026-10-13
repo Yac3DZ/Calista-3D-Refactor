@@ -55,9 +55,17 @@ function makeApp({ anchorTemplate = true } = {}) {
     const template = new v3d.Mesh(new v3d.BoxGeometry(0.15, 2.5, 0.15), new v3d.MeshBasicMaterial());
     template.name = 'PoleTemplate';
     holder.add(template);
+    // camera + direction empties as in the GLB (three.js Y-up coordinates)
     const camera = new v3d.PerspectiveCamera();
     camera.name = 'Camera';
+    camera.position.set(0, 10, -15);
     scene.add(camera);
+    for (const [name, position] of [['Camerapos', [0, 10, -15]], ['Cameratarget', [-1.4, 10, 0]]]) {
+        const empty = new v3d.Object3D();
+        empty.name = name;
+        empty.position.fromArray(position);
+        scene.add(empty);
+    }
     scene.updateMatrixWorld(true);
 
     const calls = { enable: 0, disable: 0, snapshots: 0, load: [] };
@@ -251,4 +259,72 @@ test('without empty.0 in the GLB: one warning, no crash, objects still built (un
     });
     assert.equal(warnings.filter(w => w.includes('empty.0')).length, 1);
     names.forEach(name => assert.equal(v3d.PL.debug.getObjectByName(name).parent, env.scene));
+});
+
+// ── camera ───────────────────────────────────────────────────────────────────────────────────────────────
+const lookDirection = camera => {
+    camera.updateMatrixWorld(true);
+    return camera.getWorldDirection(new v3d.Vector3());
+};
+const directionTo = (camera, point) => point.clone().sub(camera.getWorldPosition(new v3d.Vector3())).normalize();
+const assertLooksAt = (camera, point, label) => {
+    const angle = lookDirection(camera).angleTo(directionTo(camera, point));
+    assert.ok(angle < 1e-4, `${label}: off by ${angle} rad`);
+};
+
+test('camera: the first load looks at the scene origin while nothing is built', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp();
+    const before = env.camera.position.clone();
+    init(env);
+    assertLooksAt(env.camera, new v3d.Vector3(0, 0, 0), 'looks at the origin');
+    assert.ok(env.camera.position.equals(before), 'the camera does not move, it only turns');
+});
+
+test('camera: a configurator change keeps the user view', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp();
+    init(env);
+    env.camera.lookAt(5, 5, 5);
+    const quaternion = env.camera.quaternion.clone();
+    init(env);
+    assert.ok(env.camera.quaternion.equals(quaternion));
+});
+
+test('camera: RELOAD_3D zoom-fits what is built, along Camerapos → Cameratarget', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp();
+    init(env);
+    const { SceneComponent, sideOpeningCache, setObjTransform, getObjectByName } = v3d.PL.debug;
+    const component = new SceneComponent();
+    quiet(() => {
+        component.beginBuild();
+        component.placeAnchor(2000, 1000, 0, 0);
+        const pole = component.pool('PoleTemplate').next();
+        setObjTransform(pole, false, 'position', [0, 0, 1.25], false);
+        component.endBuild();
+    });
+    sideOpeningCache.push(component);
+    quiet(() => v3d.PL.procedures.handleButtons({ type: 'RELOAD_3D' }));
+
+    const pole = getObjectByName(component.pools.get('PoleTemplate').names[0]);
+    const center = new v3d.Box3().setFromObject(pole).getCenter(new v3d.Vector3());
+    assertLooksAt(env.camera, center, 'looks at the built object');
+    const expected = new v3d.Vector3(-1.4, 10, 0).sub(new v3d.Vector3(0, 10, -15)).normalize();  // Camerapos → Cameratarget
+    assert.ok(lookDirection(env.camera).angleTo(expected) < 1e-4, 'looks along Camerapos → Cameratarget');
+    assert.ok(env.camera.position.distanceTo(center) > 0.5, 'backs off to fit the object');
+});
+
+test('camera: with orbit controls, framing goes through controls.tween', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp();
+    const tweens = [];
+    env.app.controls = { inTween: false, tween: (position, target, duration, onDone) => tweens.push({ position, target, duration, onDone }) };
+    init(env);
+    assert.equal(tweens.length, 1);
+    assert.ok(tweens[0].target.equals(new v3d.Vector3(0, 0, 0)), 'tweens the orbit target to the origin');
+    assert.ok(tweens[0].position.equals(env.camera.position), 'keeps the camera where it is');
+    quiet(() => v3d.PL.procedures.handleButtons({ type: 'RELOAD_3D' }));
+    assert.equal(tweens.length, 2);
+    assert.equal(tweens[1].duration, 1);
 });
