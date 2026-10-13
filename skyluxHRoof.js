@@ -11,7 +11,7 @@
 //   1 · SCENE GEOMETRY         pure helpers: mm → m, side rotation, side-local → world
 //   2 · createPL               Verge3D puzzle globals + state that SURVIVES PL.init re-runs
 //   3 · VERGE3D 4.13 HELPERS   #region — puzzle library, newest API only; grown milestone by milestone
-//   4 · FOUNDATIONS            handles, ObjectPool, SceneComponent base class, render gate
+//   4 · FOUNDATIONS            anchors, ObjectPool, SceneComponent base class, render gate
 //   5 · OUTPUT + HANDLERS      snapshot, screenshot, handleButtons / handleEvents / handleFocus / handleValue
 //   6 · ORCHESTRATION          enableScene → getParameters → enableScene3D
 //   7 · ENTRY                  PL.init
@@ -26,10 +26,10 @@
 //     once in createPL; PL.init only passes the current app + scope and runs a build.
 //   - Coordinates (from the contract datums): the back edge of the structure sits centred on X at Y = 0,
 //     Y+ faces forward (front side at Y = depth), +X points to the LEFT side. Each side runs left → right as
-//     seen from outside, starting at its first pole's outer corner. A side's handle gets Z rotation
+//     seen from outside, starting at its first pole's outer corner. A side's anchor gets Z rotation
 //     90 − rotation, so on every side local +X runs along the side and local +Y points into the structure.
 //   - Every object belongs to an instance: it is a clone from that instance's ObjectPool, parented to the
-//     instance's handle, and positioned in the handle's local frame.
+//     instance's anchor, and positioned in the anchor's local frame.
 //   - Legacy logic (standalone wall / Climaglide / screen configurators) stays in skyluxHRoof_legacy.js for now.
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -55,14 +55,14 @@ function mm(value) {
 
 // sideSpecs.rotation is a compass-style heading: the side runs along (sin r, cos r) in world X/Y
 // (left 0 → +Y, rear 90 → +X, right 180 → −Y, front 270 → −X). Verge3D/Blender rotate counter-clockwise
-// from +X, so a side's handle gets Z rotation 90 − r. With it every side shares ONE local frame:
+// from +X, so a side's anchor gets Z rotation 90 − r. With it every side shares ONE local frame:
 // local +X runs along the side (left → right seen from outside), local +Y points INTO the structure.
 // That single frame is what removes every `if (side == 'Left')` branch.
-function sideHandleRotationZ(rotation) {
+function sideAnchorRotationZ(rotation) {
     return 90 - rotation;
 }
 
-// World X/Y (mm) of a point given in a side's local frame (mm). Mirrors what the handle transform does;
+// World X/Y (mm) of a point given in a side's local frame (mm). Mirrors what the anchor transform does;
 // used for checks and for anything placed in world space (measurements, camera framing).
 function sideLocalToWorld(sideSpecs, localX, localY) {
     const r = sideSpecs.rotation * Math.PI / 180;
@@ -662,19 +662,28 @@ function createPL(v3d = window.v3d) {
         console.warn('[Calista 3D] ' + message);
     }
 
-    // A handle is a plain empty that carries an instance's transform; every object of the instance is
-    // parented to it. The GLB has no empty template to clone, and an empty has no geometry or material, so
-    // creating one directly is equivalent to cloning one.
-    function createEmpty(baseName) {
-        const empty = new v3d.Object3D();
-        empty.name = generateUniqueObjectName(baseName);
-        appInstance.scene.add(empty);
-        _pGlob.objCache.set(empty.name, empty);
-        return empty.name;
+    // An anchor is an empty that carries an instance's transform; every object of the instance is parented to
+    // it. It sits at the contract's "handle point": a structure section's bounding-box centre, a side opening's
+    // start point. (Called "anchor" in code so it can't be confused with the Climaglide door handle flag.)
+    // Anchors are clones of this empty in the GLB. Blender: Plain Axes at the origin, rotation 0, scale 1,
+    // no parent, no children.
+    const ANCHOR_TEMPLATE = 'empty.0';
+
+    // Null when empty.0 is missing from the GLB (warned once): the instance's objects then stay unparented at
+    // the scene origin — misplaced, but the configurator keeps working.
+    function createAnchor() {
+        const name = cloneObject(ANCHOR_TEMPLATE, false, false);
+        if (!name) {
+            warnOnce('anchor template "' + ANCHOR_TEMPLATE + '" is not in the GLB; objects cannot be placed');
+            return null;
+        }
+        // placeAnchor() sets position and rotation on every build; scale is reset in case the template's isn't 1.
+        setObjTransform(name, false, 'scale', [1, 1, 1], false);
+        return name;
     }
 
     /**
-     * Clones of one template, parented to one handle, reused across rebuilds.
+     * Clones of one template, parented to one anchor, reused across rebuilds.
      * Per build: reset() → next() for every object needed → hideUnused(). Clones are created only when a
      * build needs more than any build before it, so a configuration change never re-clones.
      */
@@ -714,8 +723,8 @@ function createPL(v3d = window.v3d) {
                 changeVis(this.names[i], false);
         }
 
-        // makeParent keeps the clone's WORLD transform, so under a rotated handle its local rotation would
-        // compensate the handle's. Reset it: position at the handle's origin, the template's own rotation and
+        // makeParent keeps the clone's WORLD transform, so under a rotated anchor its local rotation would
+        // compensate the anchor's. Reset it: position at the anchor's origin, the template's own rotation and
         // scale. Builders then only set what differs (position, and rotation where a template isn't authored
         // in the side's local frame).
         resetLocalTransform(name) {
@@ -726,13 +735,13 @@ function createPL(v3d = window.v3d) {
     }
 
     /**
-     * Base of StructureSection and SideOpening: one handle + the object pools hanging off it.
+     * Base of StructureSection and SideOpening: one anchor + the object pools hanging off it.
      * A subclass's enable(spec) calls beginBuild(), places its objects through pool(...).next(), then
-     * endBuild(). hide() hides the whole instance through its handle (leftovers when the contract shrinks).
+     * endBuild(). hide() hides the whole instance through its anchor (leftovers when the contract shrinks).
      */
     class SceneComponent {
-        constructor(handleBaseName) {
-            this.handle = createEmpty(handleBaseName);
+        constructor() {
+            this.anchor = createAnchor();
             this.pools = new Map();
         }
 
@@ -740,14 +749,14 @@ function createPL(v3d = window.v3d) {
         pool(templateName, key = templateName) {
             let pool = this.pools.get(key);
             if (!pool) {
-                pool = new ObjectPool(templateName, this.handle);
+                pool = new ObjectPool(templateName, this.anchor);
                 this.pools.set(key, pool);
             }
             return pool;
         }
 
         beginBuild() {
-            changeVis(this.handle, true);
+            changeVis(this.anchor, true);
             this.pools.forEach(pool => pool.reset());
         }
 
@@ -756,13 +765,13 @@ function createPL(v3d = window.v3d) {
         }
 
         // Position in mm (contract units), rotation in degrees around Z.
-        placeHandle(xMm, yMm, zMm, rotationZ) {
-            setObjTransform(this.handle, false, 'position', [mm(xMm), mm(yMm), mm(zMm)], false);
-            setObjTransform(this.handle, false, 'rotation', [0, 0, rotationZ], false);
+        placeAnchor(xMm, yMm, zMm, rotationZ) {
+            setObjTransform(this.anchor, false, 'position', [mm(xMm), mm(yMm), mm(zMm)], false);
+            setObjTransform(this.anchor, false, 'rotation', [0, 0, rotationZ], false);
         }
 
         hide() {
-            changeVis(this.handle, false);
+            changeVis(this.anchor, false);
         }
     }
 
@@ -912,7 +921,7 @@ function createPL(v3d = window.v3d) {
         hideLeftovers(sideOpeningCache, sceneParameters.sideOpenings.length);
     }
 
-    // Hide every object of the GLB; each instance shows only the objects it uses. Handles are re-shown by
+    // Hide every object of the GLB; each instance shows only the objects it uses. Anchors are re-shown by
     // their instance's beginBuild().
     function clearScene() {
         const objList = getAllObjectNames();
@@ -926,7 +935,7 @@ function createPL(v3d = window.v3d) {
     // 7 · ENTRY — PL.init runs on load and again on every configurator change
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     PL.init = function (app, scope, snapshot) {
-        // A new app (scene reloaded) invalidates every cached clone and handle: start from scratch.
+        // A new app (scene reloaded) invalidates every cached clone and anchor: start from scratch.
         if (app !== appInstance) {
             appInstance = app;
             _pGlob.objCache.clear();
@@ -941,7 +950,7 @@ function createPL(v3d = window.v3d) {
         this.procedures["handleFocus"] = handleFocus;
         this.procedures["handleValue"] = handleValue;
 
-        // Inspection handle for the browser console and the Node smoke tests, e.g.
+        // Inspection hook for the browser console and the Node smoke tests, e.g.
         // v3d.PL.debug.sceneParameters(). Nothing in the configurator relies on it.
         PL.debug = {
             sceneParameters: () => sceneParameters,
@@ -2304,4 +2313,4 @@ const DEV_SCOPES = {
 };
 //#endregion
 
-export { createPL, parseSceneParameters, resolveScope, mm, sideHandleRotationZ, sideLocalToWorld, DEV_SCOPES };
+export { createPL, parseSceneParameters, resolveScope, mm, sideAnchorRotationZ, sideLocalToWorld, DEV_SCOPES };

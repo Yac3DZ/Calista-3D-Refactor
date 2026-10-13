@@ -2,7 +2,7 @@
 //     node --test        (from the JS folder)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSceneParameters, mm, sideHandleRotationZ, sideLocalToWorld, DEV_SCOPES } from '../skyluxHRoof.js';
+import { parseSceneParameters, mm, sideAnchorRotationZ, sideLocalToWorld, DEV_SCOPES } from '../skyluxHRoof.js';
 
 const round = point => point.map(value => Math.round(value * 1000) / 1000 || 0); // || 0 folds -0 into 0
 
@@ -11,11 +11,11 @@ test('mm converts contract millimetres to scene metres', () => {
     assert.equal(mm(0), 0);
 });
 
-test('side handle rotation is 90 - rotation', () => {
-    assert.equal(sideHandleRotationZ(0), 90);      // left runs +Y
-    assert.equal(sideHandleRotationZ(90), 0);      // rear runs +X
-    assert.equal(sideHandleRotationZ(180), -90);   // right runs -Y
-    assert.equal(sideHandleRotationZ(270), -180);  // front runs -X
+test('side anchor rotation is 90 - rotation', () => {
+    assert.equal(sideAnchorRotationZ(0), 90);      // left runs +Y
+    assert.equal(sideAnchorRotationZ(90), 0);      // rear runs +X
+    assert.equal(sideAnchorRotationZ(180), -90);   // right runs -Y
+    assert.equal(sideAnchorRotationZ(270), -180);  // front runs -X
 });
 
 test('local +X runs along each side and local +Y points into the structure', () => {

@@ -8,7 +8,7 @@ import { existsSync, copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { createPL, sideHandleRotationZ, sideLocalToWorld, parseSceneParameters, mm, DEV_SCOPES } from '../skyluxHRoof.js';
+import { createPL, sideAnchorRotationZ, sideLocalToWorld, parseSceneParameters, mm, DEV_SCOPES } from '../skyluxHRoof.js';
 
 const ENGINE = process.env.V3D_PATH || 'C:/Program Files/Verge3D_for_Blender/build/v3d.js';
 let v3d = null;
@@ -37,11 +37,17 @@ const quiet = fn => {
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const close = (actual, expected, label) => assert.ok(Math.abs(actual - expected) < 1e-6, `${label}: ${actual} vs ${expected}`);
 
-// A Blender-exported scene (Z-up) with one hidden template under a holder, like the real GLB.
-function makeApp() {
+// A Blender-exported scene (Z-up) with one hidden template under a holder, like the real GLB, plus the
+// top-level anchor template empty.0 (left out with { anchorTemplate: false }).
+function makeApp({ anchorTemplate = true } = {}) {
     const scene = new v3d.Scene();
     scene.name = 'Scene';
     scene.userData.coordSystem = 'Z_UP_RIGHT';
+    if (anchorTemplate) {
+        const empty = new v3d.Object3D();
+        empty.name = 'empty.0';
+        scene.add(empty);
+    }
     const holder = new v3d.Object3D();
     holder.name = 'globalManipulator';
     holder.visible = false;
@@ -101,9 +107,9 @@ for (const [name, scope] of Object.entries(DEV_SCOPES)) {
         const { SceneComponent, getObjTransform, setObjTransform } = v3d.PL.debug;
         const params = parseSceneParameters(scope);
         quiet(() => params.sideOpenings.forEach(side => {
-            const component = new SceneComponent('SideOpening.0');
+            const component = new SceneComponent();
             component.beginBuild();
-            component.placeHandle(side.sideSpecs.xPos, side.sideSpecs.yPos, 0, sideHandleRotationZ(side.sideSpecs.rotation));
+            component.placeAnchor(side.sideSpecs.xPos, side.sideSpecs.yPos, 0, sideAnchorRotationZ(side.sideSpecs.rotation));
             side.poles.forEach(pole => {
                 const poleName = component.pool('PoleTemplate').next();
                 setObjTransform(poleName, false, 'position', [mm(pole.position), mm(pole.depth / 2), 0], false);
@@ -133,7 +139,7 @@ test('ObjectPool reuses clones across rebuilds and hides the ones a smaller buil
     const env = makeApp();
     init(env);
     const { SceneComponent, getObjectByName } = v3d.PL.debug;
-    const component = new SceneComponent('SideOpening.0');
+    const component = new SceneComponent();
     const build = count => {
         component.beginBuild();
         const names = [];
@@ -159,7 +165,7 @@ test('a missing template is skipped with one warning instead of throwing', { ski
     createPL(v3d);
     const env = makeApp();
     init(env);
-    const component = new v3d.PL.debug.SceneComponent('SideOpening.0');
+    const component = new v3d.PL.debug.SceneComponent();
     let results = [];
     const warnings = quiet(() => {
         results = [component.pool('DoesNotExist').next(), component.pool('DoesNotExist').next()];
@@ -168,16 +174,16 @@ test('a missing template is skipped with one warning instead of throwing', { ski
     assert.equal(warnings.filter(w => w.includes('DoesNotExist')).length, 1);
 });
 
-test('hideLeftovers hides instances beyond the contract length through their handle', { skip }, () => {
+test('hideLeftovers hides instances beyond the contract length through their anchor', { skip }, () => {
     createPL(v3d);
     const env = makeApp();
     init(env);
     const { SceneComponent, hideLeftovers, getObjectByName } = v3d.PL.debug;
-    const cache = [new SceneComponent('SideOpening.0'), new SceneComponent('SideOpening.0')];
+    const cache = [new SceneComponent(), new SceneComponent()];
     cache.forEach(component => component.beginBuild());
     hideLeftovers(cache, 1);
-    assert.equal(getObjectByName(cache[0].handle).visible, true);
-    assert.equal(getObjectByName(cache[1].handle).visible, false);
+    assert.equal(getObjectByName(cache[0].anchor).visible, true);
+    assert.equal(getObjectByName(cache[1].anchor).visible, false);
 });
 
 test('render gate: renders after a build, pauses when idle, wakes up when the camera moves', { skip }, async () => {
@@ -211,4 +217,38 @@ test('a new app resets the caches and installs its own render gate', { skip }, (
     assert.equal(second.app.renderCallbacks.length, 1);
     init(second);
     assert.equal(second.app.renderCallbacks.length, 1, 're-running PL.init on the same app adds no second gate');
+});
+
+test('anchors are clones of empty.0 from the GLB', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp();
+    init(env);
+    let anchors = [];
+    const warnings = quiet(() => {
+        anchors = [new v3d.PL.debug.SceneComponent().anchor, new v3d.PL.debug.SceneComponent().anchor];
+    });
+    assert.deepEqual(warnings, []);
+    anchors.forEach(anchor => assert.match(anchor, /^empty\.\d+$/));
+    assert.notEqual(anchors[0], anchors[1]);
+    assert.equal(v3d.PL.debug.getObjectByName(anchors[0]).parent, env.scene, 'top level, not under a holder');
+});
+
+test('without empty.0 in the GLB: one warning, no crash, objects still built (unparented)', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp({ anchorTemplate: false });
+    init(env);
+    let names = [];
+    const warnings = quiet(() => {
+        for (let i = 0; i < 2; i++) {
+            const component = new v3d.PL.debug.SceneComponent();
+            assert.equal(component.anchor, null);
+            component.beginBuild();
+            component.placeAnchor(1000, 2000, 0, 90);
+            names.push(component.pool('PoleTemplate').next());
+            component.endBuild();
+            component.hide();
+        }
+    });
+    assert.equal(warnings.filter(w => w.includes('empty.0')).length, 1);
+    names.forEach(name => assert.equal(v3d.PL.debug.getObjectByName(name).parent, env.scene));
 });
