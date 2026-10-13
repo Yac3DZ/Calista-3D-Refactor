@@ -244,9 +244,9 @@ test('anchors are clones of empty.0 from the GLB', { skip }, () => {
 test('without empty.0 in the GLB: one warning, no crash, objects still built (unparented)', { skip }, () => {
     createPL(v3d);
     const env = makeApp({ anchorTemplate: false });
-    init(env);
+    const initWarnings = init(env);   // PL.init already builds the roof section, so the warning fires here
     let names = [];
-    const warnings = quiet(() => {
+    const warnings = initWarnings.concat(quiet(() => {
         for (let i = 0; i < 2; i++) {
             const component = new v3d.PL.debug.SceneComponent();
             assert.equal(component.anchor, null);
@@ -256,7 +256,7 @@ test('without empty.0 in the GLB: one warning, no crash, objects still built (un
             component.endBuild();
             component.hide();
         }
-    });
+    }));
     assert.equal(warnings.filter(w => w.includes('empty.0')).length, 1);
     names.forEach(name => assert.equal(v3d.PL.debug.getObjectByName(name).parent, env.scene));
 });
@@ -327,4 +327,148 @@ test('camera: with orbit controls, framing goes through controls.tween', { skip 
     quiet(() => v3d.PL.procedures.handleButtons({ type: 'RELOAD_3D' }));
     assert.equal(tweens.length, 2);
     assert.equal(tweens[1].duration, 1);
+});
+
+// ── M5 · structure section (roof) ────────────────────────────────────────────────────────────────────────
+const CROWN_BEAMS = { front: 'Horizontal_Gutter_Front', rear: 'Horizontal_Gutter_Rear', left: 'Horizontal_Gutter_Left', right: 'Horizontal_Gutter_Right' };
+const CROWN_ACCESSORIES = ['LED strip integrated', 'LED strip integrated plug', 'Rail plug', 'Integrated wall', 'Vertical sunblind'];
+const ROOF_MESHES = ['Rafter 190x140 base.0', 'Led strip.0', 'Led spot profile.0', 'No Led strip.0', 'Horizontal_Ledspot.0',
+    'Horizontal_Roof_Glass_Front.0', 'Horizontal_Roof_Plastic_Front.0', 'Horizontal_Roof_Sandwich_Panel_White_Front.0',
+    'Horizontal_Roof_Sandwich_Panel_Anthracite_Front.0',
+    'Horizontal screen zipper top.0', 'Horizontal screen non zipper top.0', 'Horizontal screen bottom.0',
+    'Horizontal screen zipper top depth supports.0', 'Horizontal screen non zipper top depth supports.0', 'Horizontal screen bottom depth supports.0'];
+const SCREEN_TEMPLATES = { zipper: 'Horizontal screen zipper top.0', nonZipper: 'Horizontal screen non zipper top.0', bottomZipper: 'Horizontal screen bottom.0' };
+
+// The stand-in scene plus every roof template, the crown beams with their accessory children, the lights and the Gizmo.
+function makeRoofApp() {
+    const env = makeApp();
+    const holder = env.scene.getObjectByName('globalManipulator');
+    const mesh = name => {
+        const object = new v3d.Mesh(new v3d.BoxGeometry(0.1, 0.1, 0.1), new v3d.MeshBasicMaterial());
+        object.name = name;
+        return object;
+    };
+    Object.values(CROWN_BEAMS).forEach(beamName => {
+        const beam = mesh(beamName);
+        CROWN_ACCESSORIES.forEach(accessory => beam.add(mesh(beamName + '_' + accessory)));
+        holder.add(beam);
+    });
+    ROOF_MESHES.forEach(name => holder.add(mesh(name)));
+    env.scene.add(mesh('Gizmo'));
+    const sun = new v3d.DirectionalLight();
+    sun.name = 'Sun_modern';
+    const spot = new v3d.SpotLight();
+    spot.name = 'Spot';
+    env.scene.add(sun, spot);
+    env.scene.updateMatrixWorld(true);
+    return env;
+}
+
+const used = (section, template) => {
+    const pool = section.pools.get(template);
+    return pool ? pool.names.slice(0, pool.used) : [];
+};
+const worldPosition = name => v3d.PL.debug.getObjTransform(name, true, 'position', 'xyz');
+const visible = name => {
+    for (let object = v3d.PL.debug.getObjectByName(name); object; object = object.parent)
+        if (!object.visible)
+            return false;
+    return true;
+};
+const closeTo = (actual, expected, label) => {
+    assert.equal(actual.length, expected.length, label);
+    actual.forEach((value, i) => close(value, expected[i], `${label} [${i}]`));
+};
+
+for (const [name, scope] of Object.entries(DEV_SCOPES)) {
+    test(`M5 ${name}: the roof is built where the contract says`, { skip }, () => {
+        createPL(v3d);
+        const env = makeRoofApp();
+        const warnings = init(env, scope);
+        assert.deepEqual(warnings, [], 'no warnings (no missing templates)');
+
+        const spec = parseSceneParameters(scope).structureSections[0];
+        const section = v3d.PL.debug.structureSectionCache[0];
+        const top = mm(spec.heightUnderGutter + 260);
+        const cx = mm(spec.xPos), cy = mm(spec.yPos);
+        const xOf = position => cx + mm(spec.width / 2 - position);
+
+        // crown: four beams on the footprint edges at the crown top; the closed plugs shown by default
+        const beamAt = {
+            front: [cx, cy + mm(spec.depth / 2)], rear: [cx, cy - mm(spec.depth / 2)],
+            left: [cx + mm(spec.width / 2), cy], right: [cx - mm(spec.width / 2), cy],
+        };
+        for (const [side, template] of Object.entries(CROWN_BEAMS)) {
+            const [beam] = used(section, template);
+            assert.ok(visible(beam), `${side} beam visible`);
+            closeTo(worldPosition(beam), [...beamAt[side], top], `${side} beam`);
+            assert.equal(section.crownBeams[side], beam);
+            for (const accessory of CROWN_ACCESSORIES) {
+                const child = beam + ' > ' + template + '_' + accessory;
+                assert.ok(v3d.PL.debug.getObjectByName(child), `${child} is addressable`);
+                assert.equal(visible(child), accessory === 'LED strip integrated plug' || accessory === 'Rail plug', `${child} visibility`);
+            }
+        }
+
+        // rafters: one per entry at width/2 − position, each with exactly one profile under it
+        const rafters = spec.roofOptions.rafters;
+        const bases = used(section, 'Rafter 190x140 base.0');
+        assert.equal(bases.length, rafters.length);
+        rafters.forEach((rafter, i) => closeTo(worldPosition(bases[i]), [xOf(rafter.position), cy, top], `rafter ${i}`));
+        const profiles = ['Led strip.0', 'Led spot profile.0', 'No Led strip.0'].reduce((sum, t) => sum + used(section, t).length, 0);
+        assert.equal(profiles, rafters.length, 'one profile per rafter');
+
+        // LED spots: positions measured from the rear edge
+        const spotsExpected = rafters.filter(r => !r.ledStrip && r.ledSpot)
+            .flatMap(r => r.ledSpot.positions.map(p => [xOf(r.position), cy - mm(spec.depth / 2) + mm(p), top]));
+        const spots = used(section, 'Horizontal_Ledspot.0');
+        assert.equal(spots.length, spotsExpected.length);
+        spots.forEach((spot, i) => closeTo(worldPosition(spot), spotsExpected[i], `spot ${i}`));
+
+        // fillings: one per entry; glass ones each with their own material copy
+        const fillings = spec.roofOptions.roofFillings;
+        const fillingClones = ['Horizontal_Roof_Glass_Front.0', 'Horizontal_Roof_Plastic_Front.0',
+            'Horizontal_Roof_Sandwich_Panel_White_Front.0', 'Horizontal_Roof_Sandwich_Panel_Anthracite_Front.0']
+            .flatMap(t => used(section, t));
+        assert.equal(fillingClones.length, fillings.length);
+        const glassMaterials = used(section, 'Horizontal_Roof_Glass_Front.0').map(n => v3d.PL.debug.getObjectByName(n).material);
+        assert.equal(new Set(glassMaterials).size, glassMaterials.length, 'every glass filling has its own material');
+
+        // horizontal screen: the contract's type, centred, with supports spread over the depth
+        const screen = spec.roofOptions.horizontalScreen;
+        for (const [type, template] of Object.entries(SCREEN_TEMPLATES))
+            assert.equal(used(section, template).length, screen && screen.type === type ? 1 : 0, `${type} screen`);
+        if (screen) {
+            closeTo(worldPosition(used(section, SCREEN_TEMPLATES[screen.type])[0]), [cx, cy, top], 'screen');
+            const supports = used(section, SCREEN_TEMPLATES[screen.type].replace('.0', ' depth supports.0'));
+            assert.equal(supports.length, Math.round(mm(spec.depth) - 0.001) + 2);
+            closeTo(worldPosition(supports[0]), [cx, cy - mm(spec.depth / 2) + 0.35, top], 'first support');
+            closeTo(worldPosition(supports[supports.length - 1]), [cx, cy + mm(spec.depth / 2) - 0.35, top], 'last support');
+        }
+
+        // scene: Gizmo shown, Spot on when the roof has LEDs, sun dimmed
+        const hasLeds = rafters.some(r => r.ledStrip || r.ledSpot);
+        assert.ok(visible('Gizmo'), 'Gizmo visible');
+        assert.equal(visible('Spot'), hasLeds, 'Spot');
+        assert.equal(v3d.PL.debug.getObjectByName('Sun_modern').intensity, hasLeds ? 0 : 4, 'sun');
+    });
+}
+
+test('M5: switching configurations reuses the clones and hides what is no longer needed', { skip }, () => {
+    createPL(v3d);
+    const env = makeRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const firstBeam = used(section, 'Horizontal_Gutter_Front')[0];
+    const objectCount = env.scene.children.length;
+
+    init(env, DEV_SCOPES.wallRearRight);   // other roof, no horizontal screen
+    assert.equal(v3d.PL.debug.structureSectionCache[0], section, 'same instance');
+    assert.equal(used(section, 'Horizontal_Gutter_Front')[0], firstBeam, 'same beam clone');
+    const zipper = section.pools.get('Horizontal screen zipper top.0').names[0];
+    assert.equal(visible(zipper), false, 'the previous configuration\'s screen is hidden');
+
+    init(env, DEV_SCOPES.freestanding);
+    assert.equal(visible(zipper), true, 'and shown again');
+    assert.equal(env.scene.children.length, objectCount, 'no new clones when going back');
 });

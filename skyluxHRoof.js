@@ -8,16 +8,18 @@
 //
 // FILE LAYOUT (top to bottom; the //#region blocks fold in VS Code)
 //   0 · DEV SCOPE SWITCH       fallback test data while the live configurator doesn't send the contract yet
-//   1 · SCENE GEOMETRY         pure helpers: mm → m, side rotation, side-local → world
+//   1 · SCENE GEOMETRY         pure helpers: mm → m, side rotation, side-local → world, atlas, morphs
 //   2 · createPL               Verge3D puzzle globals + state that SURVIVES PL.init re-runs
 //   3 · VERGE3D 4.13 HELPERS   #region — puzzle library, newest API only; grown milestone by milestone
 //   4 · FOUNDATIONS            anchors, ObjectPool, SceneComponent base class, render gate
-//   5 · CAMERA                 fitCameraToObjects (zoom-fit), cameraPosition, look at the origin while empty
-//   6 · OUTPUT + HANDLERS      snapshot, screenshot, handleButtons / handleEvents / handleFocus / handleValue
-//   7 · ORCHESTRATION          enableScene → getParameters → enableScene3D
-//   8 · ENTRY                  PL.init
-//   9 · INGESTION              #region — pure functions, no Verge3D: scope → sceneParameters (validated,
-//                              defaulted). Called from getParameters() in section 7.
+//   5 · STRUCTURE SECTION      #region — class StructureSection: crown beams + roof (rafters, LEDs, fillings,
+//                              horizontal screen), one per _3d_StructureSections[] entry
+//   6 · CAMERA                 fitCameraToObjects (zoom-fit), cameraPosition, look at the origin while empty
+//   7 · OUTPUT + HANDLERS      snapshot, screenshot, handleButtons / handleEvents / handleFocus / handleValue
+//   8 · ORCHESTRATION          enableScene → getParameters → enableScene3D, frame colour, lighting
+//   9 · ENTRY                  PL.init
+//  10 · INGESTION              #region — pure functions, no Verge3D: scope → sceneParameters (validated,
+//                              defaulted). Called from getParameters() in section 8.
 //   DEV_SCOPES                 #region — bundled example scopes
 //
 // CONVENTIONS
@@ -73,6 +75,21 @@ function sideLocalToWorld(sideSpecs, localX, localY) {
         sideSpecs.xPos + localX * alongX + localY * inwardX,
         sideSpecs.yPos + localX * alongY + localY * inwardY,
     ];
+}
+
+// 3D-only dimensions (mm) the contract leaves to the 3D, the "calistaAtlas" of the input schema.
+const CALISTA_ATLAS = {
+    crown: {
+        profileHeight: 260,     // crown beam height: the roof sits on top of the crown, heightUnderGutter + this
+        cornerInset: 150,       // corner pole width: crown beams, rafters and fillings span between the poles
+    },
+    // layerDepth — Y depth per (option, mounting) — comes with the bay options. [M7]
+};
+
+// Most meshes in the GLB are modelled 1 m long with a morph target that adds 100 m at factor 1, so a length
+// of L mm needs factor (L / 1000 − 1) / 100.
+function lengthMorph(lengthMm) {
+    return (mm(lengthMm) - 1) / 100;
 }
 
 
@@ -649,6 +666,270 @@ function createPL(v3d = window.v3d) {
         else
             return function () { };
     }
+
+    function getMaterialEditableColors(matName) {
+        const mat = v3d.SceneUtils.getMaterialByName(appInstance, matName);
+        if (!mat) {
+            return [];
+        }
+
+        if (mat.isMeshNodeMaterial) {
+            return Object.keys(mat.nodeRGBMap);
+        } else if (mat.isMeshStandardMaterial) {
+            return ['color', 'emissive'];
+        } else if (mat.isMeshLineMaterial) {
+            return ['color'];
+        } else {
+            return [];
+        }
+    }
+
+    function getMaterialEditableValues(matName) {
+        const mat = v3d.SceneUtils.getMaterialByName(appInstance, matName);
+        if (!mat) {
+            return [];
+        }
+
+        if (mat.isMeshNodeMaterial) {
+            return Object.keys(mat.nodeValueMap);
+        } else if (mat.isMeshStandardMaterial) {
+            return ['metalness', 'roughness', 'opacity', 'emissiveIntensity', 'bumpScale', 'envMapIntensity'];
+        } else {
+            return [];
+        }
+    }
+
+    function setMaterialColor(matSelector, colName, r, g, b, cssCode) {
+        const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
+
+        matNames.forEach(function(matName) {
+            const colors = getMaterialEditableColors(matName);
+            if (colors.indexOf(colName) < 0)
+                return;
+
+            if (cssCode) {
+                const color = new v3d.Color(cssCode);
+                r = color.r;
+                g = color.g;
+                b = color.b;
+            }
+
+            const mats = v3d.SceneUtils.getMaterialsByName(appInstance, matName);
+
+            for (let i = 0; i < mats.length; i++) {
+                const mat = mats[i];
+
+                if (mat.isMeshNodeMaterial) {
+                    const rgbIdx = mat.nodeRGBMap[colName];
+                    mat.nodeRGB[rgbIdx].x = r;
+                    mat.nodeRGB[rgbIdx].y = g;
+                    mat.nodeRGB[rgbIdx].z = b;
+                } else {
+                    mat[colName].r = r;
+                    mat[colName].g = g;
+                    mat[colName].b = b;
+                }
+
+                // COMPAT: <4.9.0
+                if (v3d.engineVersionCmp('4.9.0', v3d.REVISION) < 0)
+                    mat.needsUpdate = true;
+
+                if (appInstance.scene !== null) {
+                    if (mat === appInstance.scene.worldMaterial) {
+                        appInstance.updateEnvironment(mat);
+                    }
+                }
+            }
+        });
+    }
+
+    function setMaterialValue(matSelector, valName, value) {
+        const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
+
+        matNames.forEach(function(matName) {
+            const values = getMaterialEditableValues(matName);
+            if (values.indexOf(valName) < 0)
+                return;
+
+            const mats = v3d.SceneUtils.getMaterialsByName(appInstance, matName);
+            for (let i = 0; i < mats.length; i++) {
+                const mat = mats[i];
+
+                if (mat.isMeshNodeMaterial) {
+                    const valIdx = mat.nodeValueMap[valName];
+                    mat.nodeValue[valIdx] = Number(value);
+                } else
+                    mat[valName] = Number(value);
+
+                if (appInstance.scene !== null) {
+                    if (mat === appInstance.scene.worldMaterial) {
+                        appInstance.updateEnvironment(mat);
+                    }
+                }
+            }
+        });
+    }
+
+    function setLightParam(type, objSelector, param) {
+
+        if (type === 'SHADOW_MAP_FILTERING') {
+            const rendererShadowMap = appInstance.renderer.shadowMap;
+            if (rendererShadowMap) {
+                let shadowMapFilteringTypeBefore = rendererShadowMap.type;
+
+                switch (param) {
+                    case 'BASIC':
+                        rendererShadowMap.type = v3d.BasicShadowMap;
+                        break;
+                    case 'BILINEAR':
+                        rendererShadowMap.type = v3d.BilinearShadowMap;
+                        break;
+                    case 'PCF':
+                    // COMPAT: deprecated, PCF == v3d.PCFShadowMapPoissonDisk since 4.7
+                    case 'PCFBILINEAR':
+                    case 'PCFPOISSON':
+                        // TODO: PCF == v3d.PCFShadow since 4.8
+                        rendererShadowMap.type = v3d.PCFShadowMapPoissonDisk;
+                        break;
+                    case 'ESM':
+                        rendererShadowMap.type = v3d.ESMShadowMap;
+                        break;
+                    default:
+                        console.error('set light param puzzle: Incompatible shadow map filtering type.')
+                        return;
+                        break;
+                }
+
+                if (shadowMapFilteringTypeBefore != rendererShadowMap.type) {
+
+                    let deleteShadowMapFromObj = function(object) {
+                        if (!object.shadow) return;
+
+                        if (object.shadow.isDirectionalLightShadowCSM) {
+                            object.shadow.updateMaps();
+
+                        } else if (object.shadow) {
+                            object.shadow.dispose();
+                            // COMPAT: < 4.10
+                            if (object.shadow.removeMaps) {
+                                object.shadow.removeMaps();
+                            } else {
+                                object.shadow.map = null;
+                                object.shadow._additionalMap2D = null;
+                                object.shadow._additionalMapCube = null;
+                            }
+                        }
+                    }
+
+                    // need to update shadow.map for ESM filtering
+                    let needToUpdateShadowMaps = shadowMapFilteringTypeBefore == v3d.ESMShadowMap ||
+                            rendererShadowMap.type == v3d.ESMShadowMap;
+                    const compiled = {};
+                    appInstance.scene.traverse(function(object) {
+
+                        const material = object.material;
+                        if (material && object.receiveShadow) {
+
+                            if (Array.isArray(material)) {
+                                for (let i = 0; i < material.length; i++) {
+                                    const material2 = material[i];
+
+                                    if (material2.uuid in compiled === false) {
+                                        material2.needsUpdate = true;
+                                        compiled[material2.uuid] = true;
+                                    }
+
+                                }
+
+                            } else if (material.uuid in compiled === false) {
+                                material.needsUpdate = true;
+                                compiled[material.uuid] = true;
+
+                            }
+                        }
+
+                        if (needToUpdateShadowMaps)
+                            deleteShadowMapFromObj(object);
+                    });
+
+                    // COMPAT: <4.13
+                    if (rendererShadowMap.updateDepthMaterials)
+                        rendererShadowMap.updateDepthMaterials();
+                }
+
+            }
+            return;
+        }
+
+        const objNames = retrieveObjectNames(objSelector);
+
+        objNames.forEach(function(objName) {
+            if (!objName)
+                return;
+
+            const obj = getObjectByName(objName);
+            if (!obj || !obj.isLight)
+                return;
+
+            switch (type) {
+            case 'COLOR_VECTOR':
+                obj.color.r = param[0];
+                obj.color.g = param[1];
+                obj.color.b = param[2];
+                break;
+            case 'COLOR_CSS_HEX':
+            case 'COLOR_CSS_RGB':
+                const color = _pGlob.colorTmp.set(param);
+                obj.color.r = color.r;
+                obj.color.g = color.g;
+                obj.color.b = color.b;
+                break;
+            case 'INTENSITY':
+                if (obj.userData.usePowerUnits)
+                    obj.power = param;
+                else
+                    obj.intensity = param;
+                break;
+            case 'USE_SHADOW':
+                if (obj.isAmbientLight) {
+                    console.error('set light param puzzle: Incompatible light source');
+                    return;
+                }
+                if (typeof(param) === "boolean")
+                    obj.castShadow = param;
+
+                break;
+            case 'SHADOW_MAP_SIZE':
+                if (obj.isAmbientLight) {
+                    console.error('set light param puzzle: Incompatible light source');
+                    return;
+                }
+
+                if (!obj.shadow) return;
+
+                if (obj.shadow.isDirectionalLightShadowCSM) {
+                    obj.shadow.mapSize.set(param, param);
+                    obj.shadow.updateMapSize();
+
+                } else if (obj.shadow) {
+                    obj.shadow.mapSize.set(param, param);
+                    obj.shadow.dispose();
+                    // COMPAT: < 4.10
+                    if (obj.shadow.removeMaps) {
+                        obj.shadow.removeMaps();
+                    } else {
+                        obj.shadow.map = null;
+                        obj.shadow._additionalMap2D = null;
+                        obj.shadow._additionalMapCube = null;
+                    }
+                }
+
+                break;
+            }
+
+        });
+
+    }
     //#endregion
 
 
@@ -689,9 +970,12 @@ function createPL(v3d = window.v3d) {
      * build needs more than any build before it, so a configuration change never re-clones.
      */
     class ObjectPool {
-        constructor(templateName, parentName) {
+        // options.cloneMaterials: each clone gets its own copy of the template's materials, so per-object
+        // material values (setObjectMaterialValue) don't spread to every clone.
+        constructor(templateName, parentName, options = {}) {
             this.templateName = templateName;
             this.parentName = parentName;
+            this.cloneMaterials = Boolean(options.cloneMaterials);
             this.names = [];
             this.used = 0;
         }
@@ -705,12 +989,13 @@ function createPL(v3d = window.v3d) {
         next() {
             let name = this.names[this.used];
             if (!name || !getObjectByName(name)) {
-                name = cloneObject(this.templateName, false, false);
+                name = cloneObject(this.templateName, this.cloneMaterials, false);
                 if (!name) {
                     warnOnce('template object "' + this.templateName + '" is not in the scene');
                     return null;
                 }
                 makeParent(name, this.parentName);
+                this.renameChildren(name);
                 this.resetLocalTransform(name);
                 this.names[this.used] = name;
             }
@@ -722,6 +1007,17 @@ function createPL(v3d = window.v3d) {
         hideUnused() {
             for (let i = this.used; i < this.names.length; i++)
                 changeVis(this.names[i], false);
+        }
+
+        // A clone's children keep their template names, which then exist twice in the scene (template + clone).
+        // Prefix them with the clone's name so each stays addressable: childObjectName(clone, templateChildName).
+        renameChildren(name) {
+            getObjectByName(name).traverse(child => {
+                if (child.name === name || !isObjectWorthProcessing(child))
+                    return;
+                child.name = childObjectName(name, child.name);
+                _pGlob.objCache.set(child.name, child);
+            });
         }
 
         // makeParent keeps the clone's WORLD transform, so under a rotated anchor its local rotation would
@@ -747,11 +1043,13 @@ function createPL(v3d = window.v3d) {
             this.isVisible = false;
         }
 
-        // `key` lets one template feed several independent pools (e.g. the same mesh in two roles).
-        pool(templateName, key = templateName) {
+        // options.key lets one template feed several independent pools (e.g. the same mesh in two roles);
+        // options.cloneMaterials, see ObjectPool.
+        pool(templateName, options = {}) {
+            const key = options.key ?? templateName;
             let pool = this.pools.get(key);
             if (!pool) {
-                pool = new ObjectPool(templateName, this.anchor);
+                pool = new ObjectPool(templateName, this.anchor, options);
                 this.pools.set(key, pool);
             }
             return pool;
@@ -777,6 +1075,31 @@ function createPL(v3d = window.v3d) {
             this.isVisible = false;
             changeVis(this.anchor, false);
         }
+    }
+
+    // Name of a child of a pooled clone, e.g. childObjectName('Horizontal_Gutter_Front.1',
+    // 'Horizontal_Gutter_Front_Rail plug') → 'Horizontal_Gutter_Front.1 > Horizontal_Gutter_Front_Rail plug'.
+    function childObjectName(cloneName, templateChildName) {
+        return cloneName + ' > ' + templateChildName;
+    }
+
+    // setMaterialValue for ONE object's own materials: setMaterialValue works by material name, which all
+    // copies of a material share. Use it on clones made with cloneMaterials.
+    function setObjectMaterialValue(objName, valName, value) {
+        const obj = getObjectByName(objName);
+        if (!obj)
+            return;
+        obj.resolveMultiMaterial().forEach(objR => {
+            const mat = objR.material;
+            if (!mat)
+                return;
+            if (mat.isMeshNodeMaterial) {
+                if (valName in mat.nodeValueMap)
+                    mat.nodeValue[mat.nodeValueMap[valName]] = Number(value);
+            } else if (valName in mat) {
+                mat[valName] = Number(value);
+            }
+        });
     }
 
     // Instances beyond the current contract length are hidden, not destroyed: they are reused when the
@@ -826,8 +1149,208 @@ function createPL(v3d = window.v3d) {
     }
 
 
+    //#region 5 · STRUCTURE SECTION
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 5 · CAMERA — framing through fitCameraToObjects (zoom-fit on the objects' bounds), never through
+    // 5 · STRUCTURE SECTION — one per _3d_StructureSections[] entry: the crown and the roof [Logic #3]
+    //══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // The section's anchor sits at the footprint centre (xPos, yPos) with no rotation, so local X/Y run like
+    // world X/Y: +X towards the LEFT side, +Y towards the front. Roof positions in the contract are measured
+    // from the section's +X edge ("left → right viewed from the front"), so local X = width / 2 − position.
+    const ROOF_TEMPLATES = {
+        crownBeams: {
+            front: 'Horizontal_Gutter_Front',
+            rear: 'Horizontal_Gutter_Rear',
+            left: 'Horizontal_Gutter_Left',
+            right: 'Horizontal_Gutter_Right',
+        },
+        // Accessories hanging under each crown beam (children in the GLB, prefixed with the beam's name).
+        // The bays decide which are shown [M7]; until then the closed "plug" versions are.
+        crownAccessories: ['LED strip integrated', 'LED strip integrated plug', 'Rail plug', 'Integrated wall', 'Vertical sunblind'],
+        crownAccessoriesDefault: ['LED strip integrated plug', 'Rail plug'],
+        rafter: 'Rafter 190x140 base.0',
+        rafterProfiles: {
+            ledStrip: 'Led strip.0',
+            ledSpot: 'Led spot profile.0',
+            none: 'No Led strip.0',
+        },
+        ledSpot: 'Horizontal_Ledspot.0',
+        // Every contract filling type → its mesh. sandwichPanelTile has no mesh of its own yet and uses the
+        // anthracite panel; the plastic types share one mesh until they get their own looks.
+        fillings: {
+            glassClear: 'Horizontal_Roof_Glass_Front.0',
+            glassOpal: 'Horizontal_Roof_Glass_Front.0',
+            plastic: 'Horizontal_Roof_Plastic_Front.0',
+            plasticOpal: 'Horizontal_Roof_Plastic_Front.0',
+            plasticSunBlocking: 'Horizontal_Roof_Plastic_Front.0',
+            sandwichPanelWhite: 'Horizontal_Roof_Sandwich_Panel_White_Front.0',
+            sandwichPanelAnthracite: 'Horizontal_Roof_Sandwich_Panel_Anthracite_Front.0',
+            sandwichPanelTile: 'Horizontal_Roof_Sandwich_Panel_Anthracite_Front.0',
+        },
+        // Glass look per filling type, as values of the glass material's NoGlass / Tint nodes.
+        glassLook: {
+            glassClear: { NoGlass: 0, Tint: 0 },
+            glassOpal: { NoGlass: 0, Tint: 0.6 },
+        },
+        horizontalScreens: {
+            zipper: { screen: 'Horizontal screen zipper top.0', supports: 'Horizontal screen zipper top depth supports.0' },
+            nonZipper: { screen: 'Horizontal screen non zipper top.0', supports: 'Horizontal screen non zipper top depth supports.0' },
+            bottomZipper: { screen: 'Horizontal screen bottom.0', supports: 'Horizontal screen bottom depth supports.0' },
+        },
+    };
+
+    class StructureSection extends SceneComponent {
+        enable(spec) {
+            this.spec = spec;
+            // Top of the crown: the roof, rafters and screen all sit at this height.
+            this.crownTop = spec.heightUnderGutter + CALISTA_ATLAS.crown.profileHeight;
+            // Spans between the corner poles, along the width and along the depth.
+            this.innerWidth = spec.width - 2 * CALISTA_ATLAS.crown.cornerInset;
+            this.innerDepth = spec.depth - 2 * CALISTA_ATLAS.crown.cornerInset;
+            this.ledStripCount = 0;
+            this.ledSpotCount = 0;
+
+            this.beginBuild();
+            this.placeAnchor(spec.xPos, spec.yPos, 0, 0);
+            this.enableCrown();
+            this.enableRoof(spec.roofOptions);
+            this.endBuild();
+        }
+
+        // Position in mm, in this section's local frame.
+        place(name, x, y, z) {
+            setObjTransform(name, false, 'position', [mm(x), mm(y), mm(z)], false);
+        }
+
+        // ── crown: the four beams on top of the poles, one continuous ring around the section ─────────────
+        enableCrown() {
+            const { width, depth } = this.spec;
+            const beams = [
+                { side: 'front', x: 0, y: depth / 2, span: this.innerWidth },
+                { side: 'rear', x: 0, y: -depth / 2, span: this.innerWidth },
+                { side: 'left', x: width / 2, y: 0, span: this.innerDepth },
+                { side: 'right', x: -width / 2, y: 0, span: this.innerDepth },
+            ];
+            // Side name → crown beam clone, for the bay options that hang accessories on it. [M7]
+            this.crownBeams = {};
+            beams.forEach(beam => {
+                const template = ROOF_TEMPLATES.crownBeams[beam.side];
+                const name = this.pool(template).next();
+                if (!name)
+                    return;
+                this.place(name, beam.x, beam.y, this.crownTop);
+                setMorphFactor(name, 'Width', lengthMorph(beam.span));
+                ROOF_TEMPLATES.crownAccessories.forEach(accessory => {
+                    const child = childObjectName(name, template + '_' + accessory);
+                    setMorphFactor(child, 'Width', lengthMorph(beam.span));
+                    changeVis(child, ROOF_TEMPLATES.crownAccessoriesDefault.includes(accessory));
+                });
+                this.crownBeams[beam.side] = name;
+            });
+        }
+
+        // ── roof ───────────────────────────────────────────────────────────────────────────────────────────
+        enableRoof(roofOptions) {
+            this.enableRafters(roofOptions.rafters);
+            this.enableRoofFillings(roofOptions.roofFillings);
+            this.enableHorizontalScreen(roofOptions.horizontalScreen);
+        }
+
+        // One rafter per entry, spanning the depth between the front and rear beams. The profile under it shows
+        // its lighting: a LED strip, a spot profile with its spots, or none. A strip wins over spots (one
+        // profile per rafter).
+        enableRafters(rafters) {
+            const { width, depth } = this.spec;
+            rafters.forEach(rafter => {
+                const x = width / 2 - rafter.position;
+                const profile = rafter.ledStrip ? 'ledStrip' : (rafter.ledSpot ? 'ledSpot' : 'none');
+
+                [ROOF_TEMPLATES.rafter, ROOF_TEMPLATES.rafterProfiles[profile]].forEach(template => {
+                    const name = this.pool(template).next();
+                    if (!name)
+                        return;
+                    this.place(name, x, 0, this.crownTop);
+                    setMorphFactor(name, 'Width', lengthMorph(this.innerDepth));
+                });
+
+                if (profile === 'ledStrip')
+                    this.ledStripCount++;
+                if (profile === 'ledSpot')
+                    rafter.ledSpot.positions.forEach(position => {
+                        const spot = this.pool(ROOF_TEMPLATES.ledSpot).next();
+                        if (!spot)
+                            return;
+                        // spot positions are measured from the rear edge (local Y = −depth / 2)
+                        this.place(spot, x, position - depth / 2, this.crownTop);
+                        this.ledSpotCount++;
+                    });
+            });
+        }
+
+        // One filling per entry, between the rafters. Glass fillings get their own material copy so clear and
+        // opal panels can sit side by side.
+        enableRoofFillings(fillings) {
+            const { width } = this.spec;
+            fillings.forEach(filling => {
+                const template = ROOF_TEMPLATES.fillings[filling.type];
+                const glassLook = ROOF_TEMPLATES.glassLook[filling.type];
+                const name = this.pool(template, { cloneMaterials: Boolean(glassLook) }).next();
+                if (!name)
+                    return;
+                this.place(name, width / 2 - filling.position, 0, this.crownTop);
+                setMorphFactor(name, 'Depth', lengthMorph(this.innerDepth));
+                setMorphFactor(name, 'Width', lengthMorph(filling.width));
+                if (glassLook)
+                    Object.keys(glassLook).forEach(valueName => setObjectMaterialValue(name, valueName, glassLook[valueName]));
+            });
+        }
+
+        // One horizontal screen over the whole section ("its width IS the section width"), plus its depth
+        // supports spread evenly between the front and rear beams. Closed (Opening 0) until the screen
+        // animation is added. [M8]
+        enableHorizontalScreen(screen) {
+            if (!screen)
+                return;
+            const { width, depth } = this.spec;
+            const templates = ROOF_TEMPLATES.horizontalScreens[screen.type];
+
+            const name = this.pool(templates.screen).next();
+            if (name) {
+                this.place(name, 0, 0, this.crownTop);
+                setMorphFactor(name, 'Width', lengthMorph(width));
+                setMorphFactor(name, 'Depth', lengthMorph(depth));
+                setMorphFactor(name, 'Opening', 0);
+            }
+
+            // About one support per metre of depth, plus the two end ones, kept 200 mm clear of the beams.
+            const supportCount = Math.round(mm(depth) - 0.001) + 2;
+            const firstSupport = CALISTA_ATLAS.crown.cornerInset + 200;
+            const supportSpacing = (this.innerDepth - 400) / (supportCount - 1);
+            for (let i = 0; i < supportCount; i++) {
+                const support = this.pool(templates.supports).next();
+                if (!support)
+                    break;
+                this.place(support, 0, firstSupport + supportSpacing * i - depth / 2, this.crownTop);
+                setMorphFactor(support, 'Width', lengthMorph(width));
+            }
+
+            ['Color 1', 'Color 2', 'Color 3'].forEach((colorName, i) =>
+                setMaterialColor('ScreenFabricHorizontal', colorName, 0, 0, 0, screen.screenColor[i]));
+        }
+
+        // Light the section's LEDs give off, for the roof light. [scene lighting, section 8]
+        get ledBrightness() {
+            return this.ledStripCount * 2.5 + this.ledSpotCount * 0.5;
+        }
+
+        get hasLeds() {
+            return this.ledStripCount + this.ledSpotCount > 0;
+        }
+    }
+    //#endregion
+
+
+    //══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // 6 · CAMERA — framing through fitCameraToObjects (zoom-fit on the objects' bounds), never through
     //     hand-placed camera positions. Per-opening framing on step changes comes with the handlers. [Logic #9]
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     // The camera looks along Camerapos → Cameratarget (two empties in the GLB) when it frames the build.
@@ -965,7 +1488,7 @@ function createPL(v3d = window.v3d) {
 
 
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 6 · RENDERING OUTPUT + CONFIGURATOR HANDLERS
+    // 7 · RENDERING OUTPUT + CONFIGURATOR HANDLERS
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     // The configurator waits for this snapshot after every build (quote PDF / SSR).
     function takeSnapshot(snapshot) {
@@ -1024,7 +1547,7 @@ function createPL(v3d = window.v3d) {
 
 
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 7 · ORCHESTRATION
+    // 8 · ORCHESTRATION
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     // The single ingestion point: nothing below this function reads scope[] directly.
     function getParameters(scope) {
@@ -1054,8 +1577,8 @@ function createPL(v3d = window.v3d) {
 
     function enableScene3D() {
         sceneParameters.structureSections.forEach((spec, index) => {
-            // structureSectionCache[index] ??= new StructureSection();     [M5]
-            // structureSectionCache[index].enable(spec, index);
+            structureSectionCache[index] ??= new StructureSection();
+            structureSectionCache[index].enable(spec);
         });
         sceneParameters.sideOpenings.forEach((spec, index) => {
             // sideOpeningCache[index] ??= new SideOpening();               [M6]
@@ -1063,6 +1586,33 @@ function createPL(v3d = window.v3d) {
         });
         hideLeftovers(structureSectionCache, sceneParameters.structureSections.length);
         hideLeftovers(sideOpeningCache, sceneParameters.sideOpenings.length);
+
+        enableFrameColor();
+        enableLighting();
+    }
+
+    // The outside frame colour: every profile shares the Powdercoat material.
+    function enableFrameColor() {
+        if (sceneParameters.general)
+            setMaterialColor('Powdercoat', 'RGB', 0, 0, 0, sceneParameters.general.colorOutside);
+    }
+
+    // LEDs in the roof dim the sun and light the Spot under the roof (a light in the GLB, centred under the
+    // first section's roof). clearScene hides lights too, so they are shown here on every build.
+    function enableLighting() {
+        const sections = structureSectionCache.slice(0, sceneParameters.structureSections.length);
+        const hasLeds = sections.some(section => section.hasLeds);
+        const brightness = sections.reduce((sum, section) => sum + section.ledBrightness, 0);
+
+        changeVis('Sun_modern', true);
+        setLightParam('INTENSITY', 'Sun_modern', hasLeds ? 0 : 4);
+
+        const section = sections[0];
+        changeVis('Spot', hasLeds && Boolean(section));
+        if (section) {
+            setObjTransform('Spot', false, 'position', [mm(section.spec.xPos), mm(section.spec.yPos), mm(section.crownTop) - 0.2], false);
+            setLightParam('INTENSITY', 'Spot', hasLeds ? 6 + brightness : 0);
+        }
     }
 
     // Hide every object of the GLB; each instance shows only the objects it uses. Anchors are re-shown by
@@ -1076,7 +1626,7 @@ function createPL(v3d = window.v3d) {
 
 
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
-    // 8 · ENTRY — PL.init runs on load and again on every configurator change
+    // 9 · ENTRY — PL.init runs on load and again on every configurator change
     //══════════════════════════════════════════════════════════════════════════════════════════════════════
     PL.init = function (app, scope, snapshot) {
         // A new app (scene reloaded) invalidates every cached clone and anchor: start from scratch.
@@ -1132,9 +1682,9 @@ function createPL(v3d = window.v3d) {
 }
 
 
-//#region 9 · INGESTION
+//#region 10 · INGESTION
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
-// 9 · INGESTION — the only place scope[] is read
+// 10 · INGESTION — the only place scope[] is read
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Every field is read guarded (validate → default), so one malformed value can never abort the build.
 // Problems are collected in sceneParameters.issues and logged once, instead of throwing.
@@ -2462,4 +3012,4 @@ const DEV_SCOPES = {
 };
 //#endregion
 
-export { createPL, parseSceneParameters, resolveScope, mm, sideAnchorRotationZ, sideLocalToWorld, DEV_SCOPES };
+export { createPL, parseSceneParameters, resolveScope, mm, lengthMorph, CALISTA_ATLAS, sideAnchorRotationZ, sideLocalToWorld, DEV_SCOPES };
