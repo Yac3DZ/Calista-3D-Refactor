@@ -73,7 +73,14 @@ function makeApp({ anchorTemplate = true } = {}) {
         scene,
         controls: {},
         renderCallbacks: [],
-        renderer: { domElement: { toDataURL: () => 'data:image/png;base64,' } },
+        renderer: {
+            domElement: {
+                listeners: [],
+                toDataURL: () => 'data:image/png;base64,',
+                addEventListener(type, listener) { this.listeners.push({ type, listener }); },
+                removeEventListener(type, listener) { this.listeners = this.listeners.filter(l => l.listener !== listener); },
+            },
+        },
         ExternalInterface: { getLoadPercentageFrom3D: p => calls.load.push(p) },
         getCamera: () => camera,
         enableRendering() { calls.enable++; },
@@ -354,6 +361,10 @@ function makeRoofApp() {
         holder.add(beam);
     });
     ROOF_MESHES.forEach(name => holder.add(mesh(name)));
+    // rotations as authored in the GLB: these two profiles are turned around two axes
+    for (const name of ['Led strip.0', 'No Led strip.0'])
+        holder.getObjectByName(name).quaternion.set(0.5, 0.5, 0.5, 0.5);
+    holder.getObjectByName('Led spot profile.0').quaternion.set(Math.SQRT1_2, 0, 0, Math.SQRT1_2);
     env.scene.add(mesh('Gizmo'));
     const sun = new v3d.DirectionalLight();
     sun.name = 'Sun_modern';
@@ -385,7 +396,8 @@ for (const [name, scope] of Object.entries(DEV_SCOPES)) {
         createPL(v3d);
         const env = makeRoofApp();
         const warnings = init(env, scope);
-        assert.deepEqual(warnings, [], 'no warnings (no missing templates)');
+        // the only expected warning: the stand-in LED material has no "LED color" input (like today's GLB)
+        assert.deepEqual(warnings.filter(w => !w.includes('LED color')), [], 'no other warnings (no missing templates)');
 
         const spec = parseSceneParameters(scope).structureSections[0];
         const section = v3d.PL.debug.structureSectionCache[0];
@@ -471,4 +483,163 @@ test('M5: switching configurations reuses the clones and hides what is no longer
     init(env, DEV_SCOPES.freestanding);
     assert.equal(visible(zipper), true, 'and shown again');
     assert.equal(env.scene.children.length, objectCount, 'no new clones when going back');
+});
+
+test('M5: every roof clone faces exactly like its template (incl. templates rotated around two axes)', { skip }, () => {
+    createPL(v3d);
+    const env = makeRoofApp();
+    init(env, DEV_SCOPES.freestanding);   // has LED strips, spot profiles and plain rafters
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const { getObjectByName } = v3d.PL.debug;
+    let checked = 0;
+    section.pools.forEach(pool => pool.names.slice(0, pool.used).forEach(name => {
+        const clone = getObjectByName(name), template = getObjectByName(pool.templateName);
+        const angle = clone.getWorldQuaternion(new v3d.Quaternion()).angleTo(template.getWorldQuaternion(new v3d.Quaternion()));
+        assert.ok(angle < 1e-6, `${name} is turned ${(angle * 180 / Math.PI).toFixed(1)}° off ${pool.templateName}`);
+        checked++;
+    }));
+    assert.ok(used(section, 'Led strip.0').length > 0 && used(section, 'No Led strip.0').length > 0, 'both two-axis profiles are built');
+    assert.ok(checked > 20);
+});
+
+// ── M5b · roof selection, LED colours ────────────────────────────────────────────────────────────────────
+const SELECTED_MESHES = ['Rafter 190x140 base_Selected.0', 'Led strip_Selected.0', 'Led spot profile_Selected.0',
+    'No Led strip_Selected.0', 'Horizontal_Ledspot_Selected.0', 'Horizontal_Roof_Selected_Front.0'];
+
+// The roof scene plus the "_Selected" meshes, and a configurator that records its focus calls.
+function makeSelectableRoofApp() {
+    const env = makeRoofApp();
+    const holder = env.scene.getObjectByName('globalManipulator');
+    SELECTED_MESHES.forEach(name => {
+        const object = new v3d.Mesh(new v3d.BoxGeometry(0.1, 0.1, 0.1), new v3d.MeshBasicMaterial());
+        object.name = name;
+        holder.add(object);
+    });
+    env.scene.updateMatrixWorld(true);
+    env.focus = [];
+    env.app.ExternalInterface.focus = data => env.focus.push(data.uniqueLabel);
+    return env;
+}
+
+const pick = name => quiet(() => v3d.PL.debug.handleObjectPick(name ? [{ object: v3d.PL.debug.getObjectByName(name) }] : [], {}));
+const shownClones = (section, template) => used(section, template).filter(visible);
+
+test('M5b: clicking a filling selects it, highlights it and opens its group in the configurator', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const spec = parseSceneParameters(DEV_SCOPES.freestanding).structureSections[0];
+
+    const glass = used(section, 'Horizontal_Roof_Glass_Front.0');
+    const target = glass[glass.length - 1];
+    const index = spec.roofOptions.roofFillings.length - 1;   // the freestanding roof ends in glass
+    pick(target);
+    assert.deepEqual(section.selection, { type: 'filling', index });
+    assert.deepEqual(env.focus, ['filling_group~' + index]);
+    const [highlight] = shownClones(section, 'Horizontal_Roof_Selected_Front.0');
+    assert.ok(highlight, 'highlight shown');
+    closeTo(worldPosition(highlight), worldPosition(target), 'highlight lies over the filling');
+    assert.equal(shownClones(section, 'Horizontal_Roof_Selected_Front.0').length, 1);
+});
+
+test('M5b: clicking any part of a rafter builds that rafter from the "_Selected" meshes', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const rafters = parseSceneParameters(DEV_SCOPES.freestanding).structureSections[0].roofOptions.rafters;
+    const index = rafters.findIndex(r => r.ledSpot && !r.ledStrip);
+
+    // click one of its spots
+    const spot = used(section, 'Horizontal_Ledspot.0')[0];
+    pick(spot);
+    assert.deepEqual(section.selection, { type: 'rafter', index });
+    assert.deepEqual(env.focus, ['rafter_group~' + index]);
+    assert.equal(shownClones(section, 'Rafter 190x140 base_Selected.0').length, 1);
+    assert.equal(shownClones(section, 'Led spot profile_Selected.0').length, 1);
+    assert.equal(shownClones(section, 'Horizontal_Ledspot_Selected.0').length, rafters[index].ledSpot.positions.length);
+    assert.equal(shownClones(section, 'Rafter 190x140 base.0').length, rafters.length - 1, 'the others stay normal');
+});
+
+test('M5b: a click that misses closes the group; hidden clones are never picked', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    pick(used(section, 'Rafter 190x140 base.0')[0]);
+    env.focus.length = 0;
+
+    pick(null);
+    assert.equal(section.selection, null);
+    assert.deepEqual(env.focus, ['rafter_group~-1']);
+    assert.equal(shownClones(section, 'Rafter 190x140 base_Selected.0').length, 0);
+
+    // a hidden clone in front: skipped, the shown filling behind it is picked
+    const hidden = section.pools.get('Rafter 190x140 base_Selected.0').names[0];
+    assert.equal(visible(hidden), false);
+    const filling = used(section, 'Horizontal_Roof_Glass_Front.0')[0];
+    quiet(() => v3d.PL.debug.handleObjectPick([{ object: v3d.PL.debug.getObjectByName(hidden) }, { object: v3d.PL.debug.getObjectByName(filling) }], {}));
+    assert.equal(section.selection.type, 'filling');
+
+    // a shown object that isn't clickable (a crown beam) in front: the click misses
+    pick(section.crownBeams.front);
+    assert.equal(section.selection, null);
+});
+
+test('M5b: the configurator focus selects in 3D without echoing back; leaving the field clears it', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const focusIn = data => quiet(() => v3d.PL.procedures.handleFocus(data));
+
+    focusIn({ uniqueLabel: 'rafter_group~2' });
+    assert.deepEqual(section.selection, { type: 'rafter', index: 2 });
+    assert.equal(shownClones(section, 'Rafter 190x140 base_Selected.0').length, 1);
+    focusIn({ uniqueLabel: 'filling_group~0' });
+    assert.deepEqual(section.selection, { type: 'filling', index: 0 });
+    focusIn({ uniqueLabel: 'width_field' });          // another field: the selection stays (legacy behaviour)
+    assert.deepEqual(section.selection, { type: 'filling', index: 0 });
+    focusIn({ uniqueLabel: 'filling_group~-1' });
+    assert.equal(section.selection, null);
+    focusIn({ uniqueLabel: 'rafter_group~1' });
+    focusIn(null);
+    assert.equal(section.selection, null);
+    assert.deepEqual(env.focus, [], 'the 3D never echoes a focus the configurator sent');
+});
+
+test('M5b: a selection survives a configuration change; picking is installed once per app', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const listeners = env.app.renderer.domElement.listeners.length;
+    const section = v3d.PL.debug.structureSectionCache[0];
+    quiet(() => v3d.PL.procedures.handleFocus({ uniqueLabel: 'rafter_group~1' }));
+    init(env, DEV_SCOPES.freestanding);
+    assert.deepEqual(section.selection, { type: 'rafter', index: 1 });
+    assert.equal(shownClones(section, 'Rafter 190x140 base_Selected.0').length, 1);
+    assert.equal(env.app.renderer.domElement.listeners.length, listeners, 'no extra listeners on rebuild');
+    assert.ok(listeners >= 2, 'mouse + touch listeners');
+});
+
+test('M5b: LED colours go to each strip / spot material and the roof light; one warning while the GLB has no input', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    const warnings = init(env, DEV_SCOPES.freestanding);
+    assert.equal(warnings.filter(w => w.includes('LED color')).length, 1, 'stand-in materials have no "LED color" input');
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const rafters = parseSceneParameters(DEV_SCOPES.freestanding).structureSections[0].roofOptions.rafters;
+
+    // two rafters with a strip: each strip needs its own material for its own colour
+    const twoStrips = JSON.parse(JSON.stringify(DEV_SCOPES.freestanding));
+    twoStrips._3d_StructureSections[0].roofOptions.rafters.slice(0, 2).forEach((r, i) => { r.ledSpot = null; r.ledStrip = ['#FF0000', '#00FF00'][i]; });
+    init(env, twoStrips);
+    const strips = used(section, 'Led strip.0').map(n => v3d.PL.debug.getObjectByName(n).material);
+    assert.ok(strips.length >= 2);
+    assert.equal(new Set(strips).size, strips.length, 'each LED strip has its own material');
+    init(env, DEV_SCOPES.freestanding);
+    const firstColor = rafters.map(r => r.ledStrip || (r.ledSpot && r.ledSpot.color)).find(Boolean);
+    const spot = v3d.PL.debug.getObjectByName('Spot');
+    assert.equal(spot.color.getHex(), new v3d.Color(firstColor).getHex(), 'roof light takes the first LED colour');
 });
