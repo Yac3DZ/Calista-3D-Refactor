@@ -41,7 +41,7 @@ const close = (actual, expected, label) => assert.ok(Math.abs(actual - expected)
 // top-level anchor template empty.0 (left out with { anchorTemplate: false }).
 function makeApp({ anchorTemplate = true } = {}) {
     const scene = new v3d.Scene();
-    scene.name = 'Scene';
+    scene.name = 'glid';   // the real GLB's scene name (not "Scene")
     scene.userData.coordSystem = 'Z_UP_RIGHT';
     if (anchorTemplate) {
         const empty = new v3d.Object3D();
@@ -380,11 +380,13 @@ const used = (section, template) => {
     return pool ? pool.names.slice(0, pool.used) : [];
 };
 const worldPosition = name => v3d.PL.debug.getObjTransform(name, true, 'position', 'xyz');
+// Verge3D's rule: an object is drawn when its OWN flag is set (hidden parents don't hide children), except
+// multi-material sub-meshes, which follow their object.
 const visible = name => {
-    for (let object = v3d.PL.debug.getObjectByName(name); object; object = object.parent)
-        if (!object.visible)
-            return false;
-    return true;
+    const object = v3d.PL.debug.getObjectByName(name);
+    if (!object || !object.visible)
+        return false;
+    return !(object.isMesh && object.isMaterialGeneratedMesh && object.parent) || object.parent.visible;
 };
 const closeTo = (actual, expected, label) => {
     assert.equal(actual.length, expected.length, label);
@@ -642,4 +644,113 @@ test('M5b: LED colours go to each strip / spot material and the roof light; one 
     const firstColor = rafters.map(r => r.ledStrip || (r.ledSpot && r.ledSpot.color)).find(Boolean);
     const spot = v3d.PL.debug.getObjectByName('Spot');
     assert.equal(spot.color.getHex(), new v3d.Color(firstColor).getHex(), 'roof light takes the first LED colour');
+});
+
+// ── clicks: left click / tap on the "click" event, drags ignored ─────────────────────────────────────────
+// Node has no DOM events: a minimal MouseEvent is enough for Verge3D's picking listener.
+globalThis.MouseEvent ??= class MouseEvent {
+    constructor(type, init = {}) {
+        Object.assign(this, { button: 0 }, init);
+        this.type = type;
+    }
+    preventDefault() { }
+};
+const listenersOf = (env, type) => env.app.renderer.domElement.listeners.filter(l => l.type === type).map(l => l.listener);
+
+test('clicks: picking listens to "click" (not mousedown) plus "pointerdown" for drag detection', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    assert.equal(listenersOf(env, 'click').length, 1);
+    assert.equal(listenersOf(env, 'pointerdown').length, 1);
+    assert.equal(listenersOf(env, 'mousedown').length, 0, 'a press alone selects nothing (it may start an orbit)');
+});
+
+test('clicks: a click whose pointer moved is a drag and selects nothing; a still one selects', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const filling = v3d.PL.debug.getObjectByName(used(section, 'Horizontal_Roof_Glass_Front.0')[0]);
+    const [pointerDown] = listenersOf(env, 'pointerdown');
+
+    pointerDown({ clientX: 100, clientY: 100 });
+    quiet(() => v3d.PL.debug.handleObjectPick([{ object: filling }], { clientX: 140, clientY: 100 }));
+    assert.equal(section.selection, null, 'dragged 40 px: orbit, not a selection');
+
+    pointerDown({ clientX: 100, clientY: 100 });
+    quiet(() => v3d.PL.debug.handleObjectPick([{ object: filling }], { clientX: 103, clientY: 101 }));
+    assert.equal(section.selection.type, 'filling', 'moved 3 px: a click');
+});
+
+test('clicks: a DOM click event goes canvas → raycast → picker (logged while DEV_LOG_CLICKS is on)', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    Object.assign(env.app.renderer.domElement, { clientWidth: 800, clientHeight: 600 });
+    init(env, DEV_SCOPES.freestanding);
+    const logged = [];
+    const savedInfo = console.info;
+    console.info = (...parts) => logged.push(parts.join(' '));
+    try {
+        const [onClick] = listenersOf(env, 'click');
+        onClick(new MouseEvent('click', { offsetX: 400, offsetY: 300, clientX: 400, clientY: 300 }));
+    } finally {
+        console.info = savedInfo;
+    }
+    assert.equal(logged.filter(line => line.startsWith('[Calista 3D] click on')).length, 1, logged.join('\n'));
+});
+
+// ── Verge3D visibility (regression: clicks hit "nothing" on the real GLB) ────────────────────────────────
+test('visibility: clearScene leaves the scene root visible, whatever its name ("glid" in the GLB)', { skip }, () => {
+    createPL(v3d);
+    const env = makeRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    assert.equal(env.scene.name, 'glid');
+    assert.equal(env.scene.visible, true);
+});
+
+test('visibility: a click on a multi-material sub-mesh selects its object, even under a hidden parent', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const rafterName = used(section, 'Rafter 190x140 base.0')[2];
+    const rafter = v3d.PL.debug.getObjectByName(rafterName);
+    // what Verge3D makes of a multi-material object: sub-meshes named "<object>MatMesh<i>"
+    const subMesh = new v3d.Mesh(new v3d.BoxGeometry(0.1, 0.1, 0.1), new v3d.MeshBasicMaterial());
+    subMesh.name = rafterName + 'MatMesh0';
+    subMesh.isMaterialGeneratedMesh = true;
+    rafter.add(subMesh);
+    // in Verge3D a hidden parent does not hide what is under it: the click must still count
+    v3d.PL.debug.getObjectByName(section.anchor).visible = false;
+    env.scene.visible = false;
+    quiet(() => v3d.PL.debug.handleObjectPick([{ object: subMesh }], {}));
+    assert.deepEqual(section.selection, { type: 'rafter', index: 2 });
+    env.scene.visible = true;
+});
+
+test('visibility: a sub-mesh of a hidden object is not clickable (it is not drawn either)', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const rafter = v3d.PL.debug.getObjectByName(used(section, 'Rafter 190x140 base.0')[0]);
+    const subMesh = new v3d.Mesh(new v3d.BoxGeometry(0.1, 0.1, 0.1), new v3d.MeshBasicMaterial());
+    subMesh.isMaterialGeneratedMesh = true;
+    rafter.add(subMesh);
+    rafter.visible = false;
+    quiet(() => v3d.PL.debug.handleObjectPick([{ object: subMesh }], {}));
+    assert.equal(section.selection, null);
+});
+
+test('visibility: hide() hides every clone of the instance, not only its anchor', { skip }, () => {
+    createPL(v3d);
+    const env = makeRoofApp();
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const clones = [];
+    section.pools.forEach(pool => clones.push(...pool.names.slice(0, pool.used)));
+    assert.ok(clones.length > 20 && clones.every(visible));
+    section.hide();
+    assert.deepEqual(clones.filter(visible), [], 'nothing of the section is drawn any more');
 });

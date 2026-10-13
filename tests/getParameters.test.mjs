@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseSceneParameters, resolveScope, DEV_SCOPES } from '../skyluxHRoof.js';
+import { parseSceneParameters, resolveScope, DEV_SCOPES, DEV_LED_COLORS } from '../skyluxHRoof.js';
 import { _3d_calistaScope as freestanding } from '../examples_source_files/input_example_freestanding_h_roof.js';
 import { _3d_calistaScope as wallRear } from '../examples_source_files/input_example_wall_rear_h_roof.js';
 import { _3d_calistaScope as wallRearRight } from '../examples_source_files/input_example_wall_rear_right_h_roof.js';
@@ -228,4 +228,15 @@ test('DEV_SCOPES match the example files', () => {
     assert.deepEqual(Object.keys(DEV_SCOPES).sort(), Object.keys(examples).sort());
     for (const [name, scope] of Object.entries(examples))
         assert.deepEqual(DEV_SCOPES[name], scope, name);
+});
+
+test('resolveScope: with DEV_LED_COLORS set, the LEDs of the dev scope are recoloured and DEV_SCOPES stays untouched', { skip: !DEV_LED_COLORS && 'DEV_LED_COLORS is off' }, () => {
+    const before = JSON.stringify(DEV_SCOPES.freestanding);
+    const resolved = resolveScope({}, 'freestanding');
+    const colors = resolved.scope._3d_StructureSections[0].roofOptions.rafters
+        .flatMap(r => [r.ledStrip, r.ledSpot && r.ledSpot.color]).filter(Boolean);
+    assert.ok(colors.length > 0);
+    colors.forEach(color => assert.ok(DEV_LED_COLORS.includes(color), color));
+    assert.equal(JSON.stringify(DEV_SCOPES.freestanding), before);
+    assert.deepEqual(parseSceneParameters(resolved.scope).issues, []);
 });

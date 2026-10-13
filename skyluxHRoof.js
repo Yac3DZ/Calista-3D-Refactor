@@ -48,6 +48,13 @@
 // sends the contract.
 const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
 
+// Dev only: recolour every LED of the bundled DEV scope with these colours, in turn, to check the LED
+// material's "LED color" input. null keeps the example's own colours.
+const DEV_LED_COLORS = ['#FF3B30', '#34C759', '#0A84FF', '#FFD60A'];
+
+// Dev only: log every click in the 3D view (what was hit, and whether it is clickable). false to silence.
+const DEV_LOG_CLICKS = true;
+
 
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // 1 · SCENE GEOMETRY — pure helpers, no Verge3D
@@ -1187,9 +1194,14 @@ function createPL(v3d = window.v3d) {
             setObjTransform(this.anchor, false, 'rotation', [0, 0, rotationZ], false);
         }
 
+        // Hides every clone one by one: in Verge3D hiding the anchor would NOT hide the objects under it.
         hide() {
             this.isVisible = false;
             changeVis(this.anchor, false);
+            this.pools.forEach(pool => {
+                pool.reset();
+                pool.hideUnused();
+            });
         }
     }
 
@@ -1249,9 +1261,11 @@ function createPL(v3d = window.v3d) {
     // per registered object, which adds up with dozens of clones. Objects register a handler by name; a click
     // runs the handler of the nearest shown object hit, or every "missed" handler when that object (or
     // nothing) isn't clickable.
-    // Buttons that select (MouseEvent.button): the right button, as in the legacy file; the left one orbits
-    // the camera. A tap on a touch screen always counts.
-    const CLICK_MOUSE_BUTTONS = [2];
+    // Selecting is a plain left click / tap, picked on the browser's "click" event. The left button also
+    // orbits the camera, so a click whose pointer moved more than CLICK_MAX_MOVE px since it went down is a
+    // drag and selects nothing.
+    const CLICK_MAX_MOVE = 6;
+    const pointerDownAt = { x: 0, y: 0, known: false };
     const clickHandlers = new Map();
     const missedClickHandlers = new Set();
 
@@ -1263,33 +1277,92 @@ function createPL(v3d = window.v3d) {
         missedClickHandlers.add(handler);
     }
 
-    // Hidden clones are still in the scene, and raycasts hit them too.
+    // Verge3D's visibility rule (its renderer and raycaster): an object is drawn when its OWN visible flag is
+    // set — a hidden parent does NOT hide its children, except a multi-material object's sub-meshes, which
+    // follow their object. (The plain three.js rule, where hidden parents hide everything below them, does
+    // not apply.)
     function isShownInScene(obj) {
-        for (; obj; obj = obj.parent)
-            if (!obj.visible)
-                return false;
+        if (!obj.visible)
+            return false;
+        if (obj.isMesh && obj.isMaterialGeneratedMesh && obj.parent)
+            return obj.parent.visible;
         return true;
     }
 
+    function isDrag(event) {
+        if (!pointerDownAt.known || !event || typeof event.clientX !== 'number')
+            return false;
+        return Math.hypot(event.clientX - pointerDownAt.x, event.clientY - pointerDownAt.y) > CLICK_MAX_MOVE;
+    }
+
     function handleObjectPick(intersects, event) {
-        for (const hit of intersects) {
-            if (!isShownInScene(hit.object))
-                continue;
-            // the hit may be a part of the clickable object (a multi-material mesh, a child)
-            for (let obj = hit.object; obj; obj = obj.parent) {
-                const handler = clickHandlers.get(obj.name);
-                if (handler) {
-                    handler(event);
-                    return;
-                }
+        if (isDrag(event))
+            return;
+        let shownHit = null;
+        for (const hit of intersects)
+            if (isShownInScene(hit.object)) {
+                shownHit = hit.object;
+                break;
             }
-            break;   // the nearest shown object isn't clickable: the click missed
-        }
-        missedClickHandlers.forEach(handler => handler(event));
+        // the hit may be a part of the clickable object (a multi-material mesh, a child)
+        let clicked = null;
+        for (let obj = shownHit; obj && !clicked; obj = obj.parent)
+            if (clickHandlers.has(obj.name))
+                clicked = obj.name;
+        if (DEV_LOG_CLICKS)
+            logClick(intersects, event, shownHit, clicked);
+        if (clicked)
+            clickHandlers.get(clicked)(event);
+        else
+            missedClickHandlers.forEach(handler => handler(event));
+    }
+
+    // Dev only (DEV_LOG_CLICKS): what the click hit, plus everything needed to see why it hit nothing — the
+    // click position on the canvas, the camera, and a second raycast after refreshing every world matrix.
+    function logClick(intersects, event, shownHit, clicked) {
+        console.info('[Calista 3D] click on', shownHit ? shownHit.name : '(nothing)', clicked ? '→ ' + clicked : '→ not clickable');
+        if (shownHit)
+            return;
+        const elem = appInstance.cssRenderer ? appInstance.container : appInstance.renderer.domElement;
+        const camera = appInstance.getCamera(true);
+        const matrixPosition = camera ? new v3d.Vector3().setFromMatrixPosition(camera.matrixWorld) : null;
+        const round = v => v.toArray().map(n => Math.round(n * 1000) / 1000);
+        const describe = hits => hits.slice(0, 5).map(hit => hit.object.name + (isShownInScene(hit.object) ? '' : ' (hidden)'));
+
+        const raycaster = new v3d.Raycaster();
+        raycaster.setFromCamera(_pGlob.screenCoords, camera);
+        const objects = [];
+        appInstance.scene.updateMatrixWorld(true);
+        if (camera)
+            camera.updateMatrixWorld(true);
+        appInstance.scene.traverse(obj => objects.push(obj));
+        const refreshed = new v3d.Raycaster();
+        refreshed.setFromCamera(_pGlob.screenCoords, camera);
+        const refreshedHits = refreshed.intersectObjects(objects, false);
+
+        console.info('[Calista 3D] click details', {
+            target: event && event.target ? (event.target.tagName + (event.target.id ? '#' + event.target.id : '')) : '?',
+            listenerElement: elem.tagName + (elem.id ? '#' + elem.id : ''),
+            offset: event ? [event.offsetX, event.offsetY] : null,
+            canvasSize: [elem.clientWidth, elem.clientHeight],
+            screenCoords: [_pGlob.screenCoords.x, _pGlob.screenCoords.y],
+            camera: camera ? camera.name + (camera.isPerspectiveCamera ? ' (perspective, aspect ' + camera.aspect.toFixed(3) + ')' : '') : 'none',
+            cameraPosition: camera ? round(camera.position) : null,
+            cameraMatrixPosition: matrixPosition ? round(matrixPosition) : null,
+            rayDirection: round(raycaster.ray.direction),
+            hits: intersects.length + ' ' + JSON.stringify(describe(intersects)),
+            hitsAfterMatrixRefresh: refreshedHits.length + ' ' + JSON.stringify(describe(refreshedHits)),
+        });
     }
 
     function installObjectPicking() {
-        initObjectPicking(handleObjectPick, 'mousedown', false, CLICK_MOUSE_BUTTONS);
+        const elem = appInstance.cssRenderer ? appInstance.container : appInstance.renderer.domElement;
+        bindListener(elem, 'pointerdown', function (event) {
+            pointerDownAt.x = event.clientX;
+            pointerDownAt.y = event.clientY;
+            pointerDownAt.known = true;
+        });
+        initObjectPicking(handleObjectPick, 'click');
     }
 
     // Instances beyond the current contract length are hidden, not destroyed: they are reused when the
@@ -1915,10 +1988,11 @@ function createPL(v3d = window.v3d) {
 
     // Hide every object of the GLB; each instance shows only the objects it uses. Anchors are re-shown by
     // their instance's beginBuild().
+    // The scene root itself is skipped by identity, not by name: the GLB's scene is called "glid", not "Scene".
     function clearScene() {
         const objList = getAllObjectNames();
         for (let i = 0; i < objList.length; i++)
-            if (objList[i] != "Scene")
+            if (getObjectByName(objList[i]) !== appInstance.scene)
                 changeVis(objList[i], false);
     }
 
@@ -1937,6 +2011,7 @@ function createPL(v3d = window.v3d) {
             installRenderGate();
             clickHandlers.clear();
             missedClickHandlers.clear();
+            pointerDownAt.known = false;
             installObjectPicking();
         }
 
@@ -2592,7 +2667,29 @@ function resolveScope(scope, devScopeName) {
         console.warn('[Calista 3D] DEV_SCOPE "' + devScopeName + '" does not exist; use one of ' + Object.keys(DEV_SCOPES).join(', '));
         return { scope: base, devScope: null };
     }
-    return { scope: Object.assign({}, base, DEV_SCOPES[devScopeName]), devScope: devScopeName };
+    const devScope = JSON.parse(JSON.stringify(DEV_SCOPES[devScopeName]));   // a copy: DEV_SCOPES stays as is
+    if (DEV_LED_COLORS)
+        recolorLeds(devScope, DEV_LED_COLORS);
+    return { scope: Object.assign({}, base, devScope), devScope: devScopeName };
+}
+
+// Gives every LED of a raw scope the next colour of `colors` (dev testing, see DEV_LED_COLORS).
+function recolorLeds(scope, colors) {
+    let next = 0;
+    const color = () => colors[next++ % colors.length];
+    (scope._3d_StructureSections || []).forEach(section => {
+        const rafters = (section && section.roofOptions && section.roofOptions.rafters) || [];
+        rafters.forEach(rafter => {
+            if (rafter.ledStrip)
+                rafter.ledStrip = color();
+            if (rafter.ledSpot)
+                rafter.ledSpot.color = color();
+        });
+    });
+    (scope._3d_SideOpenings || []).forEach(side => ((side && side.bays) || []).forEach(bay => {
+        if (bay && bay.ledStrip)
+            bay.ledStrip.color = color();
+    }));
 }
 //#endregion
 
@@ -3314,4 +3411,4 @@ const DEV_SCOPES = {
 };
 //#endregion
 
-export { createPL, parseSceneParameters, resolveScope, mm, lengthMorph, CALISTA_ATLAS, sideAnchorRotationZ, sideLocalToWorld, DEV_SCOPES };
+export { createPL, parseSceneParameters, resolveScope, DEV_LED_COLORS, mm, lengthMorph, CALISTA_ATLAS, sideAnchorRotationZ, sideLocalToWorld, DEV_SCOPES };
