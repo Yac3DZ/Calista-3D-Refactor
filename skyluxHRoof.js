@@ -12,7 +12,7 @@
 //   2 · createPL               Verge3D puzzle globals + state that SURVIVES PL.init re-runs
 //   3 · VERGE3D 4.13 HELPERS   #region — puzzle library, newest API only; grown milestone by milestone
 //   4 · FOUNDATIONS            anchors, ObjectPool, SceneComponent base class, per-object materials,
-//                              object clicks (one picking listener), render gate
+//                              object clicks (one picking listener) + hover cursor, render gate
 //   5 · STRUCTURE SECTION      #region — class StructureSection: crown beams + roof (rafters, LEDs, fillings,
 //                              horizontal screen) + roof selection, one per _3d_StructureSections[] entry
 //   6 · CAMERA                 fitCameraToObjects (zoom-fit), cameraPosition, look at the origin while empty
@@ -50,10 +50,10 @@ const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallR
 
 // Dev only: recolour every LED of the bundled DEV scope with these colours, in turn, to check the LED
 // material's "LED color" input. null keeps the example's own colours.
-const DEV_LED_COLORS = ['#FF3B30', '#34C759', '#0A84FF', '#FFD60A'];
+const DEV_LED_COLORS = ['#FFD60A', '#FF3B30', '#34C759', '#0A84FF'];
 
 // Dev only: log every click in the 3D view (what was hit, and whether it is clickable). false to silence.
-const DEV_LOG_CLICKS = true;
+const DEV_LOG_CLICKS = false;
 
 
 //══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -711,7 +711,7 @@ function createPL(v3d = window.v3d) {
     function setMaterialColor(matSelector, colName, r, g, b, cssCode) {
         const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
 
-        matNames.forEach(function(matName) {
+        matNames.forEach(function (matName) {
             const colors = getMaterialEditableColors(matName);
             if (colors.indexOf(colName) < 0)
                 return;
@@ -755,7 +755,7 @@ function createPL(v3d = window.v3d) {
     function setMaterialValue(matSelector, valName, value) {
         const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
 
-        matNames.forEach(function(matName) {
+        matNames.forEach(function (matName) {
             const values = getMaterialEditableValues(matName);
             if (values.indexOf(valName) < 0)
                 return;
@@ -811,7 +811,7 @@ function createPL(v3d = window.v3d) {
 
                 if (shadowMapFilteringTypeBefore != rendererShadowMap.type) {
 
-                    let deleteShadowMapFromObj = function(object) {
+                    let deleteShadowMapFromObj = function (object) {
                         if (!object.shadow) return;
 
                         if (object.shadow.isDirectionalLightShadowCSM) {
@@ -832,9 +832,9 @@ function createPL(v3d = window.v3d) {
 
                     // need to update shadow.map for ESM filtering
                     let needToUpdateShadowMaps = shadowMapFilteringTypeBefore == v3d.ESMShadowMap ||
-                            rendererShadowMap.type == v3d.ESMShadowMap;
+                        rendererShadowMap.type == v3d.ESMShadowMap;
                     const compiled = {};
-                    appInstance.scene.traverse(function(object) {
+                    appInstance.scene.traverse(function (object) {
 
                         const material = object.material;
                         if (material && object.receiveShadow) {
@@ -872,7 +872,7 @@ function createPL(v3d = window.v3d) {
 
         const objNames = retrieveObjectNames(objSelector);
 
-        objNames.forEach(function(objName) {
+        objNames.forEach(function (objName) {
             if (!objName)
                 return;
 
@@ -881,59 +881,59 @@ function createPL(v3d = window.v3d) {
                 return;
 
             switch (type) {
-            case 'COLOR_VECTOR':
-                obj.color.r = param[0];
-                obj.color.g = param[1];
-                obj.color.b = param[2];
-                break;
-            case 'COLOR_CSS_HEX':
-            case 'COLOR_CSS_RGB':
-                const color = _pGlob.colorTmp.set(param);
-                obj.color.r = color.r;
-                obj.color.g = color.g;
-                obj.color.b = color.b;
-                break;
-            case 'INTENSITY':
-                if (obj.userData.usePowerUnits)
-                    obj.power = param;
-                else
-                    obj.intensity = param;
-                break;
-            case 'USE_SHADOW':
-                if (obj.isAmbientLight) {
-                    console.error('set light param puzzle: Incompatible light source');
-                    return;
-                }
-                if (typeof(param) === "boolean")
-                    obj.castShadow = param;
-
-                break;
-            case 'SHADOW_MAP_SIZE':
-                if (obj.isAmbientLight) {
-                    console.error('set light param puzzle: Incompatible light source');
-                    return;
-                }
-
-                if (!obj.shadow) return;
-
-                if (obj.shadow.isDirectionalLightShadowCSM) {
-                    obj.shadow.mapSize.set(param, param);
-                    obj.shadow.updateMapSize();
-
-                } else if (obj.shadow) {
-                    obj.shadow.mapSize.set(param, param);
-                    obj.shadow.dispose();
-                    // COMPAT: < 4.10
-                    if (obj.shadow.removeMaps) {
-                        obj.shadow.removeMaps();
-                    } else {
-                        obj.shadow.map = null;
-                        obj.shadow._additionalMap2D = null;
-                        obj.shadow._additionalMapCube = null;
+                case 'COLOR_VECTOR':
+                    obj.color.r = param[0];
+                    obj.color.g = param[1];
+                    obj.color.b = param[2];
+                    break;
+                case 'COLOR_CSS_HEX':
+                case 'COLOR_CSS_RGB':
+                    const color = _pGlob.colorTmp.set(param);
+                    obj.color.r = color.r;
+                    obj.color.g = color.g;
+                    obj.color.b = color.b;
+                    break;
+                case 'INTENSITY':
+                    if (obj.userData.usePowerUnits)
+                        obj.power = param;
+                    else
+                        obj.intensity = param;
+                    break;
+                case 'USE_SHADOW':
+                    if (obj.isAmbientLight) {
+                        console.error('set light param puzzle: Incompatible light source');
+                        return;
                     }
-                }
+                    if (typeof (param) === "boolean")
+                        obj.castShadow = param;
 
-                break;
+                    break;
+                case 'SHADOW_MAP_SIZE':
+                    if (obj.isAmbientLight) {
+                        console.error('set light param puzzle: Incompatible light source');
+                        return;
+                    }
+
+                    if (!obj.shadow) return;
+
+                    if (obj.shadow.isDirectionalLightShadowCSM) {
+                        obj.shadow.mapSize.set(param, param);
+                        obj.shadow.updateMapSize();
+
+                    } else if (obj.shadow) {
+                        obj.shadow.mapSize.set(param, param);
+                        obj.shadow.dispose();
+                        // COMPAT: < 4.10
+                        if (obj.shadow.removeMaps) {
+                            obj.shadow.removeMaps();
+                        } else {
+                            obj.shadow.map = null;
+                            obj.shadow._additionalMap2D = null;
+                            obj.shadow._additionalMapCube = null;
+                        }
+                    }
+
+                    break;
             }
 
         });
@@ -941,26 +941,28 @@ function createPL(v3d = window.v3d) {
     }
 
     function areListenersSame(target0, type0, listener0, optionsOrUseCapture0,
-            target1, type1, listener1, optionsOrUseCapture1) {
+        target1, type1, listener1, optionsOrUseCapture1) {
         const capture0 = Boolean(optionsOrUseCapture0 instanceof Object
-                ? optionsOrUseCapture0.capture : optionsOrUseCapture0);
+            ? optionsOrUseCapture0.capture : optionsOrUseCapture0);
         const capture1 = Boolean(optionsOrUseCapture1 instanceof Object
-                ? optionsOrUseCapture1.capture : optionsOrUseCapture1);
+            ? optionsOrUseCapture1.capture : optionsOrUseCapture1);
         return target0 === target1 && type0 === type1 && listener0 === listener1
-                && capture0 === capture1;
+            && capture0 === capture1;
     }
 
     function bindListener(target, type, listener, optionsOrUseCapture) {
         const alreadyExists = _pGlob.eventListeners.some(elem => {
             return areListenersSame(elem.target, elem.type, elem.listener,
-                    elem.optionsOrUseCapture, target, type, listener,
-                    optionsOrUseCapture);
+                elem.optionsOrUseCapture, target, type, listener,
+                optionsOrUseCapture);
         });
 
         if (!alreadyExists) {
             target.addEventListener(type, listener, optionsOrUseCapture);
-            _pGlob.eventListeners.push({ target, type, listener,
-                    optionsOrUseCapture });
+            _pGlob.eventListeners.push({
+                target, type, listener,
+                optionsOrUseCapture
+            });
         }
     }
 
@@ -977,8 +979,8 @@ function createPL(v3d = window.v3d) {
         }
     }
 
-    function initObjectPicking(callback, eventType, mouseDownUseTouchStart=false,
-            allowedMouseButtons=null) {
+    function initObjectPicking(callback, eventType, mouseDownUseTouchStart = false,
+        allowedMouseButtons = null) {
 
         // css renderer prevents interacting with canvas, in that case we assign events on container
         const elem = appInstance.cssRenderer ? appInstance.container : appInstance.renderer.domElement;
@@ -1295,20 +1297,26 @@ function createPL(v3d = window.v3d) {
         return Math.hypot(event.clientX - pointerDownAt.x, event.clientY - pointerDownAt.y) > CLICK_MAX_MOVE;
     }
 
-    function handleObjectPick(intersects, event) {
-        if (isDrag(event))
-            return;
+    // The nearest shown object a ray hits, and the clickable object it belongs to (null when it isn't
+    // clickable). The hit may be a part of the clickable object: a multi-material sub-mesh, a child.
+    function findClickable(intersects) {
         let shownHit = null;
         for (const hit of intersects)
             if (isShownInScene(hit.object)) {
                 shownHit = hit.object;
                 break;
             }
-        // the hit may be a part of the clickable object (a multi-material mesh, a child)
         let clicked = null;
         for (let obj = shownHit; obj && !clicked; obj = obj.parent)
             if (clickHandlers.has(obj.name))
                 clicked = obj.name;
+        return { shownHit: shownHit, clicked: clicked };
+    }
+
+    function handleObjectPick(intersects, event) {
+        if (isDrag(event))
+            return;
+        const { shownHit, clicked } = findClickable(intersects);
         if (DEV_LOG_CLICKS)
             logClick(intersects, event, shownHit, clicked);
         if (clicked)
@@ -1355,13 +1363,65 @@ function createPL(v3d = window.v3d) {
         });
     }
 
+    // ── hover cursor ──────────────────────────────────────────────────────────────────────────────────────
+    // The pointer turns into a hand over anything clickable. At most one raycast per animation frame, none
+    // while a button is held (orbiting / panning) and none for touch (no hover there).
+    const CLICKABLE_CURSOR = 'pointer';
+    const hover = { event: null, scheduled: false, raycaster: null, coords: null };
+
+    // The element Verge3D's picking listens on (the container when a CSS renderer covers the canvas).
+    function pickingElement() {
+        return appInstance.cssRenderer ? appInstance.container : appInstance.renderer.domElement;
+    }
+
+    // Everything under a canvas position, nearest first — the same raycast initObjectPicking does for a click.
+    function raycastAt(offsetX, offsetY) {
+        const elem = pickingElement();
+        const camera = appInstance.getCamera(true);
+        if (!camera || !elem.clientWidth || !elem.clientHeight)
+            return [];
+        hover.raycaster ??= new v3d.Raycaster();
+        hover.coords ??= new v3d.Vector2();
+        hover.coords.set(offsetX / elem.clientWidth * 2 - 1, -offsetY / elem.clientHeight * 2 + 1);
+        hover.raycaster.setFromCamera(hover.coords, camera);
+        const objects = [];
+        appInstance.scene.traverse(obj => objects.push(obj));
+        return hover.raycaster.intersectObjects(objects, false);
+    }
+
+    function setHoverCursor(intersects) {
+        pickingElement().style.cursor = findClickable(intersects).clicked ? CLICKABLE_CURSOR : '';
+    }
+
+    function onPointerMove(event) {
+        if (event.pointerType === 'touch' || event.buttons)
+            return;
+        hover.event = event;
+        if (hover.scheduled)
+            return;
+        hover.scheduled = true;
+        const nextFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : cb => setTimeout(cb, 16);
+        nextFrame(function () {
+            hover.scheduled = false;
+            if (hover.event)
+                setHoverCursor(raycastAt(hover.event.offsetX, hover.event.offsetY));
+        });
+    }
+
+    function onPointerLeave() {
+        hover.event = null;
+        pickingElement().style.cursor = '';
+    }
+
     function installObjectPicking() {
-        const elem = appInstance.cssRenderer ? appInstance.container : appInstance.renderer.domElement;
+        const elem = pickingElement();
         bindListener(elem, 'pointerdown', function (event) {
             pointerDownAt.x = event.clientX;
             pointerDownAt.y = event.clientY;
             pointerDownAt.known = true;
         });
+        bindListener(elem, 'pointermove', onPointerMove);
+        bindListener(elem, 'pointerleave', onPointerLeave);
         initObjectPicking(handleObjectPick, 'click');
     }
 
@@ -2012,6 +2072,7 @@ function createPL(v3d = window.v3d) {
             clickHandlers.clear();
             missedClickHandlers.clear();
             pointerDownAt.known = false;
+            hover.event = null;
             installObjectPicking();
         }
 
@@ -2031,6 +2092,7 @@ function createPL(v3d = window.v3d) {
             renderFrame: renderFrame,
             cameraPosition: cameraPosition,
             handleObjectPick: handleObjectPick,
+            setHoverCursor: setHoverCursor,
             fitCameraToObjects: fitCameraToObjects,
             getObjectByName: getObjectByName,
             setObjTransform: setObjTransform,
@@ -2706,7 +2768,7 @@ const DEV_SCOPES = {
         "_3d_conservatoryStructure": "freeStanding",
         "_3d_widthTotal": 6000,
         "_3d_depthTotal": 4000,
-        "_3d_walls": {"front":false,"right":false,"rear":false,"left":false},
+        "_3d_walls": { "front": false, "right": false, "rear": false, "left": false },
         "_3d_colorOutside": "#293133",
         "_3d_StructureSections": [
             {
@@ -2716,29 +2778,29 @@ const DEV_SCOPES = {
                 "yPos": 2000,
                 "heightUnderGutter": 2500,
                 "sectionName": "Section_1",
-                "adjacentSections": {"left":null,"right":null},
+                "adjacentSections": { "left": null, "right": null },
                 "roofOptions": {
-                    "horizontalScreen": {"type":"zipper","screenColor":["#D9D4C7","#D9D4C7","#D9D4C7"],"motorSide":"right"},
+                    "horizontalScreen": { "type": "zipper", "screenColor": ["#D9D4C7", "#D9D4C7", "#D9D4C7"], "motorSide": "right" },
                     "roofFillings": [
-                        {"position":500,"width":1000,"type":"glassClear"},
-                        {"position":1500,"width":1000,"type":"glassClear"},
-                        {"position":2500,"width":1000,"type":"glassOpal"},
-                        {"position":3500,"width":1000,"type":"glassOpal"},
-                        {"position":4500,"width":1000,"type":"glassClear"},
-                        {"position":5500,"width":1000,"type":"glassClear"}
+                        { "position": 500, "width": 1000, "type": "glassClear" },
+                        { "position": 1500, "width": 1000, "type": "glassClear" },
+                        { "position": 2500, "width": 1000, "type": "glassOpal" },
+                        { "position": 3500, "width": 1000, "type": "glassOpal" },
+                        { "position": 4500, "width": 1000, "type": "glassClear" },
+                        { "position": 5500, "width": 1000, "type": "glassClear" }
                     ],
                     "rafters": [
                         {
                             "position": 1000,
-                            "ledSpot": {"positions":[1000,2000,3000],"color":"#FFD1A3"},
+                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#FFD1A3" },
                             "ledStrip": null
                         },
-                        {"position":2000,"ledSpot":null,"ledStrip":null},
-                        {"position":3000,"ledSpot":null,"ledStrip":"#FFFFFF"},
-                        {"position":4000,"ledSpot":null,"ledStrip":null},
+                        { "position": 2000, "ledSpot": null, "ledStrip": null },
+                        { "position": 3000, "ledSpot": null, "ledStrip": "#FFFFFF" },
+                        { "position": 4000, "ledSpot": null, "ledStrip": null },
                         {
                             "position": 5000,
-                            "ledSpot": {"positions":[1000,2000,3000],"color":"#FFD1A3"},
+                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#FFD1A3" },
                             "ledStrip": null
                         }
                     ]
@@ -2787,7 +2849,7 @@ const DEV_SCOPES = {
                 ],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1550,"length":2800,"height":2500},
+                        "generalSpecs": { "position": 1550, "length": 2800, "height": 2500 },
                         "climaglide": {
                             "mounting": "surface",
                             "panelAmount": 4,
@@ -2801,15 +2863,15 @@ const DEV_SCOPES = {
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "axiom100",
-                            "screenColor": ["#7A7A7A","#7A7A7A","#7A7A7A"],
+                            "screenColor": ["#7A7A7A", "#7A7A7A", "#7A7A7A"],
                             "solar": false,
                             "window": null
                         },
                         "fixedWall": null,
-                        "ledStrip": {"mounting":"builtIn","color":"#FFD1A3"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
                     },
                     {
-                        "generalSpecs": {"position":4450,"length":2800,"height":2500},
+                        "generalSpecs": { "position": 4450, "length": 2800, "height": 2500 },
                         "climaglide": {
                             "mounting": "surface",
                             "panelAmount": 3,
@@ -2823,12 +2885,12 @@ const DEV_SCOPES = {
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "axiom100",
-                            "screenColor": ["#7A7A7A","#7A7A7A","#7A7A7A"],
+                            "screenColor": ["#7A7A7A", "#7A7A7A", "#7A7A7A"],
                             "solar": false,
                             "window": null
                         },
                         "fixedWall": null,
-                        "ledStrip": {"mounting":"builtIn","color":"#FFD1A3"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
                     }
                 ]
             },
@@ -2873,25 +2935,25 @@ const DEV_SCOPES = {
                 ],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1550,"length":2800,"height":2500},
+                        "generalSpecs": { "position": 1550, "length": 2800, "height": 2500 },
                         "climaglide": null,
                         "verticalSunblind": null,
                         "fixedWall": {
                             "mounting": "builtIn",
                             "partitions": [
-                                {"position":850,"width":1400,"height":2500,"fillType":"glassClear"},
-                                {"position":2250,"width":1400,"height":2500,"fillType":"glassClear"}
+                                { "position": 850, "width": 1400, "height": 2500, "fillType": "glassClear" },
+                                { "position": 2250, "width": 1400, "height": 2500, "fillType": "glassClear" }
                             ]
                         },
                         "ledStrip": null
                     },
                     {
-                        "generalSpecs": {"position":4450,"length":2800,"height":2500},
+                        "generalSpecs": { "position": 4450, "length": 2800, "height": 2500 },
                         "climaglide": null,
                         "verticalSunblind": null,
                         "fixedWall": {
                             "mounting": "builtIn",
-                            "partitions": [{"position":4450,"width":2800,"height":2500,"fillType":"glassOpal"}]
+                            "partitions": [{ "position": 4450, "width": 2800, "height": 2500, "fillType": "glassOpal" }]
                         },
                         "ledStrip": null
                     }
@@ -2920,12 +2982,12 @@ const DEV_SCOPES = {
                 ],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1050,"length":1800,"height":2500},
+                        "generalSpecs": { "position": 1050, "length": 1800, "height": 2500 },
                         "climaglide": null,
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "axiom130",
-                            "screenColor": ["#4D504D","#4D504D","#4D504D"],
+                            "screenColor": ["#4D504D", "#4D504D", "#4D504D"],
                             "solar": true,
                             "window": {
                                 "type": "partialWidth",
@@ -2939,14 +3001,14 @@ const DEV_SCOPES = {
                         "ledStrip": null
                     },
                     {
-                        "generalSpecs": {"position":2950,"length":1800,"height":2500},
+                        "generalSpecs": { "position": 2950, "length": 1800, "height": 2500 },
                         "climaglide": null,
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "axiom130",
-                            "screenColor": ["#4D504D","#4D504D","#4D504D"],
+                            "screenColor": ["#4D504D", "#4D504D", "#4D504D"],
                             "solar": true,
-                            "window": {"type":"fullWidth","position":2950,"width":1800,"height":600,"groundHeight":1000}
+                            "window": { "type": "fullWidth", "position": 2950, "width": 1800, "height": 600, "groundHeight": 1000 }
                         },
                         "fixedWall": null,
                         "ledStrip": null
@@ -2966,7 +3028,7 @@ const DEV_SCOPES = {
                 "poles": [],
                 "bays": [
                     {
-                        "generalSpecs": {"position":2000,"length":3700,"height":2500},
+                        "generalSpecs": { "position": 2000, "length": 3700, "height": 2500 },
                         "climaglide": {
                             "mounting": "surface",
                             "panelAmount": 6,
@@ -2990,7 +3052,7 @@ const DEV_SCOPES = {
         "_3d_conservatoryStructure": "wallAdjacent",
         "_3d_widthTotal": 5000,
         "_3d_depthTotal": 3500,
-        "_3d_walls": {"front":false,"right":false,"rear":true,"left":false},
+        "_3d_walls": { "front": false, "right": false, "rear": true, "left": false },
         "_3d_colorOutside": "#F1F0EA",
         "_3d_StructureSections": [
             {
@@ -3000,35 +3062,35 @@ const DEV_SCOPES = {
                 "yPos": 1750,
                 "heightUnderGutter": 2400,
                 "sectionName": "Section_1",
-                "adjacentSections": {"left":null,"right":null},
+                "adjacentSections": { "left": null, "right": null },
                 "roofOptions": {
-                    "horizontalScreen": {"type":"bottomZipper","screenColor":["#8C8C8C","#8C8C8C","#5A5A5A"],"motorSide":"left"},
+                    "horizontalScreen": { "type": "bottomZipper", "screenColor": ["#8C8C8C", "#8C8C8C", "#5A5A5A"], "motorSide": "left" },
                     "roofFillings": [
-                        {"position":500,"width":1000,"type":"plastic"},
-                        {"position":1500,"width":1000,"type":"plasticOpal"},
-                        {"position":2500,"width":1000,"type":"plasticSunBlocking"},
-                        {"position":3500,"width":1000,"type":"plasticOpal"},
-                        {"position":4500,"width":1000,"type":"plastic"}
+                        { "position": 500, "width": 1000, "type": "plastic" },
+                        { "position": 1500, "width": 1000, "type": "plasticOpal" },
+                        { "position": 2500, "width": 1000, "type": "plasticSunBlocking" },
+                        { "position": 3500, "width": 1000, "type": "plasticOpal" },
+                        { "position": 4500, "width": 1000, "type": "plastic" }
                     ],
                     "rafters": [
                         {
                             "position": 1000,
-                            "ledSpot": {"positions":[875,1750,2625],"color":"#FFFFFF"},
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
                             "ledStrip": null
                         },
                         {
                             "position": 2000,
-                            "ledSpot": {"positions":[875,1750,2625],"color":"#FFFFFF"},
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
                             "ledStrip": null
                         },
                         {
                             "position": 3000,
-                            "ledSpot": {"positions":[875,1750,2625],"color":"#FFFFFF"},
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
                             "ledStrip": null
                         },
                         {
                             "position": 4000,
-                            "ledSpot": {"positions":[875,1750,2625],"color":"#FFFFFF"},
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
                             "ledStrip": null
                         }
                     ]
@@ -3077,7 +3139,7 @@ const DEV_SCOPES = {
                 ],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1300,"length":2300,"height":2400},
+                        "generalSpecs": { "position": 1300, "length": 2300, "height": 2400 },
                         "climaglide": {
                             "mounting": "surface",
                             "panelAmount": 3,
@@ -3091,7 +3153,7 @@ const DEV_SCOPES = {
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "element",
-                            "screenColor": ["#3C3C3C","#3C3C3C","#3C3C3C"],
+                            "screenColor": ["#3C3C3C", "#3C3C3C", "#3C3C3C"],
                             "solar": true,
                             "window": {
                                 "type": "partialWidth",
@@ -3105,14 +3167,14 @@ const DEV_SCOPES = {
                         "ledStrip": null
                     },
                     {
-                        "generalSpecs": {"position":3700,"length":2300,"height":2400},
+                        "generalSpecs": { "position": 3700, "length": 2300, "height": 2400 },
                         "climaglide": null,
                         "verticalSunblind": null,
                         "fixedWall": {
                             "mounting": "surface",
                             "partitions": [
-                                {"position":3125,"width":1150,"height":2400,"fillType":"woodOutside"},
-                                {"position":4275,"width":1150,"height":2400,"fillType":"sandwichPanelWhite"}
+                                { "position": 3125, "width": 1150, "height": 2400, "fillType": "woodOutside" },
+                                { "position": 4275, "width": 1150, "height": 2400, "fillType": "sandwichPanelWhite" }
                             ]
                         },
                         "ledStrip": null
@@ -3164,17 +3226,17 @@ const DEV_SCOPES = {
                 "poles": [],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1750,"length":3200,"height":2400},
+                        "generalSpecs": { "position": 1750, "length": 3200, "height": 2400 },
                         "climaglide": null,
                         "verticalSunblind": null,
                         "fixedWall": {
                             "mounting": "builtIn",
                             "partitions": [
-                                {"position":925,"width":1550,"height":2400,"fillType":"glassClear"},
-                                {"position":2525,"width":1650,"height":2400,"fillType":"woodInside"}
+                                { "position": 925, "width": 1550, "height": 2400, "fillType": "glassClear" },
+                                { "position": 2525, "width": 1650, "height": 2400, "fillType": "woodInside" }
                             ]
                         },
-                        "ledStrip": {"mounting":"builtIn","color":"#FFFFFF"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFFFFF" }
                     }
                 ]
             },
@@ -3191,7 +3253,7 @@ const DEV_SCOPES = {
                 "poles": [],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1750,"length":3200,"height":2400},
+                        "generalSpecs": { "position": 1750, "length": 3200, "height": 2400 },
                         "climaglide": {
                             "mounting": "surface",
                             "panelAmount": 4,
@@ -3205,12 +3267,12 @@ const DEV_SCOPES = {
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "axiom130",
-                            "screenColor": ["#8C8C8C","#8C8C8C","#5A5A5A"],
+                            "screenColor": ["#8C8C8C", "#8C8C8C", "#5A5A5A"],
                             "solar": false,
-                            "window": {"type":"fullWidth","position":1750,"width":3200,"height":800,"groundHeight":1200}
+                            "window": { "type": "fullWidth", "position": 1750, "width": 3200, "height": 800, "groundHeight": 1200 }
                         },
                         "fixedWall": null,
-                        "ledStrip": {"mounting":"builtIn","color":"#FFFFFF"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFFFFF" }
                     }
                 ]
             }
@@ -3221,7 +3283,7 @@ const DEV_SCOPES = {
         "_3d_conservatoryStructure": "wallAdjacent",
         "_3d_widthTotal": 4500,
         "_3d_depthTotal": 3000,
-        "_3d_walls": {"front":false,"right":true,"rear":true,"left":false},
+        "_3d_walls": { "front": false, "right": true, "rear": true, "left": false },
         "_3d_colorOutside": "#1E1E1E",
         "_3d_StructureSections": [
             {
@@ -3231,23 +3293,23 @@ const DEV_SCOPES = {
                 "yPos": 1500,
                 "heightUnderGutter": 2600,
                 "sectionName": "Section_1",
-                "adjacentSections": {"left":null,"right":null},
+                "adjacentSections": { "left": null, "right": null },
                 "roofOptions": {
                     "horizontalScreen": null,
                     "roofFillings": [
-                        {"position":375,"width":750,"type":"sandwichPanelAnthracite"},
-                        {"position":1125,"width":750,"type":"sandwichPanelWhite"},
-                        {"position":1875,"width":750,"type":"sandwichPanelTile"},
-                        {"position":2625,"width":750,"type":"sandwichPanelTile"},
-                        {"position":3375,"width":750,"type":"sandwichPanelWhite"},
-                        {"position":4125,"width":750,"type":"sandwichPanelAnthracite"}
+                        { "position": 375, "width": 750, "type": "sandwichPanelAnthracite" },
+                        { "position": 1125, "width": 750, "type": "sandwichPanelWhite" },
+                        { "position": 1875, "width": 750, "type": "sandwichPanelTile" },
+                        { "position": 2625, "width": 750, "type": "sandwichPanelTile" },
+                        { "position": 3375, "width": 750, "type": "sandwichPanelWhite" },
+                        { "position": 4125, "width": 750, "type": "sandwichPanelAnthracite" }
                     ],
                     "rafters": [
-                        {"position":750,"ledSpot":null,"ledStrip":"#FFD1A3"},
-                        {"position":1500,"ledSpot":null,"ledStrip":null},
-                        {"position":2250,"ledSpot":null,"ledStrip":"#FFD1A3"},
-                        {"position":3000,"ledSpot":null,"ledStrip":null},
-                        {"position":3750,"ledSpot":null,"ledStrip":"#FFD1A3"}
+                        { "position": 750, "ledSpot": null, "ledStrip": "#FFD1A3" },
+                        { "position": 1500, "ledSpot": null, "ledStrip": null },
+                        { "position": 2250, "ledSpot": null, "ledStrip": "#FFD1A3" },
+                        { "position": 3000, "ledSpot": null, "ledStrip": null },
+                        { "position": 3750, "ledSpot": null, "ledStrip": "#FFD1A3" }
                     ]
                 }
             }
@@ -3285,7 +3347,7 @@ const DEV_SCOPES = {
                 ],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1175,"length":2050,"height":2600},
+                        "generalSpecs": { "position": 1175, "length": 2050, "height": 2600 },
                         "climaglide": null,
                         "verticalSunblind": null,
                         "fixedWall": {
@@ -3297,24 +3359,24 @@ const DEV_SCOPES = {
                                     "height": 2600,
                                     "fillType": "sandwichPanelAnthracite"
                                 },
-                                {"position":1175,"width":650,"height":2600,"fillType":"woodBothSides"},
-                                {"position":1850,"width":700,"height":2600,"fillType":"none"}
+                                { "position": 1175, "width": 650, "height": 2600, "fillType": "woodBothSides" },
+                                { "position": 1850, "width": 700, "height": 2600, "fillType": "none" }
                             ]
                         },
-                        "ledStrip": {"mounting":"builtIn","color":"#FFD1A3"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
                     },
                     {
-                        "generalSpecs": {"position":3325,"length":2050,"height":2600},
+                        "generalSpecs": { "position": 3325, "length": 2050, "height": 2600 },
                         "climaglide": null,
                         "verticalSunblind": {
                             "mounting": "surface",
                             "type": "axiom130",
-                            "screenColor": ["#E5E1D8","#C9C3B6","#E5E1D8"],
+                            "screenColor": ["#E5E1D8", "#C9C3B6", "#E5E1D8"],
                             "solar": false,
-                            "window": {"type":"fullWidth","position":3325,"width":2050,"height":700,"groundHeight":1100}
+                            "window": { "type": "fullWidth", "position": 3325, "width": 2050, "height": 700, "groundHeight": 1100 }
                         },
                         "fixedWall": null,
-                        "ledStrip": {"mounting":"builtIn","color":"#FFD1A3"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
                     }
                 ]
             },
@@ -3354,7 +3416,7 @@ const DEV_SCOPES = {
                 "poles": [],
                 "bays": [
                     {
-                        "generalSpecs": {"position":1500,"length":2700,"height":2600},
+                        "generalSpecs": { "position": 1500, "length": 2700, "height": 2600 },
                         "climaglide": {
                             "mounting": "surface",
                             "panelAmount": 6,
@@ -3368,7 +3430,7 @@ const DEV_SCOPES = {
                         "verticalSunblind": {
                             "mounting": "builtIn",
                             "type": "axiom100",
-                            "screenColor": ["#4D504D","#4D504D","#4D504D"],
+                            "screenColor": ["#4D504D", "#4D504D", "#4D504D"],
                             "solar": true,
                             "window": {
                                 "type": "partialWidth",
@@ -3379,7 +3441,7 @@ const DEV_SCOPES = {
                             }
                         },
                         "fixedWall": null,
-                        "ledStrip": {"mounting":"builtIn","color":"#FFD1A3"}
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
                     }
                 ]
             },

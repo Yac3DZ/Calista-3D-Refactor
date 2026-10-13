@@ -683,21 +683,18 @@ test('clicks: a click whose pointer moved is a drag and selects nothing; a still
     assert.equal(section.selection.type, 'filling', 'moved 3 px: a click');
 });
 
-test('clicks: a DOM click event goes canvas → raycast → picker (logged while DEV_LOG_CLICKS is on)', { skip }, () => {
+test('clicks: a DOM click event goes canvas → raycast → picker (a click on empty space closes the selection)', { skip }, () => {
     createPL(v3d);
     const env = makeSelectableRoofApp();
     Object.assign(env.app.renderer.domElement, { clientWidth: 800, clientHeight: 600 });
     init(env, DEV_SCOPES.freestanding);
-    const logged = [];
-    const savedInfo = console.info;
-    console.info = (...parts) => logged.push(parts.join(' '));
-    try {
-        const [onClick] = listenersOf(env, 'click');
-        onClick(new MouseEvent('click', { offsetX: 400, offsetY: 300, clientX: 400, clientY: 300 }));
-    } finally {
-        console.info = savedInfo;
-    }
-    assert.equal(logged.filter(line => line.startsWith('[Calista 3D] click on')).length, 1, logged.join('\n'));
+    const section = v3d.PL.debug.structureSectionCache[0];
+    quiet(() => v3d.PL.procedures.handleFocus({ uniqueLabel: 'rafter_group~0' }));
+    assert.ok(section.selection);
+    const [onClick] = listenersOf(env, 'click');
+    quiet(() => onClick(new MouseEvent('click', { offsetX: 1, offsetY: 1, clientX: 1, clientY: 1 })));   // top-left corner: sky
+    assert.equal(section.selection, null);
+    assert.deepEqual(env.focus, ['rafter_group~-1']);
 });
 
 // ── Verge3D visibility (regression: clicks hit "nothing" on the real GLB) ────────────────────────────────
@@ -753,4 +750,52 @@ test('visibility: hide() hides every clone of the instance, not only its anchor'
     assert.ok(clones.length > 20 && clones.every(visible));
     section.hide();
     assert.deepEqual(clones.filter(visible), [], 'nothing of the section is drawn any more');
+});
+
+// ── hover cursor ─────────────────────────────────────────────────────────────────────────────────────────
+test('hover: the cursor turns into a hand over clickable objects only', { skip }, () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    env.app.renderer.domElement.style = {};
+    init(env, DEV_SCOPES.freestanding);
+    const section = v3d.PL.debug.structureSectionCache[0];
+    const object = name => ({ object: v3d.PL.debug.getObjectByName(name) });
+    const cursor = () => env.app.renderer.domElement.style.cursor;
+
+    v3d.PL.debug.setHoverCursor([object(used(section, 'Horizontal_Roof_Glass_Front.0')[0])]);
+    assert.equal(cursor(), 'pointer', 'over a filling');
+    v3d.PL.debug.setHoverCursor([object(section.crownBeams.front), object(used(section, 'Horizontal_Roof_Glass_Front.0')[0])]);
+    assert.equal(cursor(), '', 'a crown beam in front: no hand (a click would miss too)');
+    v3d.PL.debug.setHoverCursor([]);
+    assert.equal(cursor(), '', 'over nothing');
+});
+
+test('hover: pointer moves raycast at most once per frame, never while dragging or on touch; leaving resets', { skip }, async () => {
+    createPL(v3d);
+    const env = makeSelectableRoofApp();
+    const elem = env.app.renderer.domElement;
+    Object.assign(elem, { style: {}, clientWidth: 800, clientHeight: 600 });
+    init(env, DEV_SCOPES.freestanding);
+    const [onMove] = listenersOf(env, 'pointermove');
+    const [onLeave] = listenersOf(env, 'pointerleave');
+    assert.ok(onMove && onLeave);
+
+    let raycasts = 0;
+    const traverse = env.scene.traverse.bind(env.scene);
+    env.scene.traverse = callback => { raycasts++; return traverse(callback); };
+    for (let i = 0; i < 5; i++)
+        onMove({ offsetX: 400 + i, offsetY: 300, buttons: 0, pointerType: 'mouse' });
+    onMove({ offsetX: 400, offsetY: 300, buttons: 1, pointerType: 'mouse' });   // orbiting
+    onMove({ offsetX: 400, offsetY: 300, buttons: 0, pointerType: 'touch' });
+    await wait(40);
+    assert.equal(raycasts, 1, 'one raycast for a burst of moves');
+    onMove({ offsetX: 420, offsetY: 300, buttons: 1, pointerType: 'mouse' });  // a drag on its own frame
+    onMove({ offsetX: 420, offsetY: 300, buttons: 0, pointerType: 'touch' });
+    await wait(40);
+    assert.equal(raycasts, 1, 'no raycast while a button is held, none for touch');
+
+    elem.style.cursor = 'pointer';
+    onLeave({});
+    assert.equal(elem.style.cursor, '');
+    env.scene.traverse = traverse;
 });
