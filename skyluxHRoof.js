@@ -1102,10 +1102,10 @@ function createPL(v3d = window.v3d) {
             return obj.visible;
         }
 
-        // Click animations: a value from `from` to `to` in `duration` s (linear, as legacy animateParam), onUpdate(value)
+        // Click animations: a value from `from` to `to` in `duration` s, onUpdate(value)
         // every frame. The engine has no tween library (the legacy file carried its own copy), so it runs on the
         // browser's animation frames. Returns a function that stops it where it is.
-        const ANIMATION_TIME = 1.5;   // s, as legacy
+        const ANIMATION_TIME = 2;   // s
         function animateValue(from, to, duration, onUpdate, onDone) {
             let start = null, stopped = false;
             function step(now) {
@@ -1114,7 +1114,7 @@ function createPL(v3d = window.v3d) {
                 if (start === null)
                     start = now;
                 const t = Math.min((now - start) / (duration * 1000), 1);
-                onUpdate(from + (to - from) * t);
+                onUpdate(from + (to - from) * ease(t));
                 if (t < 1)
                     requestAnimationFrame(step);
                 else if (onDone)
@@ -1122,6 +1122,17 @@ function createPL(v3d = window.v3d) {
             }
             requestAnimationFrame(step);
             return () => stopped = true;
+        }
+
+        // Steady speed, with a soft start and stop: it speeds up over the first 15 % of the time and slows down over
+        // the last 15 % (t and the result run 0 -> 1).
+        function ease(t) {
+            const ramp = 0.15, speed = 1 / (1 - ramp);
+            if (t < ramp)
+                return speed * t * t / (2 * ramp);
+            if (t > 1 - ramp)
+                return 1 - speed * (1 - t) * (1 - t) / (2 * ramp);
+            return speed * (t - ramp / 2);
         }
         //#endregion ---------------------------------------------------------------
 
