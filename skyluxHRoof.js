@@ -1101,6 +1101,25 @@ function createPL(v3d = window.v3d) {
                 return obj.parent.visible;
             return obj.visible;
         }
+
+        // Click animations: a value from `from` to `to` in `duration` s (linear, as legacy animateParam), onUpdate(value)
+        // every frame. The engine has no tween library (the legacy file carried its own copy), so it runs on the
+        // browser's animation frames.
+        const ANIMATION_TIME = 1.5;   // s, as legacy
+        function animateValue(from, to, duration, onUpdate, onDone) {
+            let start = null;
+            function step(now) {
+                if (start === null)
+                    start = now;
+                const t = Math.min((now - start) / (duration * 1000), 1);
+                onUpdate(from + (to - from) * t);
+                if (t < 1)
+                    requestAnimationFrame(step);
+                else if (onDone)
+                    onDone();
+            }
+            requestAnimationFrame(step);
+        }
         //#endregion ---------------------------------------------------------------
 
         //#region StructureSection ---------------------------------------------------------------
@@ -1131,6 +1150,11 @@ function createPL(v3d = window.v3d) {
                 this.selectedRafterCache = [];      // the selected rafter's "_Selected" meshes: [rafter, strip, spot profile, no strip]
                 this.selectedLedSpotCache = [];
                 this.selectedFillingCache = [];     // the highlight over the selected filling
+
+                // horizontal screen, opened / closed by a click: 0 shut … 100 open (kept between configurator changes)
+                this.screenOpening = 0;
+                this.screenIsMoving = false;
+                this.activeScreen = null;           // the shown screen clone, null without a screen
             }
 
             enable(section) {
@@ -1269,7 +1293,7 @@ function createPL(v3d = window.v3d) {
             }
 
             // One horizontal screen over the section ("its width IS the section width"), centred, with its depth
-            // supports spread between the front and rear beams. Shown closed (Opening 0) for now.
+            // supports spread between the front and rear beams. A click opens / closes it (toggleHorizontalScreen).
             enableHorizontalScreen(screen) {
                 const types = [
                     { type: "zipper", screen: "Horizontal screen zipper top.0", supports: "Horizontal screen zipper top depth supports.0" },
@@ -1279,6 +1303,7 @@ function createPL(v3d = window.v3d) {
                 const widthMorph = (this.width - 1) / 100;
                 // about one support per metre of depth, plus the two end ones, kept 0.2 m clear of the beams
                 const supportAmount = Math.round(this.depth - 0.001) + 2;
+                this.activeScreen = null;
 
                 for (let t = 0; t < types.length; t++) {
                     if (!screen || screen.type != types[t].type) {
@@ -1291,7 +1316,11 @@ function createPL(v3d = window.v3d) {
                     setObjTransform(name, false, "position", [0, 0, this.totalHeight], false);
                     setMorphFactor(name, 'Width', widthMorph);
                     setMorphFactor(name, 'Depth', (this.depth - 1) / 100);
-                    setMorphFactor(name, 'Opening', 0);
+                    // the fabric rolls up over the depth minus 0.25 m (the bottom screen also minus the corner posts), as legacy
+                    this.screenOpeningMorph = ((this.depth - 0.25 - (types[t].type == "bottomZipper" ? 2 * 0.15 : 0)) / 99) / 100;
+                    this.activeScreen = name;
+                    this.setHorizontalScreenOpening();
+                    registerClickable(name, () => this.toggleHorizontalScreen());
 
                     for (let i = 0; i < supportAmount; i++) {
                         const y = 0.2 + 0.15 + ((this.depth - 2 * 0.15 - 0.4) / (supportAmount - 1) * i);   // from the rear edge
@@ -1309,6 +1338,22 @@ function createPL(v3d = window.v3d) {
                     setMaterialColor('ScreenFabricHorizontal', 'Color 2', 0, 0, 0, colors[1] || colors[0]);
                     setMaterialColor('ScreenFabricHorizontal', 'Color 3', 0, 0, 0, colors[2] || colors[0]);
                 }
+            }
+
+            // Clicked in 3D: roll the horizontal screen open or shut. A click while it moves is ignored.
+            toggleHorizontalScreen() {
+                if (this.screenIsMoving || !this.activeScreen)
+                    return;
+                this.screenIsMoving = true;
+                animateValue(this.screenOpening, this.screenOpening > 0 ? 0 : 100, ANIMATION_TIME, value => {
+                    this.screenOpening = value;
+                    this.setHorizontalScreenOpening();
+                }, () => this.screenIsMoving = false);
+            }
+
+            setHorizontalScreenOpening() {
+                if (this.activeScreen)
+                    setMorphFactor(this.activeScreen, 'Opening', this.screenOpeningMorph * this.screenOpening);
             }
 
             // Select a filling or rafter (type "filling" | "rafter", or null for none) and rebuild to show it.
