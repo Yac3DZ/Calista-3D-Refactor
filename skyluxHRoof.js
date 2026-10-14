@@ -637,6 +637,18 @@ function createPL(v3d = window.v3d) {
             });
         }
 
+        // A value input of ONE clone's own material (made with cloneMaterials), e.g. the glass "Tint".
+        function setObjectMaterialValue(objName, valueName, value) {
+            const obj = getObjectByName(objName);
+            if (!obj)
+                return;
+            obj.resolveMultiMaterial().forEach(objR => {
+                const mat = objR.material;
+                if (mat && mat.isMeshNodeMaterial && valueName in mat.nodeValueMap)
+                    mat.nodeValue[mat.nodeValueMap[valueName]] = value;
+            });
+        }
+
         // Hide the clones of a cache from index `from` on (left over from a bigger configuration).
         function hideCachedClones(cache, from) {
             for (let i = from; i < cache.length; i++)
@@ -916,6 +928,10 @@ function createPL(v3d = window.v3d) {
                 this.ledSpotProfileCache = [];
                 this.noLedStripCache = [];
                 this.ledSpotCache = [];     // all LED spots of the section, rafter after rafter
+                this.glassCache = [];       // per roof filling, one of these four
+                this.plasticCache = [];
+                this.sandwichWhiteCache = [];
+                this.sandwichAnthraciteCache = [];
             }
 
             enable(section) {
@@ -929,6 +945,7 @@ function createPL(v3d = window.v3d) {
                 setObjTransform(this.anchor, false, "position", [this.xPos, this.yPos, 0], false);
                 this.enableCrown();
                 this.enableRafters(section.rafters);
+                this.enableRoofFillings(section.roofFillings);
             }
 
             // One rafter per entry, spanning the depth between the front and rear beams. Under it one profile
@@ -984,6 +1001,47 @@ function createPL(v3d = window.v3d) {
                 hideCachedClones(this.ledSpotProfileCache, rafters.length);
                 hideCachedClones(this.noLedStripCache, rafters.length);
                 hideCachedClones(this.ledSpotCache, this.ledSpotCount);
+            }
+
+            // One panel per roof filling, between the rafters. A filling's position is its centre, measured from the
+            // section's left edge like the rafters. Glass panels get their own material copy, so clear and opal
+            // panels can sit side by side. sandwichPanelTile has no mesh yet and uses the anthracite panel.
+            enableRoofFillings(fillings) {
+                const depthMorph = ((this.depth - 2 * 0.15) - 1) / 100;
+                const meshes = [
+                    { types: ["glassClear", "glassOpal"], cache: this.glassCache, template: "Horizontal_Roof_Glass_Front.0", cloneMaterials: true },
+                    { types: ["plastic", "plasticOpal", "plasticSunBlocking"], cache: this.plasticCache, template: "Horizontal_Roof_Plastic_Front.0" },
+                    { types: ["sandwichPanelWhite"], cache: this.sandwichWhiteCache, template: "Horizontal_Roof_Sandwich_Panel_White_Front.0" },
+                    { types: ["sandwichPanelAnthracite", "sandwichPanelTile"], cache: this.sandwichAnthraciteCache, template: "Horizontal_Roof_Sandwich_Panel_Anthracite_Front.0" },
+                ];
+
+                for (let i = 0; i < fillings.length; i++) {
+                    const x = this.width / 2 - mm(num(fillings[i].position, 0));
+                    const widthMorph = (mm(num(fillings[i].width, 1000)) - 1) / 100;
+
+                    for (const m of meshes) {
+                        if (!m.types.includes(fillings[i].type)) {
+                            changeVis(m.cache[i], false);   // this filling may have had another type before
+                            continue;
+                        }
+                        const panel = getCachedClone(m.cache, i, m.template, this.anchor, undefined, m.cloneMaterials);
+                        setObjTransform(panel, false, "position", [x, 0, this.totalHeight], false);
+                        setMorphFactor(panel, 'Depth', depthMorph);
+                        setMorphFactor(panel, 'Width', widthMorph);
+                    }
+
+                    // glass look: clear or opal
+                    if (fillings[i].type == "glassClear") {
+                        setObjectMaterialValue(this.glassCache[i], 'NoGlass', 0);
+                        setObjectMaterialValue(this.glassCache[i], 'Tint', 0);
+                    } else if (fillings[i].type == "glassOpal") {
+                        setObjectMaterialValue(this.glassCache[i], 'NoGlass', 0);
+                        setObjectMaterialValue(this.glassCache[i], 'Tint', 0.6);
+                    }
+                }
+
+                for (const m of meshes)
+                    hideCachedClones(m.cache, fillings.length);
             }
 
             // The four gutter beams on top of the poles. They span between the corner poles (0.15 m each).
