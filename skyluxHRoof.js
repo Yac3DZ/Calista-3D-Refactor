@@ -1104,11 +1104,13 @@ function createPL(v3d = window.v3d) {
 
         // Click animations: a value from `from` to `to` in `duration` s (linear, as legacy animateParam), onUpdate(value)
         // every frame. The engine has no tween library (the legacy file carried its own copy), so it runs on the
-        // browser's animation frames.
+        // browser's animation frames. Returns a function that stops it where it is.
         const ANIMATION_TIME = 1.5;   // s, as legacy
         function animateValue(from, to, duration, onUpdate, onDone) {
-            let start = null;
+            let start = null, stopped = false;
             function step(now) {
+                if (stopped)
+                    return;
                 if (start === null)
                     start = now;
                 const t = Math.min((now - start) / (duration * 1000), 1);
@@ -1119,6 +1121,7 @@ function createPL(v3d = window.v3d) {
                     onDone();
             }
             requestAnimationFrame(step);
+            return () => stopped = true;
         }
         //#endregion ---------------------------------------------------------------
 
@@ -1153,7 +1156,8 @@ function createPL(v3d = window.v3d) {
 
                 // horizontal screen, opened / closed by a click: 0 shut … 100 open (kept between configurator changes)
                 this.screenOpening = 0;
-                this.screenIsMoving = false;
+                this.screenTarget = 0;              // where it is going (or went): 0 or 100
+                this.stopScreenAnimation = null;    // set while it moves
                 this.activeScreen = null;           // the shown screen clone, null without a screen
             }
 
@@ -1340,15 +1344,19 @@ function createPL(v3d = window.v3d) {
                 }
             }
 
-            // Clicked in 3D: roll the horizontal screen open or shut. A click while it moves is ignored.
+            // Clicked in 3D: roll the horizontal screen open or shut. A click while it moves turns it back from where
+            // it is, at the same speed (the time scales with the distance left).
             toggleHorizontalScreen() {
-                if (this.screenIsMoving || !this.activeScreen)
+                if (!this.activeScreen)
                     return;
-                this.screenIsMoving = true;
-                animateValue(this.screenOpening, this.screenOpening > 0 ? 0 : 100, ANIMATION_TIME, value => {
+                if (this.stopScreenAnimation)
+                    this.stopScreenAnimation();
+                this.screenTarget = this.screenTarget == 100 ? 0 : 100;
+                const duration = ANIMATION_TIME * Math.abs(this.screenTarget - this.screenOpening) / 100;
+                this.stopScreenAnimation = animateValue(this.screenOpening, this.screenTarget, duration, value => {
                     this.screenOpening = value;
                     this.setHorizontalScreenOpening();
-                }, () => this.screenIsMoving = false);
+                }, () => this.stopScreenAnimation = null);
             }
 
             setHorizontalScreenOpening() {
