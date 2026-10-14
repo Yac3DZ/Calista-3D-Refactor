@@ -2,6 +2,10 @@
 // Flow: scope → getParameters() → sceneParameters → StructureSection (roof) + SideOpening (one per side).
 // The configurator calls PL.init again on every change; caches that must survive live outside PL.init.
 
+// Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
+// bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
+const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
+
 // Convert from mm to m
 function mm(value) {
     return value / 1000;
@@ -95,6 +99,8 @@ function createPL(v3d = window.v3d) {
 
     // Kept between PL.init calls (every configurator change).
     let sceneIsInitialized = false;
+    let sceneParameters = {};
+    const structureSectionCache = [];   // one StructureSection per _3d_StructureSections[] entry, reused
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -103,7 +109,7 @@ function createPL(v3d = window.v3d) {
         this.procedures["handleValue"] = handleValue;
 
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
-        PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform };
+        PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache };
 
         //#region Verge3D 4.13 helpers
         function getObjectByName(objName) {
@@ -548,15 +554,48 @@ function createPL(v3d = window.v3d) {
                 this._actualRotation.copy(this._userRotation).reorder(order);
             },
         });
+
+        function setMorphFactor(objSelector, targetName, factor) {
+            if (!targetName)
+                return;
+
+            const objNames = retrieveObjectNames(objSelector);
+
+            for (let i = 0; i < objNames.length; i++) {
+                const objName = objNames[i]
+                if (!objName)
+                    continue;
+                let obj = getObjectByName(objName);
+                if (!obj)
+                    continue;
+
+                obj.resolveMultiMaterial().forEach(function (objR) {
+                    if (objR.morphTargetDictionary && targetName in objR.morphTargetDictionary) {
+                        const idx = objR.morphTargetDictionary[targetName];
+                        objR.morphTargetInfluences[idx] = Number(factor);
+                    }
+                });
+
+                obj.resolveMultiMaterial().forEach(function (objR) {
+                    objR.getAuxClippingMeshes().forEach(function (objC) {
+                        if (objC.morphTargetDictionary && targetName in objC.morphTargetDictionary) {
+                            const idx = objC.morphTargetDictionary[targetName];
+                            objC.morphTargetInfluences[idx] = Number(factor);
+                        }
+                    });
+                });
+            }
+        }
         //#endregion
 
-        //#region Clones
+        //#region Clones -----------------------------------------------------
         // The clone at cache[index], made the first time it is needed: a clone of templateName, parented to
         // parentName (an anchor), at the anchor's origin with the template's own rotation and scale. Shown.
-        // warning (optional): passed to cloneObject.
-        function getCachedClone(cache, index, templateName, parentName, warning) {
+        // warning, cloneMaterials (optional): passed to cloneObject. cloneMaterials gives the clone its own material
+        // copy, e.g. so each LED can have its own colour.
+        function getCachedClone(cache, index, templateName, parentName, warning, cloneMaterials) {
             if (!getObjectByName(cache[index])) {
-                const name = cloneObject(templateName, warning);
+                const name = cloneObject(templateName, warning, cloneMaterials);
                 if (!name) {
                     console.warn('[Calista 3D] template object "' + templateName + '" is not in the scene');
                     return null;
@@ -581,12 +620,102 @@ function createPL(v3d = window.v3d) {
             return cache[index];
         }
 
+        // Colour of ONE LED clone (made with cloneMaterials) through the "LED color" RGB input of its material.
+        function setLedColor(objName, color) {
+            const obj = getObjectByName(objName);
+            if (!obj || !color)
+                return;
+            const rgb = new v3d.Color(color);
+            obj.resolveMultiMaterial().forEach(objR => {
+                const mat = objR.material;
+                if (mat && mat.isMeshNodeMaterial && 'LED color' in mat.nodeRGBMap) {
+                    const input = mat.nodeRGB[mat.nodeRGBMap['LED color']];
+                    input.x = rgb.r;
+                    input.y = rgb.g;
+                    input.z = rgb.b;
+                }
+            });
+        }
+
         // Hide the clones of a cache from index `from` on (left over from a bigger configuration).
         function hideCachedClones(cache, from) {
             for (let i = from; i < cache.length; i++)
                 changeVis(cache[i], false);
         }
-        //#endregion
+        //#endregion ---------------------------------------------------------------
+
+        //#region Parameters ---------------------
+        // The only place scope[] is read. Everything the 3D builds comes from sceneParameters.
+        // Lists and objects may arrive as real values or as JSON strings; anything missing or broken falls
+        // back to a default, so a bad value never stops the build.
+        function getParameters() {
+            // Dev: the live configurator doesn't send the new contract yet → use a bundled example.
+            if (DEV_SCOPE && scope['_3d_StructureSections'] === undefined && scope['_3d_SideOpenings'] === undefined) {
+                console.warn('[Calista 3D] no _3d_StructureSections / _3d_SideOpenings in the scope, using DEV scope "' + DEV_SCOPE + '"');
+                scope = Object.assign({}, scope, DEV_SCOPES[DEV_SCOPE]);
+            }
+            sceneParameters = {
+                screenshotName: scope['_3d_screenshotName'] || 'Your_Skylux_Configuration',
+                isFreeStanding: scope['_3d_conservatoryStructure'] === 'freeStanding',
+                widthTotal: num(scope['_3d_widthTotal'], 3000),
+                depthTotal: num(scope['_3d_depthTotal'], 3000),
+                walls: Object.assign({ front: false, right: false, rear: false, left: false }, toObject(scope['_3d_walls'])),
+                colorOutside: scope['_3d_colorOutside'] || '#293133',
+                perspective: scope['_perspective'] || 'main',    // camera view for the snapshot / SSR
+            };
+            // after the general values: sections and sides fall back on them
+            sceneParameters.structureSections = toArray(scope['_3d_StructureSections']).map(getSectionParameters);
+            sceneParameters.sideOpenings = toArray(scope['_3d_SideOpenings']).map(getSideOpeningParameters);
+            console.info('[Calista 3D] sceneParameters', sceneParameters);
+        }
+        function getSectionParameters(section) {
+            const roofOptions = toObject(section.roofOptions);
+            const depth = num(section.depth, sceneParameters.depthTotal);
+            return {
+                width: num(section.width, sceneParameters.widthTotal),
+                depth: depth,
+                xPos: num(section.xPos, 0),
+                yPos: num(section.yPos, depth / 2),     // centre of the footprint, back edge at Y = 0
+                heightUnderGutter: num(section.heightUnderGutter, 2500),
+                horizontalScreen: toObject(roofOptions.horizontalScreen, null),
+                roofFillings: toArray(roofOptions.roofFillings),
+                rafters: toArray(roofOptions.rafters),
+            };
+        }
+        function getSideOpeningParameters(sideOpening) {
+            const sideSpecs = toObject(sideOpening.sideSpecs);
+            const rotation = num(sideSpecs.rotation, 0);
+            const side = { 0: 'left', 90: 'rear', 180: 'right', 270: 'front' }[rotation] || null;
+            return {
+                side: side,                                         // name from the rotation (walls, camera)
+                isWall: side ? sceneParameters.walls[side] : false, // a house wall stands on this side
+                xPos: num(sideSpecs.xPos, 0),                       // start point of the side
+                yPos: num(sideSpecs.yPos, 0),
+                rotation: rotation,                                 // front 270 · rear 90 · left 0 · right 180
+                length: num(sideSpecs.length, 0),
+                height: num(sideSpecs.height, 2500),
+                poles: toArray(sideOpening.poles),
+                bays: toArray(sideOpening.bays),
+            };
+        }
+        // A list, also from a JSON string; anything else gives []. Entries that aren't objects are dropped.
+        function toArray(value) {
+            if (typeof value === 'string')
+                try { value = JSON.parse(value); } catch (e) { return []; }
+            return Array.isArray(value) ? value.filter(item => item && typeof item === 'object') : [];
+        }
+        // An object, also from a JSON string; anything else gives `fallback` ({} unless given).
+        function toObject(value, fallback = {}) {
+            if (typeof value === 'string')
+                try { value = JSON.parse(value); } catch (e) { return fallback; }
+            return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+        }
+        // A number, also from a numeric string; anything else gives `fallback`.
+        function num(value, fallback) {
+            const number = Number(value);
+            return value !== null && value !== '' && Number.isFinite(number) ? number : fallback;
+        }
+        //#endregion-------------
 
         //#region Configurator handlers
         function setCameraOptions() {
@@ -605,6 +734,9 @@ function createPL(v3d = window.v3d) {
                 case 'DOWNLOAD_IMAGE':
                     generateScreenshot();
                     break;
+                case 'RELOAD_3D':
+                    cameraPosition();
+                    break;
             }
         }
 
@@ -618,28 +750,307 @@ function createPL(v3d = window.v3d) {
         }
         //#endregion
 
+        //#region Camera ---------------------------------------------------------------------
+        // Frame the structure: ScaleCube (a 1 m cube in the GLB, origin at its bottom) is wrapped around it,
+        // Camerapos / Cameratarget give the viewing direction, fitCameraToObjects zooms until it fits.
+        // The direction depends on the perspective the configurator asks for (_perspective, e.g. for the SSR).
+        function cameraPosition(onFinish) {
+            const section = sceneParameters.structureSections[0];
+            const width = mm(sceneParameters.widthTotal);
+            const depth = mm(sceneParameters.depthTotal);
+            const totalHeight = section ? mm(section.heightUnderGutter) + 0.26 : 2.76;   // + crown beam height
+            const size = (width + depth + totalHeight) / 10;
+            let camPosX, camPosY, camPosZ;
+
+            if (sceneParameters.perspective == "perspective") {
+                camPosX = width + size + 5;
+                camPosY = width + size + 8;
+                camPosZ = totalHeight + size + 2;
+            } else if (sceneParameters.perspective == "side") {
+                camPosX = -(width + 8);
+                camPosY = depth / 2;
+                camPosZ = totalHeight / 2;
+            } else if (sceneParameters.perspective == "front") {
+                camPosX = 0;
+                camPosY = depth + 8;
+                camPosZ = totalHeight / 2;
+            } else if (sceneParameters.perspective == "top") {
+                camPosX = 0;
+                camPosY = depth / 2;
+                camPosZ = totalHeight + 16;
+            } else { // default + "main"
+                camPosX = width + size + 2;
+                camPosY = width + size + 8;
+                camPosZ = totalHeight + size + 2;
+            }
+
+            setObjTransform("Camerapos", false, "position", [camPosX, camPosY, camPosZ], false);
+            setObjTransform("Cameratarget", false, "position", [0, depth / 2, totalHeight / 2], false);
+            setObjTransform("ScaleCube", false, "position", [0, depth / 2, 0], false);
+            setObjTransform("ScaleCube", false, "scale", [width, depth, totalHeight], false);
+
+            // onFinish must always run: the snapshot waits for it.
+            if (!getObjectByName("ScaleCube")) {
+                console.warn('[Calista 3D] "ScaleCube" is not in the scene, the camera is not framed');
+                if (onFinish) onFinish();
+                return;
+            }
+            // fitCameraToObjects skips while the camera is still moving: frame again once that tween is over.
+            if (appInstance.controls && appInstance.controls.inTween) {
+                registerSetTimeout(1, function () { cameraPosition(onFinish); });
+                return;
+            }
+
+            const animTime = (sceneIsInitialized) ? 1 : 0;
+            fitCameraToObjects("ScaleCube", { cameraPos: "Camerapos", cameraTarget: "Cameratarget" }, { duration: animTime, onDone: function () { if (onFinish) onFinish(); } });
+        }
+
+        function fitCameraToObjects(targets, direction, options = {}) {
+            if (options === null || typeof options !== "object") {
+                if (options !== undefined) console.warn("[fitCameraToObjects] 'options' must be an object, got:", options, "— using defaults");
+                options = {};
+            }
+            let { margin = 1, duration = 0, onDone = function () { } } = options;
+            if (typeof margin !== "number" || !isFinite(margin) || margin <= 0) { console.warn("[fitCameraToObjects] 'margin' must be a positive number, got:", options.margin, "— using 1"); margin = 1; }
+            if (typeof duration !== "number" || !isFinite(duration) || duration < 0) { console.warn("[fitCameraToObjects] 'duration' must be a number ≥ 0, got:", options.duration, "— using 0"); duration = 0; }
+            if (typeof onDone !== "function") { console.warn("[fitCameraToObjects] 'onDone' must be a function, got:", options.onDone, "— ignoring (no action)"); onDone = function () { }; }
+
+            if (targets == null) { console.warn("[fitCameraToObjects] 'targets' is missing — nothing to frame"); return; }
+            const objects = [];
+            (Array.isArray(targets) ? targets : [targets]).forEach(function (entry) {
+                if (entry == null) { console.warn("[fitCameraToObjects] skipping a null/undefined target entry"); return; }
+                const obj = (typeof entry === "string") ? getObjectByName(entry) : entry;
+                if (!obj) { console.warn("[fitCameraToObjects] target not found / invalid:", entry); return; }
+                objects.push(obj);
+            });
+            if (!objects.length) { console.warn("[fitCameraToObjects] nothing to frame — no valid objects resolved from 'targets'"); return; }
+
+            const camera = appInstance.getCamera();
+            if (!camera) { console.warn("[fitCameraToObjects] no active camera — appInstance.getCamera() returned nothing"); return; }
+
+            const fitPos = new v3d.Vector3(), center = new v3d.Vector3(), fitZoom = [camera.zoom];
+            v3d.CameraUtils.calcCameraZoomToObjectsParams(camera, objects, fitPos, center, fitZoom);
+            const fitDistance = fitPos.distanceTo(center) * margin;
+
+            const cameraDirection = new v3d.Vector3();
+            if (direction != null) {
+                if (direction.cameraPos != null || direction.cameraTarget != null) {
+                    if (direction.cameraPos == null || direction.cameraTarget == null) {
+                        console.warn("[fitCameraToObjects] direction needs BOTH cameraPos and cameraTarget; got:", direction, "— using current view");
+                    } else {
+                        const posObj = (typeof direction.cameraPos === "string") ? getObjectByName(direction.cameraPos) : direction.cameraPos;
+                        const targetObj = (typeof direction.cameraTarget === "string") ? getObjectByName(direction.cameraTarget) : direction.cameraTarget;
+                        if (!posObj) console.warn("[fitCameraToObjects] direction.cameraPos not found:", direction.cameraPos);
+                        if (!targetObj) console.warn("[fitCameraToObjects] direction.cameraTarget not found:", direction.cameraTarget);
+                        if (posObj && targetObj) {
+                            cameraDirection.copy(posObj.getWorldPosition(new v3d.Vector3())).sub(targetObj.getWorldPosition(new v3d.Vector3()));
+                            if (cameraDirection.lengthSq() === 0) console.warn("[fitCameraToObjects] cameraPos and cameraTarget share a position — no direction; using current view");
+                        }
+                    }
+                } else {
+                    const vec = Array.isArray(direction) ? direction : (direction.vector ?? direction);
+                    const x = vec?.[0] ?? vec?.x, y = vec?.[1] ?? vec?.y, z = vec?.[2] ?? vec?.z;
+                    if (![x, y, z].every(component => typeof component === "number" && isFinite(component))) {
+                        console.warn("[fitCameraToObjects] direction must be [x,y,z] / { vector } / Vector3 (3 finite numbers) or { cameraPos, cameraTarget }; got:", direction, "— using current view");
+                    } else {
+                        cameraDirection.set(x, y, z);
+                        cameraDirection.copy(transformCoordsSpace(cameraDirection, getSceneCoordSystem(), 'Y_UP_RIGHT'));
+                    }
+                }
+            }
+            if (cameraDirection.lengthSq() === 0) cameraDirection.copy(fitPos).sub(center);
+            cameraDirection.normalize();
+
+            const cameraPos = center.clone().add(cameraDirection.multiplyScalar(fitDistance));
+            const orthoZoom = camera.isOrthographicCamera ? fitZoom[0] / margin : null;
+            const setOrthoZoom = function () { camera.zoom = orthoZoom; camera.updateProjectionMatrix(); };
+
+            if (appInstance.controls && appInstance.controls.tween) {
+                if (!appInstance.controls.inTween) {
+                    if (orthoZoom != null) setOrthoZoom();
+                    appInstance.controls.tween(cameraPos, center, Math.max(0, duration), onDone);
+                }
+            } else {
+                if (orthoZoom != null) setOrthoZoom();
+                if (camera.parent) camera.parent.worldToLocal(cameraPos);
+                camera.position.copy(cameraPos);
+                camera.lookAt(center);
+                onDone();
+            }
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region Snapshot + screenshot
-        // The configurator waits for this image after every change.
+        // The configurator waits for this image after every change: frame the structure, then grab the frame
+        // 250 ms after the camera settles.
         function takeSnapshot() {
-            registerSetTimeout(0.25, function () {
-                snapshot(appInstance.renderer.domElement.toDataURL("image/png"), 0);
+            cameraPosition(function () {
+                registerSetTimeout(0.25, function () {
+                    snapshot(appInstance.renderer.domElement.toDataURL("image/png"), 0);
+                });
             });
         }
 
         function generateScreenshot() {
             const link = document.createElement('a');
             link.href = appInstance.renderer.domElement.toDataURL('image/png');
-            link.download = (scope['_3d_screenshotName'] || 'Your_Skylux_Configuration') + '.png';
+            link.download = sceneParameters.screenshotName + '.png';
             document.body.appendChild(link);
             link.click();
             setTimeout(() => document.body.removeChild(link), 100);
         }
         //#endregion
 
+        //#region StructureSection ---------------------------------------------------------------
+        // One per _3d_StructureSections[] entry: the crown (gutter beams) and the roof.
+        // Its anchor (a clone of empty.0) sits at the section centre; everything it builds is parented to it,
+        // so positions below are local: x across the width, y across the depth, from the section centre.
+        class StructureSection {
+            constructor() {
+                this.anchor = cloneObject("empty.0");
+                if (!this.anchor)
+                    console.warn('[Calista 3D] "empty.0" is not in the scene, the section cannot be placed');
+                this.crownBeamCache = [];   // [front, rear, left, right]
+                this.rafterCache = [];      // per rafter: the rafter itself…
+                this.ledStripCache = [];    // …and one of these three profiles under it
+                this.ledSpotProfileCache = [];
+                this.noLedStripCache = [];
+                this.ledSpotCache = [];     // all LED spots of the section, rafter after rafter
+            }
+
+            enable(section) {
+                this.width = mm(section.width);
+                this.depth = mm(section.depth);
+                this.totalHeight = mm(section.heightUnderGutter) + 0.26;   // + crown beam height: top of the crown
+
+                this.xPos = mm(section.xPos);
+                this.yPos = mm(section.yPos);
+
+                setObjTransform(this.anchor, false, "position", [this.xPos, this.yPos, 0], false);
+                this.enableCrown();
+                this.enableRafters(section.rafters);
+            }
+
+            // One rafter per entry, spanning the depth between the front and rear beams. Under it one profile
+            // shows its lighting: a LED strip, a spot profile with its spots, or none (a strip wins over spots).
+            // A rafter's position is measured from the section's left edge (+X), so x = width / 2 - position.
+            enableRafters(rafters) {
+                const depthMorph = ((this.depth - 2 * 0.15) - 1) / 100;
+                this.ledStripCount = 0;     // for the roof light
+                this.ledSpotCount = 0;
+
+                for (let i = 0; i < rafters.length; i++) {
+                    const x = this.width / 2 - mm(num(rafters[i].position, 0));
+                    const profile = rafters[i].ledStrip ? "ledStrip" : (rafters[i].ledSpot ? "ledSpot" : "none");
+                    const profiles = [
+                        { type: "ledStrip", cache: this.ledStripCache, template: "Led strip.0", cloneMaterials: true },
+                        { type: "ledSpot", cache: this.ledSpotProfileCache, template: "Led spot profile.0" },
+                        { type: "none", cache: this.noLedStripCache, template: "No Led strip.0" },
+                    ];
+
+                    const rafter = getCachedClone(this.rafterCache, i, "Rafter 190x140 base.0", this.anchor);
+                    setObjTransform(rafter, false, "position", [x, 0, this.totalHeight], false);
+                    setMorphFactor(rafter, 'Width', depthMorph);
+
+                    for (const p of profiles) {
+                        if (p.type != profile) {
+                            changeVis(p.cache[i], false);   // this rafter may have had another profile before
+                            continue;
+                        }
+                        const name = getCachedClone(p.cache, i, p.template, this.anchor, undefined, p.cloneMaterials);
+                        setObjTransform(name, false, "position", [x, 0, this.totalHeight], false);
+                        setMorphFactor(name, 'Width', depthMorph);
+                    }
+
+                    if (profile == "ledStrip") {
+                        setLedColor(this.ledStripCache[i], rafters[i].ledStrip);
+                        this.ledStripCount++;
+                    }
+
+                    // LED spots: positions measured from the rear edge (y = -depth / 2)
+                    if (profile == "ledSpot") {
+                        const positions = Array.isArray(rafters[i].ledSpot.positions) ? rafters[i].ledSpot.positions : [];
+                        for (const position of positions) {
+                            const spot = getCachedClone(this.ledSpotCache, this.ledSpotCount, "Horizontal_Ledspot.0", this.anchor, undefined, true);
+                            setObjTransform(spot, false, "position", [x, -this.depth / 2 + mm(num(position, 0)), this.totalHeight], false);
+                            setLedColor(spot, rafters[i].ledSpot.color);
+                            this.ledSpotCount++;
+                        }
+                    }
+                }
+
+                hideCachedClones(this.rafterCache, rafters.length);
+                hideCachedClones(this.ledStripCache, rafters.length);
+                hideCachedClones(this.ledSpotProfileCache, rafters.length);
+                hideCachedClones(this.noLedStripCache, rafters.length);
+                hideCachedClones(this.ledSpotCache, this.ledSpotCount);
+            }
+
+            // The four gutter beams on top of the poles. They span between the corner poles (0.15 m each).
+            enableCrown() {
+                const beams = [
+                    { template: "Horizontal_Gutter_Front", position: [0, this.depth / 2, this.totalHeight], length: this.width },
+                    { template: "Horizontal_Gutter_Rear", position: [0, -this.depth / 2, this.totalHeight], length: this.width },
+                    { template: "Horizontal_Gutter_Left", position: [this.width / 2, 0, this.totalHeight], length: this.depth },
+                    { template: "Horizontal_Gutter_Right", position: [-this.width / 2, 0, this.totalHeight], length: this.depth },
+                ];
+                // Accessories hanging under each beam; the bays decide which ones show later, for now the plugs do.
+                const accessories = ["LED strip integrated", "LED strip integrated plug", "Rail plug", "Integrated wall", "Vertical sunblind"];
+                const shownAccessories = ["LED strip integrated plug", "Rail plug"];
+
+                for (let i = 0; i < beams.length; i++) {
+                    const beam = getCachedClone(this.crownBeamCache, i, beams[i].template, this.anchor);
+                    if (!beam)
+                        continue;
+                    const widthMorph = ((beams[i].length - 2 * 0.15) - 1) / 100;
+                    setObjTransform(beam, false, "position", beams[i].position, false);
+                    setMorphFactor(beam, 'Width', widthMorph);
+
+                    for (const accessory of accessories) {
+                        const child = beam + ' > ' + beams[i].template + '_' + accessory;
+                        setMorphFactor(child, 'Width', widthMorph);
+                        changeVis(child, shownAccessories.includes(accessory));
+                    }
+                }
+            }
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region Scene
         function enableScene() {
             clearScene();
-            changeVis("Gizmo", true);   // marks the scene origin
+            changeVis("Gizmo", true);        // marks the scene origin
+            changeVis("Sun_modern", true);   // clearScene hides the lights too
+
+            const sections = sceneParameters.structureSections;
+            for (let i = 0; i < sections.length; i++) {
+                if (!structureSectionCache[i])
+                    structureSectionCache[i] = new StructureSection();
+                structureSectionCache[i].enable(sections[i]);
+            }
+            enableLighting();
+        }
+
+        // LEDs in the roof turn on the Spot light under it and dim the sun (as legacy changeWorldLightForLED).
+        function enableLighting() {
+            const section = sceneParameters.structureSections.length ? structureSectionCache[0] : null;
+            const strips = section ? section.ledStripCount : 0;
+            const spots = section ? section.ledSpotCount : 0;
+            const anyLed = strips + spots > 0;
+
+            if (section)
+                setObjTransform("Spot", false, "position", [section.xPos, section.yPos, section.totalHeight - 0.2], false);
+            lightIntensity("Spot", anyLed ? 6 + strips * 2.5 + spots * 0.5 : 0);
+            changeVis("Spot", anyLed);
+            lightIntensity("Sun_modern", anyLed ? 0 : 4);
+        }
+        function lightIntensity(lightName, intensity) {
+            var areaLight = getObjectByName(lightName);
+            if (!areaLight) {
+                console.warn('light intensity: object not found:=>', lightName);
+                return;
+            }
+            areaLight.intensity = intensity;
         }
 
         // Hide every object. The scene root is skipped by identity: in the GLB it is called "glid", not "Scene".
@@ -654,6 +1065,7 @@ function createPL(v3d = window.v3d) {
 
         //#region Entry
         setCameraOptions();
+        getParameters();
         enableScene();
         takeSnapshot();
 
@@ -672,4 +1084,718 @@ function createPL(v3d = window.v3d) {
     }
 }
 
-export { createPL, mm };
+//#region DEV_SCOPES
+// Bundled example scopes for DEV_SCOPE, copied from examples_source_files/input_example_*_h_roof.js
+// (the tests check they still match). Remove together with DEV_SCOPE once the configurator sends the contract.
+const DEV_SCOPES = {
+    freestanding: {
+        "_3d_screenshotName": "Calista_freestanding",
+        "_3d_conservatoryStructure": "freeStanding",
+        "_3d_widthTotal": 6000,
+        "_3d_depthTotal": 4000,
+        "_3d_walls": { "front": false, "right": false, "rear": false, "left": false },
+        "_3d_colorOutside": "#293133",
+        "_3d_StructureSections": [
+            {
+                "width": 6000,
+                "depth": 4000,
+                "xPos": 0,
+                "yPos": 2000,
+                "heightUnderGutter": 2500,
+                "sectionName": "Section_1",
+                "adjacentSections": { "left": null, "right": null },
+                "roofOptions": {
+                    "horizontalScreen": { "type": "zipper", "screenColor": ["#D9D4C7", "#D9D4C7", "#D9D4C7"], "motorSide": "right" },
+                    "roofFillings": [
+                        { "position": 500, "width": 1000, "type": "glassClear" },
+                        { "position": 1500, "width": 1000, "type": "glassClear" },
+                        { "position": 2500, "width": 1000, "type": "glassOpal" },
+                        { "position": 3500, "width": 1000, "type": "glassOpal" },
+                        { "position": 4500, "width": 1000, "type": "glassClear" },
+                        { "position": 5500, "width": 1000, "type": "glassClear" }
+                    ],
+                    "rafters": [
+                        {
+                            "position": 1000,
+                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#FFD1A3" },
+                            "ledStrip": null
+                        },
+                        { "position": 2000, "ledSpot": null, "ledStrip": null },
+                        { "position": 3000, "ledSpot": null, "ledStrip": "#c0159b" },
+                        { "position": 4000, "ledSpot": null, "ledStrip": null },
+                        {
+                            "position": 5000,
+                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#FFD1A3" },
+                            "ledStrip": null
+                        }
+                    ]
+                }
+            }
+        ],
+        "_3d_SideOpenings": [
+            {
+                "sideSpecs": {
+                    "xPos": 3000,
+                    "yPos": 4000,
+                    "rotation": 270,
+                    "length": 6000,
+                    "height": 2500,
+                    "poleAmount": 3,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "corner",
+                        "position": 75,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 0
+                    },
+                    {
+                        "type": "intermediate",
+                        "position": 3000,
+                        "width": 100,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 1
+                    },
+                    {
+                        "type": "corner",
+                        "position": 5925,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 2
+                    }
+                ],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1550, "length": 2800, "height": 2500 },
+                        "climaglide": {
+                            "mounting": "surface",
+                            "panelAmount": 4,
+                            "openingDirection": "middle",
+                            "handle": true,
+                            "sideProfile": true,
+                            "foundationProfile": true,
+                            "draftProfile": "alu",
+                            "glass": "glassClear"
+                        },
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "axiom100",
+                            "screenColor": ["#7A7A7A", "#7A7A7A", "#7A7A7A"],
+                            "solar": false,
+                            "window": null
+                        },
+                        "fixedWall": null,
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
+                    },
+                    {
+                        "generalSpecs": { "position": 4450, "length": 2800, "height": 2500 },
+                        "climaglide": {
+                            "mounting": "surface",
+                            "panelAmount": 3,
+                            "openingDirection": "right",
+                            "handle": true,
+                            "sideProfile": false,
+                            "foundationProfile": true,
+                            "draftProfile": "alu",
+                            "glass": "glassClear"
+                        },
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "axiom100",
+                            "screenColor": ["#7A7A7A", "#7A7A7A", "#7A7A7A"],
+                            "solar": false,
+                            "window": null
+                        },
+                        "fixedWall": null,
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": -3000,
+                    "yPos": 0,
+                    "rotation": 90,
+                    "length": 6000,
+                    "height": 2500,
+                    "poleAmount": 3,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "corner",
+                        "position": 75,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 0
+                    },
+                    {
+                        "type": "intermediate",
+                        "position": 3000,
+                        "width": 100,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 1
+                    },
+                    {
+                        "type": "corner",
+                        "position": 5925,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 2
+                    }
+                ],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1550, "length": 2800, "height": 2500 },
+                        "climaglide": null,
+                        "verticalSunblind": null,
+                        "fixedWall": {
+                            "mounting": "builtIn",
+                            "partitions": [
+                                { "position": 850, "width": 1400, "height": 2500, "fillType": "glassClear" },
+                                { "position": 2250, "width": 1400, "height": 2500, "fillType": "glassClear" }
+                            ]
+                        },
+                        "ledStrip": null
+                    },
+                    {
+                        "generalSpecs": { "position": 4450, "length": 2800, "height": 2500 },
+                        "climaglide": null,
+                        "verticalSunblind": null,
+                        "fixedWall": {
+                            "mounting": "builtIn",
+                            "partitions": [{ "position": 4450, "width": 2800, "height": 2500, "fillType": "glassOpal" }]
+                        },
+                        "ledStrip": null
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": 3000,
+                    "yPos": 0,
+                    "rotation": 0,
+                    "length": 4000,
+                    "height": 2500,
+                    "poleAmount": 1,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "intermediate",
+                        "position": 2000,
+                        "width": 100,
+                        "depth": 150,
+                        "length": 2500,
+                        "support": "foundation",
+                        "index": 0
+                    }
+                ],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1050, "length": 1800, "height": 2500 },
+                        "climaglide": null,
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "axiom130",
+                            "screenColor": ["#4D504D", "#4D504D", "#4D504D"],
+                            "solar": true,
+                            "window": {
+                                "type": "partialWidth",
+                                "position": 1050,
+                                "width": 800,
+                                "height": 800,
+                                "groundHeight": 900
+                            }
+                        },
+                        "fixedWall": null,
+                        "ledStrip": null
+                    },
+                    {
+                        "generalSpecs": { "position": 2950, "length": 1800, "height": 2500 },
+                        "climaglide": null,
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "axiom130",
+                            "screenColor": ["#4D504D", "#4D504D", "#4D504D"],
+                            "solar": true,
+                            "window": { "type": "fullWidth", "position": 2950, "width": 1800, "height": 600, "groundHeight": 1000 }
+                        },
+                        "fixedWall": null,
+                        "ledStrip": null
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": -3000,
+                    "yPos": 4000,
+                    "rotation": 180,
+                    "length": 4000,
+                    "height": 2500,
+                    "poleAmount": 0,
+                    "sections": ["Section_1"]
+                },
+                "poles": [],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 2000, "length": 3700, "height": 2500 },
+                        "climaglide": {
+                            "mounting": "surface",
+                            "panelAmount": 6,
+                            "openingDirection": "middle",
+                            "handle": true,
+                            "sideProfile": false,
+                            "foundationProfile": true,
+                            "draftProfile": "pvc",
+                            "glass": "glassOpal"
+                        },
+                        "verticalSunblind": null,
+                        "fixedWall": null,
+                        "ledStrip": null
+                    }
+                ]
+            }
+        ]
+    },
+    wallRear: {
+        "_3d_screenshotName": "Calista_wall_rear",
+        "_3d_conservatoryStructure": "wallAdjacent",
+        "_3d_widthTotal": 5000,
+        "_3d_depthTotal": 3500,
+        "_3d_walls": { "front": false, "right": false, "rear": true, "left": false },
+        "_3d_colorOutside": "#F1F0EA",
+        "_3d_StructureSections": [
+            {
+                "width": 5000,
+                "depth": 3500,
+                "xPos": 0,
+                "yPos": 1750,
+                "heightUnderGutter": 2400,
+                "sectionName": "Section_1",
+                "adjacentSections": { "left": null, "right": null },
+                "roofOptions": {
+                    "horizontalScreen": { "type": "bottomZipper", "screenColor": ["#8C8C8C", "#8C8C8C", "#5A5A5A"], "motorSide": "left" },
+                    "roofFillings": [
+                        { "position": 500, "width": 1000, "type": "plastic" },
+                        { "position": 1500, "width": 1000, "type": "plasticOpal" },
+                        { "position": 2500, "width": 1000, "type": "plasticSunBlocking" },
+                        { "position": 3500, "width": 1000, "type": "plasticOpal" },
+                        { "position": 4500, "width": 1000, "type": "plastic" }
+                    ],
+                    "rafters": [
+                        {
+                            "position": 1000,
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
+                            "ledStrip": null
+                        },
+                        {
+                            "position": 2000,
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
+                            "ledStrip": null
+                        },
+                        {
+                            "position": 3000,
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
+                            "ledStrip": null
+                        },
+                        {
+                            "position": 4000,
+                            "ledSpot": { "positions": [875, 1750, 2625], "color": "#FFFFFF" },
+                            "ledStrip": null
+                        }
+                    ]
+                }
+            }
+        ],
+        "_3d_SideOpenings": [
+            {
+                "sideSpecs": {
+                    "xPos": 2500,
+                    "yPos": 3500,
+                    "rotation": 270,
+                    "length": 5000,
+                    "height": 2400,
+                    "poleAmount": 3,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "corner",
+                        "position": 75,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2400,
+                        "support": "bracketUnder",
+                        "index": 0
+                    },
+                    {
+                        "type": "intermediate",
+                        "position": 2500,
+                        "width": 100,
+                        "depth": 150,
+                        "length": 2400,
+                        "support": "bracketUnder",
+                        "index": 1
+                    },
+                    {
+                        "type": "corner",
+                        "position": 4925,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2400,
+                        "support": "bracketUnder",
+                        "index": 2
+                    }
+                ],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1300, "length": 2300, "height": 2400 },
+                        "climaglide": {
+                            "mounting": "surface",
+                            "panelAmount": 3,
+                            "openingDirection": "left",
+                            "handle": true,
+                            "sideProfile": true,
+                            "foundationProfile": false,
+                            "draftProfile": null,
+                            "glass": "glassClear"
+                        },
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "element",
+                            "screenColor": ["#3C3C3C", "#3C3C3C", "#3C3C3C"],
+                            "solar": true,
+                            "window": {
+                                "type": "partialWidth",
+                                "position": 1300,
+                                "width": 1000,
+                                "height": 700,
+                                "groundHeight": 800
+                            }
+                        },
+                        "fixedWall": null,
+                        "ledStrip": null
+                    },
+                    {
+                        "generalSpecs": { "position": 3700, "length": 2300, "height": 2400 },
+                        "climaglide": null,
+                        "verticalSunblind": null,
+                        "fixedWall": {
+                            "mounting": "surface",
+                            "partitions": [
+                                { "position": 3125, "width": 1150, "height": 2400, "fillType": "woodOutside" },
+                                { "position": 4275, "width": 1150, "height": 2400, "fillType": "sandwichPanelWhite" }
+                            ]
+                        },
+                        "ledStrip": null
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": -2500,
+                    "yPos": 0,
+                    "rotation": 90,
+                    "length": 5000,
+                    "height": 2400,
+                    "poleAmount": 2,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "wallAdjacent",
+                        "position": 75,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2400,
+                        "support": "foundation",
+                        "index": 0
+                    },
+                    {
+                        "type": "wallAdjacent",
+                        "position": 4925,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2400,
+                        "support": "foundation",
+                        "index": 1
+                    }
+                ],
+                "bays": []
+            },
+            {
+                "sideSpecs": {
+                    "xPos": 2500,
+                    "yPos": 0,
+                    "rotation": 0,
+                    "length": 3500,
+                    "height": 2400,
+                    "poleAmount": 0,
+                    "sections": ["Section_1"]
+                },
+                "poles": [],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1750, "length": 3200, "height": 2400 },
+                        "climaglide": null,
+                        "verticalSunblind": null,
+                        "fixedWall": {
+                            "mounting": "builtIn",
+                            "partitions": [
+                                { "position": 925, "width": 1550, "height": 2400, "fillType": "glassClear" },
+                                { "position": 2525, "width": 1650, "height": 2400, "fillType": "woodInside" }
+                            ]
+                        },
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFFFFF" }
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": -2500,
+                    "yPos": 3500,
+                    "rotation": 180,
+                    "length": 3500,
+                    "height": 2400,
+                    "poleAmount": 0,
+                    "sections": ["Section_1"]
+                },
+                "poles": [],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1750, "length": 3200, "height": 2400 },
+                        "climaglide": {
+                            "mounting": "surface",
+                            "panelAmount": 4,
+                            "openingDirection": "right",
+                            "handle": true,
+                            "sideProfile": false,
+                            "foundationProfile": true,
+                            "draftProfile": "alu",
+                            "glass": "glassOpal"
+                        },
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "axiom130",
+                            "screenColor": ["#8C8C8C", "#8C8C8C", "#5A5A5A"],
+                            "solar": false,
+                            "window": { "type": "fullWidth", "position": 1750, "width": 3200, "height": 800, "groundHeight": 1200 }
+                        },
+                        "fixedWall": null,
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFFFFF" }
+                    }
+                ]
+            }
+        ]
+    },
+    wallRearRight: {
+        "_3d_screenshotName": "Calista_wall_rear_right",
+        "_3d_conservatoryStructure": "wallAdjacent",
+        "_3d_widthTotal": 4500,
+        "_3d_depthTotal": 3000,
+        "_3d_walls": { "front": false, "right": true, "rear": true, "left": false },
+        "_3d_colorOutside": "#1E1E1E",
+        "_3d_StructureSections": [
+            {
+                "width": 4500,
+                "depth": 3000,
+                "xPos": 0,
+                "yPos": 1500,
+                "heightUnderGutter": 2600,
+                "sectionName": "Section_1",
+                "adjacentSections": { "left": null, "right": null },
+                "roofOptions": {
+                    "horizontalScreen": null,
+                    "roofFillings": [
+                        { "position": 375, "width": 750, "type": "sandwichPanelAnthracite" },
+                        { "position": 1125, "width": 750, "type": "sandwichPanelWhite" },
+                        { "position": 1875, "width": 750, "type": "sandwichPanelTile" },
+                        { "position": 2625, "width": 750, "type": "sandwichPanelTile" },
+                        { "position": 3375, "width": 750, "type": "sandwichPanelWhite" },
+                        { "position": 4125, "width": 750, "type": "sandwichPanelAnthracite" }
+                    ],
+                    "rafters": [
+                        { "position": 750, "ledSpot": null, "ledStrip": "#FFD1A3" },
+                        { "position": 1500, "ledSpot": null, "ledStrip": null },
+                        { "position": 2250, "ledSpot": null, "ledStrip": "#FFD1A3" },
+                        { "position": 3000, "ledSpot": null, "ledStrip": null },
+                        { "position": 3750, "ledSpot": null, "ledStrip": "#FFD1A3" }
+                    ]
+                }
+            }
+        ],
+        "_3d_SideOpenings": [
+            {
+                "sideSpecs": {
+                    "xPos": 2250,
+                    "yPos": 3000,
+                    "rotation": 270,
+                    "length": 4500,
+                    "height": 2600,
+                    "poleAmount": 2,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "corner",
+                        "position": 75,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2600,
+                        "support": "bracket",
+                        "index": 0
+                    },
+                    {
+                        "type": "intermediate",
+                        "position": 2250,
+                        "width": 100,
+                        "depth": 150,
+                        "length": 2600,
+                        "support": "bracket",
+                        "index": 1
+                    }
+                ],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1175, "length": 2050, "height": 2600 },
+                        "climaglide": null,
+                        "verticalSunblind": null,
+                        "fixedWall": {
+                            "mounting": "builtIn",
+                            "partitions": [
+                                {
+                                    "position": 500,
+                                    "width": 700,
+                                    "height": 2600,
+                                    "fillType": "sandwichPanelAnthracite"
+                                },
+                                { "position": 1175, "width": 650, "height": 2600, "fillType": "woodBothSides" },
+                                { "position": 1850, "width": 700, "height": 2600, "fillType": "none" }
+                            ]
+                        },
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
+                    },
+                    {
+                        "generalSpecs": { "position": 3325, "length": 2050, "height": 2600 },
+                        "climaglide": null,
+                        "verticalSunblind": {
+                            "mounting": "surface",
+                            "type": "axiom130",
+                            "screenColor": ["#E5E1D8", "#C9C3B6", "#E5E1D8"],
+                            "solar": false,
+                            "window": { "type": "fullWidth", "position": 3325, "width": 2050, "height": 700, "groundHeight": 1100 }
+                        },
+                        "fixedWall": null,
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": -2250,
+                    "yPos": 0,
+                    "rotation": 90,
+                    "length": 4500,
+                    "height": 2600,
+                    "poleAmount": 1,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "wallAdjacent",
+                        "position": 4425,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2600,
+                        "support": "bracket",
+                        "index": 0
+                    }
+                ],
+                "bays": []
+            },
+            {
+                "sideSpecs": {
+                    "xPos": 2250,
+                    "yPos": 0,
+                    "rotation": 0,
+                    "length": 3000,
+                    "height": 2600,
+                    "poleAmount": 0,
+                    "sections": ["Section_1"]
+                },
+                "poles": [],
+                "bays": [
+                    {
+                        "generalSpecs": { "position": 1500, "length": 2700, "height": 2600 },
+                        "climaglide": {
+                            "mounting": "surface",
+                            "panelAmount": 6,
+                            "openingDirection": "middle",
+                            "handle": false,
+                            "sideProfile": true,
+                            "foundationProfile": true,
+                            "draftProfile": "pvc",
+                            "glass": "glassClear"
+                        },
+                        "verticalSunblind": {
+                            "mounting": "builtIn",
+                            "type": "axiom100",
+                            "screenColor": ["#4D504D", "#4D504D", "#4D504D"],
+                            "solar": true,
+                            "window": {
+                                "type": "partialWidth",
+                                "position": 1500,
+                                "width": 1200,
+                                "height": 900,
+                                "groundHeight": 700
+                            }
+                        },
+                        "fixedWall": null,
+                        "ledStrip": { "mounting": "builtIn", "color": "#FFD1A3" }
+                    }
+                ]
+            },
+            {
+                "sideSpecs": {
+                    "xPos": -2250,
+                    "yPos": 3000,
+                    "rotation": 180,
+                    "length": 3000,
+                    "height": 2600,
+                    "poleAmount": 1,
+                    "sections": ["Section_1"]
+                },
+                "poles": [
+                    {
+                        "type": "wallAdjacent",
+                        "position": 75,
+                        "width": 150,
+                        "depth": 150,
+                        "length": 2600,
+                        "support": "bracket",
+                        "index": 0
+                    }
+                ],
+                "bays": []
+            }
+        ]
+    }
+};
+//#endregion
+
+export { createPL, mm, DEV_SCOPES };
