@@ -1043,6 +1043,8 @@ function createPL(v3d = window.v3d) {
                 this.plasticCache = [];
                 this.sandwichWhiteCache = [];
                 this.sandwichAnthraciteCache = [];
+                this.screenCache = [];               // [zipper, nonZipper, bottomZipper]: one screen type shows
+                this.screenSupportCache = [[], [], []];   // the depth supports, per screen type
             }
 
             enable(section) {
@@ -1057,6 +1059,7 @@ function createPL(v3d = window.v3d) {
                 this.enableCrown();
                 this.enableRafters(section.rafters);
                 this.enableRoofFillings(section.roofFillings);
+                this.enableHorizontalScreen(section.horizontalScreen);
             }
 
             // One rafter per entry, spanning the depth between the front and rear beams. Under it one profile
@@ -1159,6 +1162,49 @@ function createPL(v3d = window.v3d) {
                     hideCachedClones(m.cache, fillings.length);
             }
 
+            // One horizontal screen over the section ("its width IS the section width"), centred, with its depth
+            // supports spread between the front and rear beams. Shown closed (Opening 0) for now.
+            enableHorizontalScreen(screen) {
+                const types = [
+                    { type: "zipper", screen: "Horizontal screen zipper top.0", supports: "Horizontal screen zipper top depth supports.0" },
+                    { type: "nonZipper", screen: "Horizontal screen non zipper top.0", supports: "Horizontal screen non zipper top depth supports.0" },
+                    { type: "bottomZipper", screen: "Horizontal screen bottom.0", supports: "Horizontal screen bottom depth supports.0" },
+                ];
+                const widthMorph = (this.width - 1) / 100;
+                // about one support per metre of depth, plus the two end ones, kept 0.2 m clear of the beams
+                const supportAmount = Math.round(this.depth - 0.001) + 2;
+
+                for (let t = 0; t < types.length; t++) {
+                    if (!screen || screen.type != types[t].type) {
+                        changeVis(this.screenCache[t], false);
+                        hideCachedClones(this.screenSupportCache[t], 0);
+                        continue;
+                    }
+
+                    const name = getCachedClone(this.screenCache, t, types[t].screen, this.anchor);
+                    setObjTransform(name, false, "position", [0, 0, this.totalHeight], false);
+                    setMorphFactor(name, 'Width', widthMorph);
+                    setMorphFactor(name, 'Depth', (this.depth - 1) / 100);
+                    setMorphFactor(name, 'Opening', 0);
+
+                    for (let i = 0; i < supportAmount; i++) {
+                        const y = 0.2 + 0.15 + ((this.depth - 2 * 0.15 - 0.4) / (supportAmount - 1) * i);   // from the rear edge
+                        const support = getCachedClone(this.screenSupportCache[t], i, types[t].supports, this.anchor);
+                        setObjTransform(support, false, "position", [0, y - this.depth / 2, this.totalHeight], false);
+                        setMorphFactor(support, 'Width', widthMorph);
+                    }
+                    hideCachedClones(this.screenSupportCache[t], supportAmount);
+                }
+
+                // fabric colours (one shared material: there is one screen)
+                if (screen && Array.isArray(screen.screenColor)) {
+                    const colors = screen.screenColor;
+                    setMaterialColor('ScreenFabricHorizontal', 'Color 1', 0, 0, 0, colors[0]);
+                    setMaterialColor('ScreenFabricHorizontal', 'Color 2', 0, 0, 0, colors[1] || colors[0]);
+                    setMaterialColor('ScreenFabricHorizontal', 'Color 3', 0, 0, 0, colors[2] || colors[0]);
+                }
+            }
+
             // The four gutter beams on top of the poles. They span between the corner poles (0.15 m each).
             enableCrown() {
                 const beams = [
@@ -1202,6 +1248,9 @@ function createPL(v3d = window.v3d) {
                 structureSectionCache[i].enable(sections[i]);
             }
             enableLighting();
+
+            // outside frame colour: every profile shares the Powdercoat material
+            setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
         }
 
         // LEDs in the roof turn on the Spot light under it and dim the sun (as legacy changeWorldLightForLED).
@@ -1290,7 +1339,7 @@ const DEV_SCOPES = {
                     "rafters": [
                         {
                             "position": 1000,
-                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#FFD1A3" },
+                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#02b973" },
                             "ledStrip": null
                         },
                         { "position": 2000, "ledSpot": null, "ledStrip": null },
@@ -1298,7 +1347,7 @@ const DEV_SCOPES = {
                         { "position": 4000, "ledSpot": null, "ledStrip": null },
                         {
                             "position": 5000,
-                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#FFD1A3" },
+                            "ledSpot": { "positions": [1000, 2000, 3000], "color": "#ece10a" },
                             "ledStrip": null
                         }
                     ]
