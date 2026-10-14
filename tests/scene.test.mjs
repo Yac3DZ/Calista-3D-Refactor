@@ -151,3 +151,25 @@ test('step 1b: a missing template gives null (and a warning) instead of an error
     }
     assert.equal(warnings.length, 1);
 });
+
+test('step 1b: the warning option logs once per clone whose number goes over it (template names with or without a number)', { skip }, () => {
+    createPL(v3d);
+    const env = makeApp();
+    init(env);
+    addCloneFixtures(env);
+    const noNumber = new v3d.Mesh(new v3d.BoxGeometry(), new v3d.MeshBasicMaterial());
+    noNumber.name = 'Horizontal_Gutter_Front';   // no number at the end: the legacy version threw here
+    env.scene.add(noNumber);
+    const saved = console.log;
+    const logged = [];
+    console.log = message => logged.push(String(message));
+    try {
+        const cache = [];
+        [0, 1, 2].forEach(i => v3d.PL.debug.getCachedClone(cache, i, 'Led strip.0', 'TestAnchor', 1));   // .1 .2 .3
+        assert.equal(logged.length, 2, 'clones .2 and .3 are over 1');
+        v3d.PL.debug.getCachedClone([], 0, 'Horizontal_Gutter_Front', 'TestAnchor', 5);
+    } finally {
+        console.log = saved;
+    }
+    assert.equal(logged.length, 2, 'Horizontal_Gutter_Front2 is under 5: nothing logged, and no error');
+});

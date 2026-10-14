@@ -229,7 +229,8 @@ function createPL(v3d = window.v3d) {
             return 'Y_UP_RIGHT';
         }
 
-        function generateUniqueName(name, isUniqueCb) {
+        // warning (optional, as in the legacy file): log when the clone number goes over it.
+        function generateUniqueName(name, isUniqueCb, warning) {
             let uniqueName = name;
 
             if (isUniqueCb !== undefined) {
@@ -243,14 +244,19 @@ function createPL(v3d = window.v3d) {
                 }
             }
 
+            const number = uniqueName.match(/(\d+)$/);
+            if (warning !== undefined && number && Number(number[1]) > warning)
+                console.log("Object clone count over warning for " + name + " value:" + warning + "(Current clone amount:" + number[1] + ")");
+
             return uniqueName;
         }
 
-        function generateUniqueObjectName(name) {
-            return generateUniqueName(name, name => !Boolean(getObjectByName(name)));
+        function generateUniqueObjectName(name, warning) {
+            return generateUniqueName(name, name => !Boolean(getObjectByName(name)), warning);
         }
 
-        function cloneObject(objName, cloneMaterials, preserveGroups) {
+        // warning (optional): see generateUniqueName
+        function cloneObject(objName, warning, cloneMaterials, preserveGroups) {
             if (!objName)
                 return;
             const obj = getObjectByName(objName);
@@ -258,7 +264,7 @@ function createPL(v3d = window.v3d) {
                 return;
 
             const objNew = obj.clone(); // recursive
-            objNew.name = generateUniqueObjectName(obj.name);
+            objNew.name = generateUniqueObjectName(obj.name, warning);
 
             // assign unique names for multi-material object meshes
             const objsM = objNew.resolveMultiMaterial();
@@ -547,9 +553,10 @@ function createPL(v3d = window.v3d) {
         //#region Clones
         // The clone at cache[index], made the first time it is needed: a clone of templateName, parented to
         // parentName (an anchor), at the anchor's origin with the template's own rotation and scale. Shown.
-        function getCachedClone(cache, index, templateName, parentName) {
+        // warning (optional): passed to cloneObject.
+        function getCachedClone(cache, index, templateName, parentName, warning) {
             if (!getObjectByName(cache[index])) {
-                const name = cloneObject(templateName);
+                const name = cloneObject(templateName, warning);
                 if (!name) {
                     console.warn('[Calista 3D] template object "' + templateName + '" is not in the scene');
                     return null;
