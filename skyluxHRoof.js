@@ -101,6 +101,8 @@ function createPL(v3d = window.v3d) {
     let sceneIsInitialized = false;
     let sceneParameters = {};
     const structureSectionCache = [];   // one StructureSection per _3d_StructureSections[] entry, reused
+    const clickables = {};              // object name -> what a click on it does (registerClickable)
+    let clickElement = null;            // the element the click listener is on
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -866,7 +868,19 @@ function createPL(v3d = window.v3d) {
         function handleEvents(data) {
         }
 
+        // The configurator opened a field (no data: closed it). A roof group label selects that filling / rafter;
+        // the labels don't name a section, so they go to the first one.
         function handleFocus(data) {
+            const section = structureSectionCache[0];
+            if (!section)
+                return;
+            const label = data ? String(data.uniqueLabel || '') : '';
+            if (!data)
+                section.select(null, -1);
+            else if (label.startsWith('filling_group~'))
+                section.select("filling", parseInt(label.slice(14)));
+            else if (label.startsWith('rafter_group~'))
+                section.select("rafter", parseInt(label.slice(13)));
         }
 
         function handleValue(data) {
@@ -1024,6 +1038,70 @@ function createPL(v3d = window.v3d) {
         }
         //#endregion
 
+        //#region Clicks ---------------------------------------------------------------
+        // One click listener for the whole scene. Each part registers its clickable objects with what a click does.
+        function registerClickable(objName, onClick) {
+            if (objName)
+                clickables[objName] = onClick;
+        }
+
+        // Installed once: PL.init runs again on every change, the listeners stay.
+        function initClicks() {
+            const elem = appInstance.cssRenderer ? appInstance.container : appInstance.renderer.domElement;
+            if (clickElement === elem || !elem.addEventListener)
+                return;
+            clickElement = elem;
+
+            let downX = 0, downY = 0;
+            elem.addEventListener('pointerdown', event => { downX = event.clientX; downY = event.clientY; });
+            elem.addEventListener('click', event => {
+                if (Math.hypot(event.clientX - downX, event.clientY - downY) > 6)
+                    return;   // the mouse moved: the camera was turned, not a click
+                const name = getClickableAt(elem, event.offsetX, event.offsetY);
+                if (name)
+                    clickables[name]();
+                else
+                    clearRoofSelection();
+            });
+
+            // hand cursor over clickable objects (one raycast per frame at most, none while turning the camera)
+            let hoverEvent = null;
+            elem.addEventListener('pointermove', event => {
+                if (event.buttons || event.pointerType == 'touch')
+                    return;
+                if (!hoverEvent)
+                    requestAnimationFrame(() => {
+                        elem.style.cursor = getClickableAt(elem, hoverEvent.offsetX, hoverEvent.offsetY) ? 'pointer' : '';
+                        hoverEvent = null;
+                    });
+                hoverEvent = event;
+            });
+        }
+
+        // The nearest shown object under the mouse, walked up its parents to a registered name (the hit can be a child).
+        function getClickableAt(elem, offsetX, offsetY) {
+            const camera = appInstance.getCamera(true);
+            if (!camera || !elem.clientWidth || !elem.clientHeight)
+                return null;
+            _pGlob.screenCoords.set(offsetX / elem.clientWidth * 2 - 1, -offsetY / elem.clientHeight * 2 + 1);
+            _pGlob.raycasterTmp.setFromCamera(_pGlob.screenCoords, camera);
+            const objList = [];
+            appInstance.scene.traverse(obj => objList.push(obj));
+            const hit = _pGlob.raycasterTmp.intersectObjects(objList, false).find(h => isShown(h.object));
+            for (let obj = hit ? hit.object : null; obj; obj = obj.parent)
+                if (clickables[obj.name])
+                    return obj.name;
+            return null;
+        }
+
+        // Verge3D draws an object when its own visible flag is set; only material sub-meshes follow their parent.
+        function isShown(obj) {
+            if (obj.isMaterialGeneratedMesh && obj.parent)
+                return obj.parent.visible;
+            return obj.visible;
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region StructureSection ---------------------------------------------------------------
         // One per _3d_StructureSections[] entry: the crown (gutter beams) and the roof.
         // Its anchor (a clone of empty.0) sits at the section centre; everything it builds is parented to it,
@@ -1045,9 +1123,17 @@ function createPL(v3d = window.v3d) {
                 this.sandwichAnthraciteCache = [];
                 this.screenCache = [];               // [zipper, nonZipper, bottomZipper]: one screen type shows
                 this.screenSupportCache = [[], [], []];   // the depth supports, per screen type
+
+                // roof selection (clicked in 3D or focused in the configurator), -1: none
+                this.selectedRafter = -1;
+                this.selectedFilling = -1;
+                this.selectedRafterCache = [];      // the selected rafter's "_Selected" meshes: [rafter, strip, spot profile, no strip]
+                this.selectedLedSpotCache = [];
+                this.selectedFillingCache = [];     // the highlight over the selected filling
             }
 
             enable(section) {
+                this.section = section;   // to rebuild when the selection changes
                 this.width = mm(section.width);
                 this.depth = mm(section.depth);
                 this.totalHeight = mm(section.heightUnderGutter) + 0.26;   // + crown beam height: top of the crown
@@ -1069,34 +1155,38 @@ function createPL(v3d = window.v3d) {
                 const depthMorph = ((this.depth - 2 * 0.15) - 1) / 100;
                 this.ledStripCount = 0;     // for the roof light
                 this.ledSpotCount = 0;
+                let spotIndex = 0, selectedSpotIndex = 0;
+                hideCachedClones(this.selectedRafterCache, 0);
 
                 for (let i = 0; i < rafters.length; i++) {
                     const x = this.width / 2 - mm(num(rafters[i].position, 0));
                     const profile = rafters[i].ledStrip ? "ledStrip" : (rafters[i].ledSpot ? "ledSpot" : "none");
-                    const profiles = [
-                        { type: "ledStrip", cache: this.ledStripCache, template: "Led strip.0", cloneMaterials: true },
-                        { type: "ledSpot", cache: this.ledSpotProfileCache, template: "Led spot profile.0" },
-                        { type: "none", cache: this.noLedStripCache, template: "No Led strip.0" },
+                    const isSelected = i == this.selectedRafter;
+                    const parts = [
+                        { show: true, cache: this.rafterCache, template: "Rafter 190x140 base" },
+                        { show: profile == "ledStrip", cache: this.ledStripCache, template: "Led strip", cloneMaterials: true },
+                        { show: profile == "ledSpot", cache: this.ledSpotProfileCache, template: "Led spot profile" },
+                        { show: profile == "none", cache: this.noLedStripCache, template: "No Led strip" },
                     ];
 
-                    const rafter = getCachedClone(this.rafterCache, i, "Rafter 190x140 base.0", this.anchor);
-                    setObjTransform(rafter, false, "position", [x, 0, this.totalHeight], false);
-                    setMorphFactor(rafter, 'Width', depthMorph);
-
-                    for (const p of profiles) {
-                        if (p.type != profile) {
-                            changeVis(p.cache[i], false);   // this rafter may have had another profile before
+                    // the selected rafter is built from the "_Selected" meshes instead
+                    for (let p = 0; p < parts.length; p++) {
+                        if (!parts[p].show || isSelected)
+                            changeVis(parts[p].cache[i], false);   // this rafter may have had another profile before
+                        if (!parts[p].show)
                             continue;
-                        }
-                        const name = getCachedClone(p.cache, i, p.template, this.anchor, undefined, p.cloneMaterials);
+                        const name = isSelected
+                            ? getCachedClone(this.selectedRafterCache, p, parts[p].template + "_Selected.0", this.anchor)
+                            : getCachedClone(parts[p].cache, i, parts[p].template + ".0", this.anchor, undefined, parts[p].cloneMaterials);
                         setObjTransform(name, false, "position", [x, 0, this.totalHeight], false);
                         setMorphFactor(name, 'Width', depthMorph);
+                        registerClickable(name, () => this.selectRoof("rafter", i));
                     }
 
                     // colours: getObjectMaterial(…, true) gives the UUID of that clone's own material copy
                     // (cloneMaterials), so setMaterialColor changes only that one LED
                     if (profile == "ledStrip") {
-                        if (rafters[i].ledStrip)
+                        if (rafters[i].ledStrip && !isSelected)
                             setMaterialColor(getObjectMaterial(this.ledStripCache[i], 1, true), 'Color', 0, 0, 0, rafters[i].ledStrip);
                         this.ledStripCount++;
                     }
@@ -1105,9 +1195,12 @@ function createPL(v3d = window.v3d) {
                     if (profile == "ledSpot") {
                         const positions = Array.isArray(rafters[i].ledSpot.positions) ? rafters[i].ledSpot.positions : [];
                         for (const position of positions) {
-                            const spot = getCachedClone(this.ledSpotCache, this.ledSpotCount, "Horizontal_Ledspot.0", this.anchor, undefined, true);
+                            const spot = isSelected
+                                ? getCachedClone(this.selectedLedSpotCache, selectedSpotIndex++, "Horizontal_Ledspot_Selected.0", this.anchor)
+                                : getCachedClone(this.ledSpotCache, spotIndex++, "Horizontal_Ledspot.0", this.anchor, undefined, true);
                             setObjTransform(spot, false, "position", [x, -this.depth / 2 + mm(num(position, 0)), this.totalHeight], false);
-                            if (rafters[i].ledSpot.color)   // the spot's 2nd material is Light_emit (1st: Rubber)
+                            registerClickable(spot, () => this.selectRoof("rafter", i));
+                            if (rafters[i].ledSpot.color && !isSelected)   // the spot's 2nd material is Light_emit (1st: Rubber)
                                 setMaterialColor(getObjectMaterial(spot, 2, true), 'Color', 0, 0, 0, rafters[i].ledSpot.color);
                             this.ledSpotCount++;
                         }
@@ -1118,7 +1211,8 @@ function createPL(v3d = window.v3d) {
                 hideCachedClones(this.ledStripCache, rafters.length);
                 hideCachedClones(this.ledSpotProfileCache, rafters.length);
                 hideCachedClones(this.noLedStripCache, rafters.length);
-                hideCachedClones(this.ledSpotCache, this.ledSpotCount);
+                hideCachedClones(this.ledSpotCache, spotIndex);
+                hideCachedClones(this.selectedLedSpotCache, selectedSpotIndex);
             }
 
             // One panel per roof filling, between the rafters. A filling's position is its centre, measured from the
@@ -1133,6 +1227,7 @@ function createPL(v3d = window.v3d) {
                     { types: ["sandwichPanelAnthracite", "sandwichPanelTile"], cache: this.sandwichAnthraciteCache, template: "Horizontal_Roof_Sandwich_Panel_Anthracite_Front.0" },
                 ];
 
+                hideCachedClones(this.selectedFillingCache, 0);
                 for (let i = 0; i < fillings.length; i++) {
                     const x = this.width / 2 - mm(num(fillings[i].position, 0));
                     const widthMorph = (mm(num(fillings[i].width, 1000)) - 1) / 100;
@@ -1146,6 +1241,16 @@ function createPL(v3d = window.v3d) {
                         setObjTransform(panel, false, "position", [x, 0, this.totalHeight], false);
                         setMorphFactor(panel, 'Depth', depthMorph);
                         setMorphFactor(panel, 'Width', widthMorph);
+                        registerClickable(panel, () => this.selectRoof("filling", i));
+                    }
+
+                    // the selected filling: the highlight panel over it
+                    if (i == this.selectedFilling) {
+                        const highlight = getCachedClone(this.selectedFillingCache, 0, "Horizontal_Roof_Selected_Front.0", this.anchor);
+                        setObjTransform(highlight, false, "position", [x, 0, this.totalHeight], false);
+                        setMorphFactor(highlight, 'Depth', depthMorph);
+                        setMorphFactor(highlight, 'Width', widthMorph);
+                        registerClickable(highlight, () => this.selectRoof("filling", i));
                     }
 
                     // glass look: clear or opal, on this panel's own material copy (by UUID, see the LEDs)
@@ -1205,6 +1310,28 @@ function createPL(v3d = window.v3d) {
                 }
             }
 
+            // Select a filling or rafter (type "filling" | "rafter", or null for none) and rebuild to show it.
+            // Nothing goes to the configurator here: its own focus comes in through this too.
+            select(type, index) {
+                const rafter = type == "rafter" ? index : -1;
+                const filling = type == "filling" ? index : -1;
+                if (rafter == this.selectedRafter && filling == this.selectedFilling)
+                    return;
+                this.selectedRafter = rafter;
+                this.selectedFilling = filling;
+                if (this.section)
+                    this.enable(this.section);
+            }
+
+            // Clicked in 3D: select it (only here) and open its group in the configurator ("filling_group~2").
+            selectRoof(type, index) {
+                for (let i = 0; i < sceneParameters.structureSections.length; i++)
+                    if (structureSectionCache[i] !== this)
+                        structureSectionCache[i].select(null, -1);
+                this.select(type, index);
+                getJSFunction('focus')({ uniqueLabel: type + '_group~' + index });
+            }
+
             // The four gutter beams on top of the poles. They span between the corner poles (0.15 m each).
             enableCrown() {
                 const beams = [
@@ -1248,7 +1375,6 @@ function createPL(v3d = window.v3d) {
                 structureSectionCache[i].enable(sections[i]);
             }
             enableLighting();
-
             // outside frame colour: every profile shares the Powdercoat material
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
         }
@@ -1277,6 +1403,18 @@ function createPL(v3d = window.v3d) {
 
         // Hide every object. The scene root is skipped by identity: in the GLB it is called "glid", not "Scene".
         // (In Verge3D a hidden parent does NOT hide its children, so every object is hidden one by one.)
+        // A click on nothing clickable closes the open roof group ("filling_group~-1").
+        function clearRoofSelection() {
+            for (let i = 0; i < sceneParameters.structureSections.length; i++) {
+                const section = structureSectionCache[i];
+                if (section.selectedFilling != -1)
+                    getJSFunction('focus')({ uniqueLabel: 'filling_group~-1' });
+                if (section.selectedRafter != -1)
+                    getJSFunction('focus')({ uniqueLabel: 'rafter_group~-1' });
+                section.select(null, -1);
+            }
+        }
+
         function clearScene() {
             const objList = getAllObjectNames();
             for (let i = 0; i < objList.length; i++)
@@ -1289,6 +1427,7 @@ function createPL(v3d = window.v3d) {
         setCameraOptions();
         getParameters();
         enableScene();
+        initClicks();
         takeSnapshot();
 
         if (!sceneIsInitialized) {
