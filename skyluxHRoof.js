@@ -101,6 +101,7 @@ function createPL(v3d = window.v3d) {
     let sceneIsInitialized = false;
     let sceneParameters = {};
     const structureSectionCache = [];   // one StructureSection per _3d_StructureSections[] entry, reused
+    const sideOpeningCache = [];        // one SideOpening per _3d_SideOpenings[] entry, reused
     const clickables = {};              // object name -> what a click on it does (registerClickable)
     let clickElement = null;            // the element the click listener is on
 
@@ -111,7 +112,7 @@ function createPL(v3d = window.v3d) {
         this.procedures["handleValue"] = handleValue;
 
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
-        PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache };
+        PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache };
 
         //#region Verge3D 4.13 helpers
         function getObjectByName(objName) {
@@ -1362,6 +1363,101 @@ function createPL(v3d = window.v3d) {
         }
         //#endregion ---------------------------------------------------------------
 
+        //#region SideOpening ---------------------------------------------------------------
+        // One per _3d_SideOpenings[] entry: the poles of that side (the bays follow).
+        // Its anchor (a clone of empty.0) sits on the side's start point, turned so local X runs along the side
+        // (left -> right seen from outside) and local Y points inward. Positions below are local.
+        class SideOpening {
+            constructor() {
+                this.anchor = cloneObject("empty.0");
+                if (!this.anchor)
+                    console.warn('[Calista 3D] "empty.0" is not in the scene, the side cannot be placed');
+                this.startPoleCache = [];   // per pole, one of these two: Front_Left (start corner, intermediate)…
+                this.endPoleCache = [];     // …or Front_Right (end corner)
+                this.bracketCache = [];     // per pole, its support: a bracket or a foundation
+                this.foundationCache = [];
+            }
+
+            enable(side) {
+                this.length = mm(side.length);
+                setObjTransform(this.anchor, false, "position", [mm(side.xPos), mm(side.yPos), 0], false);
+                setObjTransform(this.anchor, false, "rotation", [0, 0, 90 - side.rotation], false);   // left 0 -> X along +Y
+                this.enablePoles(side.poles);
+            }
+
+            // The GLB has no pole template, so the front corner posts are used for every side (turned by the
+            // anchor). Their origin is the outer corner and the post runs along -X and inward from it: Front_Left
+            // fits the start of a side, Front_Right the end. An intermediate pole is a Front_Left scaled to its width.
+            enablePoles(poles) {
+                const templates = [
+                    { cache: this.startPoleCache, template: "Horizontal_Corner_Post_Front_Left", faces: ["Front", "Left"] },
+                    { cache: this.endPoleCache, template: "Horizontal_Corner_Post_Front_Right", faces: ["Front", "Right"] },
+                ];
+                const accessories = ["Integrated screen rail", "Integrated wall rail", "Rail plug"];
+
+                for (let i = 0; i < poles.length; i++) {
+                    const position = mm(num(poles[i].position, 0));
+                    const width = mm(num(poles[i].width, 150));
+                    const depth = mm(num(poles[i].depth, 150));
+                    const isEnd = poles[i].type != "intermediate" && position > this.length / 2;
+                    // a corner post runs up through the crown (+ 0.26), an intermediate one stops just inside it
+                    const height = mm(num(poles[i].length, 2500)) + (poles[i].type == "intermediate" ? 0.02 : 0.26);
+                    const heightMorph = (height - 1) / 99;
+
+                    for (let t = 0; t < templates.length; t++) {
+                        if (t != (isEnd ? 1 : 0)) {
+                            changeVis(templates[t].cache[i], false);   // this pole may have been at the other end before
+                            continue;
+                        }
+                        const pole = getCachedClone(templates[t].cache, i, templates[t].template, this.anchor);
+                        if (!pole)
+                            continue;
+                        setObjTransform(pole, false, "position", [isEnd ? position + width / 2 : position - width / 2, 0, 0], false);
+                        setObjTransform(pole, false, "rotation", [0, 0, 180], false);
+                        setObjTransform(pole, false, "scale", [width / 0.15, depth / 0.15, 1], false);
+                        setMorphFactor(pole, 'Height', heightMorph);
+
+                        // the rails on its faces: plugged for now, the bays decide later
+                        for (const face of templates[t].faces)
+                            for (const accessory of accessories) {
+                                const child = pole + ' > ' + templates[t].template + '_' + face + '_' + accessory;
+                                setMorphFactor(child, 'Height', heightMorph);
+                                changeVis(child, accessory == "Rail plug");
+                            }
+                    }
+                    this.enablePoleSupport(i, poles[i].support, position, width, depth, isEnd);
+                }
+
+                for (const t of templates)
+                    hideCachedClones(t.cache, poles.length);
+                hideCachedClones(this.bracketCache, poles.length);
+                hideCachedClones(this.foundationCache, poles.length);
+            }
+
+            // The footing under pole i: a bracket (bracketUnder: 0.1 m lower, as legacy), a foundation, or none.
+            // Both are modelled like a corner post at its origin, running along +X and inward (+Y), so the
+            // support of an end pole is turned a quarter to run back along the side (legacy: one rotation per corner).
+            enablePoleSupport(i, type, position, width, depth, isEnd) {
+                const supports = [
+                    { types: ["bracket", "bracketUnder"], cache: this.bracketCache, template: "Post bracket.0" },
+                    { types: ["foundation"], cache: this.foundationCache, template: "Post foundation.0" },
+                ];
+                for (const sp of supports) {
+                    if (!sp.types.includes(type)) {
+                        changeVis(sp.cache[i], false);
+                        continue;
+                    }
+                    const support = getCachedClone(sp.cache, i, sp.template, this.anchor);
+                    if (!support)
+                        continue;
+                    setObjTransform(support, false, "position", [isEnd ? position + width / 2 : position - width / 2, 0, type == "bracketUnder" ? -0.1 : 0], false);
+                    setObjTransform(support, false, "rotation", [0, 0, isEnd ? 90 : 0], false);
+                    setObjTransform(support, false, "scale", isEnd ? [depth / 0.15, width / 0.15, 1] : [width / 0.15, depth / 0.15, 1], false);
+                }
+            }
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region Scene
         function enableScene() {
             clearScene();
@@ -1373,6 +1469,13 @@ function createPL(v3d = window.v3d) {
                 if (!structureSectionCache[i])
                     structureSectionCache[i] = new StructureSection();
                 structureSectionCache[i].enable(sections[i]);
+            }
+
+            const sides = sceneParameters.sideOpenings;
+            for (let i = 0; i < sides.length; i++) {
+                if (!sideOpeningCache[i])
+                    sideOpeningCache[i] = new SideOpening();
+                sideOpeningCache[i].enable(sides[i]);
             }
             enableLighting();
             // outside frame colour: every profile shares the Powdercoat material
