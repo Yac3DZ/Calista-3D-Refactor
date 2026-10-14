@@ -586,6 +586,146 @@ function createPL(v3d = window.v3d) {
                 });
             }
         }
+
+        function getObjectMaterial(objSelector, matIndex, useID) {
+            const objNames = retrieveObjectNames(objSelector);
+
+            for (let i = 0; i < objNames.length; i++) {
+                const objName = objNames[i]
+                if (!objName)
+                    continue;
+                let obj = getObjectByName(objName);
+                if (!obj)
+                    continue;
+
+                const objsM = obj.resolveMultiMaterial();
+
+                if (Number.isInteger(matIndex)) {
+                    if (matIndex >= 1 && matIndex <= objsM.length) {
+                        obj = objsM[matIndex-1];
+                    } else {
+                        console.error('get object material puzzle: invalid material index ' + matIndex);
+                        continue;
+                    }
+                } else {
+                    obj = objsM[0];
+                }
+
+                if (obj.material) {
+                    // COMPAT: <4.9.0, old engine, new puzzles, see getMaterialByName()
+                    if (useID && v3d.MathUtils.checkUUID)
+                        return obj.material.uuid;
+                    else
+                        return obj.material.name;
+                } else {
+                    console.error('get object material puzzle: invalid object ' + obj.name);
+                }
+            }
+            return '';
+        }
+
+        function getMaterialEditableColors(matName) {
+            const mat = v3d.SceneUtils.getMaterialByName(appInstance, matName);
+            if (!mat) {
+                return [];
+            }
+
+            if (mat.isMeshNodeMaterial) {
+                return Object.keys(mat.nodeRGBMap);
+            } else if (mat.isMeshStandardMaterial) {
+                return ['color', 'emissive'];
+            } else if (mat.isMeshLineMaterial) {
+                return ['color'];
+            } else {
+                return [];
+            }
+        }
+
+        function getMaterialEditableValues(matName) {
+            const mat = v3d.SceneUtils.getMaterialByName(appInstance, matName);
+            if (!mat) {
+                return [];
+            }
+
+            if (mat.isMeshNodeMaterial) {
+                return Object.keys(mat.nodeValueMap);
+            } else if (mat.isMeshStandardMaterial) {
+                return ['metalness', 'roughness', 'opacity', 'emissiveIntensity', 'bumpScale', 'envMapIntensity'];
+            } else {
+                return [];
+            }
+        }
+
+        function setMaterialColor(matSelector, colName, r, g, b, cssCode) {
+            const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
+
+            matNames.forEach(function(matName) {
+                const colors = getMaterialEditableColors(matName);
+                if (colors.indexOf(colName) < 0)
+                    return;
+
+                if (cssCode) {
+                    const color = new v3d.Color(cssCode);
+                    r = color.r;
+                    g = color.g;
+                    b = color.b;
+                }
+
+                const mats = v3d.SceneUtils.getMaterialsByName(appInstance, matName);
+
+                for (let i = 0; i < mats.length; i++) {
+                    const mat = mats[i];
+
+                    if (mat.isMeshNodeMaterial) {
+                        const rgbIdx = mat.nodeRGBMap[colName];
+                        mat.nodeRGB[rgbIdx].x = r;
+                        mat.nodeRGB[rgbIdx].y = g;
+                        mat.nodeRGB[rgbIdx].z = b;
+                    } else {
+                        mat[colName].r = r;
+                        mat[colName].g = g;
+                        mat[colName].b = b;
+                    }
+
+                    // COMPAT: <4.9.0
+                    if (v3d.engineVersionCmp('4.9.0', v3d.REVISION) < 0)
+                        mat.needsUpdate = true;
+
+                    if (appInstance.scene !== null) {
+                        if (mat === appInstance.scene.worldMaterial) {
+                            appInstance.updateEnvironment(mat);
+                        }
+                    }
+                }
+            });
+        }
+
+        function setMaterialValue(matSelector, valName, value) {
+            const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
+
+            matNames.forEach(function(matName) {
+                const values = getMaterialEditableValues(matName);
+                if (values.indexOf(valName) < 0)
+                    return;
+
+                const mats = v3d.SceneUtils.getMaterialsByName(appInstance, matName);
+                for (let i = 0; i < mats.length; i++) {
+                    const mat = mats[i];
+
+                    if (mat.isMeshNodeMaterial) {
+                        const valIdx = mat.nodeValueMap[valName];
+                        mat.nodeValue[valIdx] = Number(value);
+                    } else
+                        mat[valName] = Number(value);
+
+                    if (appInstance.scene !== null) {
+                        if (mat === appInstance.scene.worldMaterial) {
+                            appInstance.updateEnvironment(mat);
+                        }
+                    }
+                }
+            });
+        }
         //#endregion
 
         //#region Clones -----------------------------------------------------
@@ -618,35 +758,6 @@ function createPL(v3d = window.v3d) {
             }
             changeVis(cache[index], true);
             return cache[index];
-        }
-
-        // Colour of ONE LED clone (made with cloneMaterials) through the "LED color" RGB input of its material.
-        function setLedColor(objName, color) {
-            const obj = getObjectByName(objName);
-            if (!obj || !color)
-                return;
-            const rgb = new v3d.Color(color);
-            obj.resolveMultiMaterial().forEach(objR => {
-                const mat = objR.material;
-                if (mat && mat.isMeshNodeMaterial && 'LED color' in mat.nodeRGBMap) {
-                    const input = mat.nodeRGB[mat.nodeRGBMap['LED color']];
-                    input.x = rgb.r;
-                    input.y = rgb.g;
-                    input.z = rgb.b;
-                }
-            });
-        }
-
-        // A value input of ONE clone's own material (made with cloneMaterials), e.g. the glass "Tint".
-        function setObjectMaterialValue(objName, valueName, value) {
-            const obj = getObjectByName(objName);
-            if (!obj)
-                return;
-            obj.resolveMultiMaterial().forEach(objR => {
-                const mat = objR.material;
-                if (mat && mat.isMeshNodeMaterial && valueName in mat.nodeValueMap)
-                    mat.nodeValue[mat.nodeValueMap[valueName]] = value;
-            });
         }
 
         // Hide the clones of a cache from index `from` on (left over from a bigger configuration).
@@ -979,8 +1090,11 @@ function createPL(v3d = window.v3d) {
                         setMorphFactor(name, 'Width', depthMorph);
                     }
 
+                    // colours: getObjectMaterial(…, true) gives the UUID of that clone's own material copy
+                    // (cloneMaterials), so setMaterialColor changes only that one LED
                     if (profile == "ledStrip") {
-                        setLedColor(this.ledStripCache[i], rafters[i].ledStrip);
+                        if (rafters[i].ledStrip)
+                            setMaterialColor(getObjectMaterial(this.ledStripCache[i], 1, true), 'Color', 0, 0, 0, rafters[i].ledStrip);
                         this.ledStripCount++;
                     }
 
@@ -990,7 +1104,8 @@ function createPL(v3d = window.v3d) {
                         for (const position of positions) {
                             const spot = getCachedClone(this.ledSpotCache, this.ledSpotCount, "Horizontal_Ledspot.0", this.anchor, undefined, true);
                             setObjTransform(spot, false, "position", [x, -this.depth / 2 + mm(num(position, 0)), this.totalHeight], false);
-                            setLedColor(spot, rafters[i].ledSpot.color);
+                            if (rafters[i].ledSpot.color)   // the spot's 2nd material is Light_emit (1st: Rubber)
+                                setMaterialColor(getObjectMaterial(spot, 2, true), 'Color', 0, 0, 0, rafters[i].ledSpot.color);
                             this.ledSpotCount++;
                         }
                     }
@@ -1030,13 +1145,13 @@ function createPL(v3d = window.v3d) {
                         setMorphFactor(panel, 'Width', widthMorph);
                     }
 
-                    // glass look: clear or opal
+                    // glass look: clear or opal, on this panel's own material copy (by UUID, see the LEDs)
                     if (fillings[i].type == "glassClear") {
-                        setObjectMaterialValue(this.glassCache[i], 'NoGlass', 0);
-                        setObjectMaterialValue(this.glassCache[i], 'Tint', 0);
+                        setMaterialValue(getObjectMaterial(this.glassCache[i], 1, true), 'NoGlass', 0);
+                        setMaterialValue(getObjectMaterial(this.glassCache[i], 1, true), 'Tint', 0);
                     } else if (fillings[i].type == "glassOpal") {
-                        setObjectMaterialValue(this.glassCache[i], 'NoGlass', 0);
-                        setObjectMaterialValue(this.glassCache[i], 'Tint', 0.6);
+                        setMaterialValue(getObjectMaterial(this.glassCache[i], 1, true), 'NoGlass', 0);
+                        setMaterialValue(getObjectMaterial(this.glassCache[i], 1, true), 'Tint', 0.6);
                     }
                 }
 
