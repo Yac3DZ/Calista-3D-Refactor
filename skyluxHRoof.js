@@ -1405,9 +1405,8 @@ function createPL(v3d = window.v3d) {
                     { template: "Horizontal_Gutter_Left", position: [this.width / 2, 0, this.totalHeight], length: this.depth },
                     { template: "Horizontal_Gutter_Right", position: [-this.width / 2, 0, this.totalHeight], length: this.depth },
                 ];
-                // Accessories hanging under each beam; the bays decide which ones show later, for now the plugs do.
+                // The beam's own accessories run its full length: hidden, the sides place them per bay (enableCrownAccessories).
                 const accessories = ["LED strip integrated", "LED strip integrated plug", "Rail plug", "Integrated wall", "Vertical sunblind"];
-                const shownAccessories = ["LED strip integrated plug", "Rail plug"];
 
                 for (let i = 0; i < beams.length; i++) {
                     const beam = getCachedClone(this.crownBeamCache, i, beams[i].template, this.anchor);
@@ -1417,18 +1416,15 @@ function createPL(v3d = window.v3d) {
                     setObjTransform(beam, false, "position", beams[i].position, false);
                     setMorphFactor(beam, 'Width', widthMorph);
 
-                    for (const accessory of accessories) {
-                        const child = beam + ' > ' + beams[i].template + '_' + accessory;
-                        setMorphFactor(child, 'Width', widthMorph);
-                        changeVis(child, shownAccessories.includes(accessory));
-                    }
+                    for (const accessory of accessories)
+                        changeVis(beam + ' > ' + beams[i].template + '_' + accessory, false);
                 }
             }
         }
         //#endregion ---------------------------------------------------------------
 
         //#region SideOpening ---------------------------------------------------------------
-        // One per _3d_SideOpenings[] entry: the poles of that side (the bays follow).
+        // One per _3d_SideOpenings[] entry: the poles of that side and, per bay, what it holds.
         // Its anchor (a clone of empty.0) sits on the side's start point, turned so local X runs along the side
         // (left -> right seen from outside) and local Y points inward. Positions below are local.
         class SideOpening {
@@ -1440,13 +1436,53 @@ function createPL(v3d = window.v3d) {
                 this.endPoleCache = [];     // …or Front_Right (end corner)
                 this.bracketCache = [];     // per pole, its support: a bracket or a foundation
                 this.foundationCache = [];
+
+                // the crown frame: on top of the side, turned like the front beam the crown accessories are modelled on
+                this.crownAnchor = cloneObject("empty.0");
+                makeParent(this.crownAnchor, this.anchor);
+                this.railPlugCache = [];    // per bay, in the crown above it
+                this.ledStripCache = [];
+                this.ledPlugCache = [];
             }
 
             enable(side) {
                 this.length = mm(side.length);
                 setObjTransform(this.anchor, false, "position", [mm(side.xPos), mm(side.yPos), 0], false);
                 setObjTransform(this.anchor, false, "rotation", [0, 0, 90 - side.rotation], false);   // left 0 -> X along +Y
+                setObjTransform(this.crownAnchor, false, "position", [0, 0, mm(side.height) + 0.26], false);   // top of the crown, like the beams
+                setObjTransform(this.crownAnchor, false, "rotation", [0, 0, 180], false);
                 this.enablePoles(side.poles);
+                this.enableCrownAccessories(side.bays);
+            }
+
+            // Per bay, in the crown beam's grooves over its span: the LED strip (builtIn) or its plug, and the rail plug
+            // unless a builtIn screen or wall hangs there (those come with the bay options). The crown frame is turned
+            // 180°, so its x runs back along the side: x = -bay position.
+            enableCrownAccessories(bays) {
+                const isBuiltIn = option => Boolean(option) && option.mounting == "builtIn";
+                const accessories = [
+                    { cache: this.ledStripCache, template: "Horizontal_Gutter_Front_LED strip integrated", show: bay => isBuiltIn(bay.ledStrip) },
+                    { cache: this.ledPlugCache, template: "Horizontal_Gutter_Front_LED strip integrated plug", show: bay => !isBuiltIn(bay.ledStrip) },
+                    { cache: this.railPlugCache, template: "Horizontal_Gutter_Front_Rail plug", show: bay => !isBuiltIn(bay.verticalSunblind) && !isBuiltIn(bay.fixedWall) },
+                ];
+
+                for (let i = 0; i < bays.length; i++) {
+                    const bay = toObject(bays[i].generalSpecs);
+                    const x = mm(num(bay.position, 0));
+                    const widthMorph = (mm(num(bay.length, 1000)) - 1) / 100;
+                    for (const a of accessories) {
+                        if (!a.show(bays[i])) {
+                            changeVis(a.cache[i], false);
+                            continue;
+                        }
+                        const name = getCachedClone(a.cache, i, a.template, this.crownAnchor);
+                        setObjTransform(name, false, "position", [-x, 0, 0], false);
+                        setMorphFactor(name, 'Width', widthMorph);
+                    }
+                }
+
+                for (const a of accessories)
+                    hideCachedClones(a.cache, bays.length);
             }
 
             // The GLB has no pole template, so the front corner posts are used for every side (turned by the
