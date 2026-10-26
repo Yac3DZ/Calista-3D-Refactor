@@ -1074,6 +1074,11 @@ function createPL(v3d = window.v3d) {
                         _pGlob.objCache.set(child.name, child);
                     }
                 });
+                // Glass lets the sun through: the parts in a glass material cast no shadow (the frame around them does).
+                getObjectByName(name).traverse(part => {
+                    if (part.isMesh && part.material && /glass/i.test(part.material.name))
+                        part.castShadow = false;
+                });
                 // makeParent keeps the world transform; reset it to the anchor's origin instead. The template's
                 // rotation is read in LOCAL space: read in world space, templates turned around two axes come
                 // out 120° off (e.g. "Led strip.0").
@@ -1344,7 +1349,8 @@ function createPL(v3d = window.v3d) {
             if (appInstance.controls && appInstance.controls.tween) {
                 if (!appInstance.controls.inTween) {
                     if (orthoZoom != null) setOrthoZoom();
-                    appInstance.controls.tween(cameraPos, center, Math.max(0, duration), onDone);
+                    // spherical: the camera swings around the structure instead of cutting straight across it
+                    appInstance.controls.tween(cameraPos, center, Math.max(0, duration), onDone, v3d.TweenSpherical);
                 }
             } else {
                 if (orthoZoom != null) setOrthoZoom();
@@ -1537,6 +1543,7 @@ function createPL(v3d = window.v3d) {
                 this.yPos = mm(section.yPos);
 
                 setObjTransform(this.anchor, false, "position", [this.xPos, this.yPos, 0], false);
+                changeVis(this.anchor, true);   // the shadow pass skips everything under a hidden object (the render does not)
                 this.enableCrown();
                 this.enableRafters(section.rafters);
                 this.enableRoofFillings(section.roofFillings);
@@ -1835,6 +1842,7 @@ function createPL(v3d = window.v3d) {
                 this.side = side;   // to find the neighbouring sides (poleRails)
                 this.length = mm(side.length);
                 setObjTransform(this.anchor, false, "position", [mm(side.xPos), mm(side.yPos), 0], false);
+                changeVis([this.anchor, this.crownAnchor], true);   // the shadow pass skips everything under a hidden object
                 setObjTransform(this.anchor, false, "rotation", [0, 0, 90 - side.rotation], false);   // left 0 -> X along +Y
                 setObjTransform(this.crownAnchor, false, "position", [0, 0, mm(side.height) + 0.26], false);   // top of the crown, like the beams
                 setObjTransform(this.crownAnchor, false, "rotation", [0, 0, 180], false);
@@ -2565,7 +2573,8 @@ function createPL(v3d = window.v3d) {
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
         }
 
-        // LEDs in the roof or in the crown turn on the Spot light under the roof and dim the sun (as legacy changeWorldLightForLED).
+        // LEDs in the roof or in the crown turn on the Spot light under the roof and dim the sun (legacy changeWorldLightForLED
+        // turned it off; dimmed, it still casts the structure's shadows).
         function enableLighting() {
             const section = sceneParameters.structureSections.length ? structureSectionCache[0] : null;
             let strips = section ? section.ledStripCount : 0;
@@ -2578,7 +2587,7 @@ function createPL(v3d = window.v3d) {
                 setObjTransform("Spot", false, "position", [section.xPos, section.yPos, section.totalHeight - 0.2], false);
             lightIntensity("Spot", anyLed ? 6 + strips * 2.5 + spots * 0.5 : 0);
             changeVis("Spot", anyLed);
-            lightIntensity("Sun_modern", anyLed ? 0 : 4);
+            lightIntensity("Sun_modern", anyLed ? 4 : 4);   // dimmed with LEDs, not off: it casts the shadows
         }
         function lightIntensity(lightName, intensity) {
             var areaLight = getObjectByName(lightName);
