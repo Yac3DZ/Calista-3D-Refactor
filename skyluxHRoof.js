@@ -1790,7 +1790,8 @@ function createPL(v3d = window.v3d) {
             // further in (legacy). Panels open to the left (the bay's start), the right, or both ways from the middle; the
             // panels that stay put run in the outer track. Per track a bottom and a top rail, and one top main rail over
             // them all. The parts are modelled along X like the front beam, so they are turned 180° (the main rail 0°).
-            // Per panel (as the standalone Climaglide file): a 30 mm overhang over each neighbour, a side profile on the
+            // All panels are the same width: neighbours overlap 30 mm (the halves of a middle door meet without overlap)
+            // and the outer panels end at the bay's ends, so open panels stack exactly. Per panel: a side profile on the
             // outer panels (sideProfile), a brush profile (draftProfile alu / pvc) on each edge that slides past another
             // panel, and a handle 0.1 m from the leading edge of the panels that open. Brushes and handles hang under
             // their panel, so they move with it. The template's Left is the side's +X (towards the bay's end).
@@ -1799,7 +1800,7 @@ function createPL(v3d = window.v3d) {
                     sideLeft: "Climaglide side profile Left.0", sideRight: "Climaglide side profile Right.0",
                     aluLeft: "Climaglide brush profile Alu Left.0", aluRight: "Climaglide brush profile Alu Right.0",
                     pvcLeft: "Climaglide brush profile PVC Left.0", pvcRight: "Climaglide brush profile PVC Right.0",
-                    handle: "Climaglide_Manipulator.000",
+                    handle: "Climaglide_Manipulator.0",
                 };
                 let panelCount = 0, railCount = 0;
                 for (let i = 0; i < bays.length; i++) {
@@ -1819,8 +1820,8 @@ function createPL(v3d = window.v3d) {
                     const trackY = t => 0.058 + t * 0.02;
 
                     for (let t = 0; t < tracks; t++) {
-                        const bottom = getCachedClone(this.climaglideBottomRailCache, railCount, "Climaglide_Rails_Bottom.000", this.anchor);
-                        const top = getCachedClone(this.climaglideTopRailCache, railCount++, "Climaglide_Rails_Top.000", this.anchor);
+                        const bottom = getCachedClone(this.climaglideBottomRailCache, railCount, "Climaglide_Rails_Bottom.0", this.anchor);
+                        const top = getCachedClone(this.climaglideTopRailCache, railCount++, "Climaglide_Rails_Top.0", this.anchor);
                         setObjTransform(bottom, false, "position", [centre, trackY(t), 0], false);
                         setObjTransform(top, false, "position", [centre, trackY(t), height], false);
                         for (const rail of [bottom, top]) {
@@ -1828,7 +1829,7 @@ function createPL(v3d = window.v3d) {
                             setMorphFactor(rail, 'Width', (span - 1) / 99);
                         }
                     }
-                    const main = getCachedClone(this.climaglideMainRailCache, i, "Climaglide_Rails_Top_Main.000", this.anchor);
+                    const main = getCachedClone(this.climaglideMainRailCache, i, "Climaglide_Rails_Top_Main.0", this.anchor);
                     setObjTransform(main, false, "position", [centre, trackY(0), height], false);
                     setObjTransform(main, false, "rotation", [0, 0, 0], false);
                     setMorphFactor(main, 'Width', (span - 1) / 99);
@@ -1842,7 +1843,13 @@ function createPL(v3d = window.v3d) {
                     }
                     else
                         changeVis(this.climaglideFoundationCache[i], false);
-                    const panelWidth = span / amount;
+                    const overlaps = direction == "middle" ? amount - 2 : amount - 1;
+                    const panelWidth = (span + overlaps * 0.03) / amount;
+                    const pitch = panelWidth - 0.03;   // from one panel to the next
+                    // panel k's centre, closed: from the bay's start (a middle door's 2nd half from its end)
+                    const closedX = k => direction == "middle" && k >= amount / 2
+                        ? centre + span / 2 - panelWidth / 2 - (amount - 1 - k) * pitch
+                        : centre - span / 2 + panelWidth / 2 + k * pitch;
                     const draft = glide.draftProfile == "pvc" ? "pvc" : glide.draftProfile == "alu" ? "alu" : null;
                     // a click slides it open or closed: each panel between its closed place and where it parks when open
                     const state = this.climaglideStates[i] = this.climaglideStates[i] || openingState();
@@ -1851,19 +1858,16 @@ function createPL(v3d = window.v3d) {
                     for (let k = 0; k < amount; k++) {
                         const p = panelCount++;
                         const track = direction == "left" ? k : direction == "right" ? amount - 1 - k : Math.min(k, amount - 1 - k);
-                        const x = centre - span / 2 + panelWidth * (k + 0.5);
+                        const x = closedX(k);
                         const firstHalf = k < amount / 2;
-                        const panel = getCachedClone(this.climaglidePanelCache, p, "Climaglide_Panel.000", this.anchor, undefined, true);
+                        const panel = getCachedClone(this.climaglidePanelCache, p, "Climaglide_Panel.0", this.anchor, undefined, true);
                         // open, the panels stack at the side they open to (middle: each half at its own end)
                         const parkedAt = direction == "left" ? 0 : direction == "right" ? amount - 1 : firstHalf ? 0 : amount - 1;
-                        layout.push({ panel: panel, closed: x, open: centre - span / 2 + panelWidth * (parkedAt + 0.5), y: trackY(track) });
+                        layout.push({ panel: panel, closed: x, open: closedX(parkedAt), y: trackY(track) });
                         registerClickable(panel, () => toggleOpening(state, value => this.setClimaglideOpening(i, value)));
                         setObjTransform(panel, false, "rotation", [0, 0, 180], false);
                         setMorphFactor(panel, 'Width', (panelWidth - 0.1) / 100);
                         setMorphFactor(panel, 'Height', (height - 1) / 99);
-                        // overhang over the neighbours, none at the bay's ends nor where the two halves of a middle door meet
-                        setMorphFactor(panel, 'Right overhang', k != 0 && !(direction == "middle" && k == amount / 2) ? 0.03 / 100 : 0);
-                        setMorphFactor(panel, 'Left overhang', k != amount - 1 && !(direction == "middle" && k == amount / 2 - 1) ? 0.03 / 100 : 0);
 
                         // which of its parts this panel shows
                         const shows = {
@@ -1889,7 +1893,6 @@ function createPL(v3d = window.v3d) {
                                 setObjTransform(profile, false, "rotation", [0, 0, 180], false);
                                 setMorphFactor(profile, 'Width', (panelWidth - 0.1) / 100);
                                 setMorphFactor(profile, 'Height', (height - 1 - 0.052) / 99);
-                                setMorphFactor(profile, part == "sideLeft" ? 'Left overhang' : 'Right overhang', 0.03 / 100);
                                 continue;
                             }
                             const child = getCachedClone(cache, p, partTemplates[part], panel);   // under the panel, in its frame
@@ -1899,7 +1902,6 @@ function createPL(v3d = window.v3d) {
                             }
                             setMorphFactor(child, 'Width', (panelWidth - 0.1) / 100);
                             setMorphFactor(child, 'Height', (height - 1 - 0.052) / 99);
-                            setMorphFactor(child, brushSide + ' overhang', 0.03 / 100);
                         }
                         // glass: its 2nd material, on this panel's own copy (by UUID), opal as legacy
                         setMaterialValue(getObjectMaterial(panel, 2, true), 'NoGlass', 0);
