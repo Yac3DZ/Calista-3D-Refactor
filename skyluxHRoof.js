@@ -4,7 +4,7 @@
 
 // Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
-const DEV_SCOPE = 'wallRear'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
+const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
 
 // Convert from mm to m
 function mm(value) {
@@ -2080,17 +2080,18 @@ function createPL(v3d = window.v3d) {
                 hideCachedClones(this.verticalSunblindCache, bays.length);
             }
 
-            // Per bay, in the crown beam's grooves over its span: the LED strip (builtIn) or its plug, and the rail plug
+            // Per bay, in the crown beam's grooves over its span: the LED strip (builtIn, in its colour) or its plug, and the rail plug
             // unless a builtIn sunblind or fixed wall hangs there (a fixed wall has its own top piece in the groove). The crown frame is turned
             // 180°, so its x runs back along the side: x = -bay position.
             enableCrownAccessories(bays) {
                 const accessories = [
-                    { cache: this.ledStripCache, template: "Horizontal_Gutter_LED strip integrated.0", show: bay => isBuiltIn(bay.ledStrip) },
+                    { cache: this.ledStripCache, template: "Horizontal_Gutter_LED strip integrated.0", show: bay => isBuiltIn(bay.ledStrip), cloneMaterials: true },
                     { cache: this.ledPlugCache, template: "Horizontal_Gutter_LED strip integrated plug.0", show: bay => !isBuiltIn(bay.ledStrip) },
                     { cache: this.railPlugCache, template: "Horizontal_Gutter_Rail plug.0", show: bay => !isBuiltIn(bay.verticalSunblind) && !isBuiltIn(bay.fixedWall) },
                     { cache: this.wallCrownCache, template: "Horizontal_Gutter_Integrated wall.0", show: bay => isBuiltIn(bay.fixedWall) },
                 ];
 
+                this.ledStripCount = 0;   // for the roof light
                 for (let i = 0; i < bays.length; i++) {
                     const bay = toObject(bays[i].generalSpecs);
                     const x = mm(num(bay.position, 0));
@@ -2100,9 +2101,16 @@ function createPL(v3d = window.v3d) {
                             changeVis(a.cache[i], false);
                             continue;
                         }
-                        const name = getCachedClone(a.cache, i, a.template, this.crownAnchor);
+                        const name = getCachedClone(a.cache, i, a.template, this.crownAnchor, undefined, a.cloneMaterials);
                         setObjTransform(name, false, "position", [-x, 0, 0], false);
                         setMorphFactor(name, 'Width', widthMorph);
+                    }
+
+                    // the LED strip's colour, on its own material copy (by UUID), like the rafter strips
+                    if (isBuiltIn(bays[i].ledStrip)) {
+                        if (bays[i].ledStrip.color)
+                            setMaterialColor(getObjectMaterial(this.ledStripCache[i], 1, true), 'Color', 0, 0, 0, bays[i].ledStrip.color);
+                        this.ledStripCount++;
                     }
                 }
 
@@ -2254,11 +2262,13 @@ function createPL(v3d = window.v3d) {
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
         }
 
-        // LEDs in the roof turn on the Spot light under it and dim the sun (as legacy changeWorldLightForLED).
+        // LEDs in the roof or in the crown turn on the Spot light under the roof and dim the sun (as legacy changeWorldLightForLED).
         function enableLighting() {
             const section = sceneParameters.structureSections.length ? structureSectionCache[0] : null;
-            const strips = section ? section.ledStripCount : 0;
+            let strips = section ? section.ledStripCount : 0;
             const spots = section ? section.ledSpotCount : 0;
+            for (let i = 0; i < sceneParameters.sideOpenings.length; i++)   // + the LED strips in the crown, per bay
+                strips += sideOpeningCache[i].ledStripCount;
             const anyLed = strips + spots > 0;
 
             if (section)
