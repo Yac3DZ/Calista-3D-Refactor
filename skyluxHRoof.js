@@ -1429,6 +1429,23 @@ function createPL(v3d = window.v3d) {
         // One per _3d_SideOpenings[] entry: the poles of that side and, per bay, what it holds.
         // Its anchor (a clone of empty.0) sits on the side's start point, turned so local X runs along the side
         // (left -> right seen from outside) and local Y points inward. Positions below are local.
+
+        // A bay option on the builtIn (integrated) layer.
+        function isBuiltIn(option) {
+            return Boolean(option) && option.mounting == "builtIn";
+        }
+
+        // A bay's centre along its side, in mm.
+        function bayPosition(bay) {
+            return num(toObject(bay.generalSpecs).position, 0);
+        }
+
+        // The point `distance` mm along a side from its start (in mm, world X / Y).
+        function sidePoint(side, distance) {
+            const angle = side.rotation * Math.PI / 180;   // left 0: along +Y, front 270: along -X
+            return [side.xPos + Math.sin(angle) * distance, side.yPos + Math.cos(angle) * distance];
+        }
+
         class SideOpening {
             constructor() {
                 this.anchor = cloneObject("empty.0");
@@ -1445,23 +1462,50 @@ function createPL(v3d = window.v3d) {
                 this.railPlugCache = [];    // per bay, in the crown above it
                 this.ledStripCache = [];
                 this.ledPlugCache = [];
+                this.verticalSunblindCache = [];   // per bay, a builtIn vertical sunblind
             }
 
             enable(side) {
+                this.side = side;   // to find the neighbouring sides (poleRails)
                 this.length = mm(side.length);
                 setObjTransform(this.anchor, false, "position", [mm(side.xPos), mm(side.yPos), 0], false);
                 setObjTransform(this.anchor, false, "rotation", [0, 0, 90 - side.rotation], false);   // left 0 -> X along +Y
                 setObjTransform(this.crownAnchor, false, "position", [0, 0, mm(side.height) + 0.26], false);   // top of the crown, like the beams
                 setObjTransform(this.crownAnchor, false, "rotation", [0, 0, 180], false);
                 this.enablePoles(side.poles);
-                this.enableCrownAccessories(side.bays); 
+                this.enableCrownAccessories(side.bays);
+                this.enableVerticalSunblinds(side.bays);
+            }
+
+            // A builtIn vertical sunblind hangs from the crown over its bay (in the rail groove) down to the ground, shut
+            // for now (Opening 0, as legacy). Each one has its own material copies, so every bay can have its own fabric.
+            enableVerticalSunblinds(bays) {
+                for (let i = 0; i < bays.length; i++) {
+                    const sunblind = bays[i].verticalSunblind;
+                    if (!isBuiltIn(sunblind)) {
+                        changeVis(this.verticalSunblindCache[i], false);
+                        continue;
+                    }
+                    const bay = toObject(bays[i].generalSpecs);
+                    const name = getCachedClone(this.verticalSunblindCache, i, "Horizontal_Gutter_Vertical sunblind.0", this.crownAnchor, undefined, true);
+                    setObjTransform(name, false, "position", [-mm(num(bay.position, 0)), 0, 0], false);   // the crown frame is turned 180°
+                    setMorphFactor(name, 'Width', (mm(num(bay.length, 1000)) - 1) / 100);
+                    setMorphFactor(name, 'Height', mm(num(bay.height, 2500)) / 100);   // legacy: height under the gutter / 100
+                    setMorphFactor(name, 'Opening', 0);
+
+                    // fabric: its 3rd material (1 Powdercoat, 2 Rubber), on this sunblind's own copy (by UUID)
+                    const colors = Array.isArray(sunblind.screenColor) ? sunblind.screenColor : [];
+                    if (colors[0])
+                        for (let k = 0; k < 3; k++)
+                            setMaterialColor(getObjectMaterial(name, 3, true), 'Color ' + (k + 1), 0, 0, 0, colors[k] || colors[0]);
+                }
+                hideCachedClones(this.verticalSunblindCache, bays.length);
             }
 
             // Per bay, in the crown beam's grooves over its span: the LED strip (builtIn) or its plug, and the rail plug
             // unless a builtIn screen or wall hangs there (those come with the bay options). The crown frame is turned
             // 180°, so its x runs back along the side: x = -bay position.
             enableCrownAccessories(bays) {
-                const isBuiltIn = option => Boolean(option) && option.mounting == "builtIn";
                 const accessories = [
                     { cache: this.ledStripCache, template: "Horizontal_Gutter_LED strip integrated.0", show: bay => isBuiltIn(bay.ledStrip) },
                     { cache: this.ledPlugCache, template: "Horizontal_Gutter_LED strip integrated plug.0", show: bay => !isBuiltIn(bay.ledStrip) },
@@ -1509,6 +1553,7 @@ function createPL(v3d = window.v3d) {
                     const height = mm(num(poles[i].length, 2500)) + (kind == "corner" ? 0.26 : 0);
                     const heightMorph = (height - 1) / 99;
 
+                    const rails = this.poleRails(kind, isEnd, position);
                     for (const [type, t] of Object.entries(types)) {
                         if (type != kind) {
                             changeVis(t.cache[i], false);   // this pole may have been of the other type before
@@ -1523,12 +1568,12 @@ function createPL(v3d = window.v3d) {
                         setObjTransform(pole, false, "scale", isEnd ? [scale[1], scale[0], 1] : scale, false);
                         setMorphFactor(pole, 'Height', heightMorph);
 
-                        // the rails on its faces: plugged for now, the bays decide later
+                        // the rails on its faces: one per face, from the bay it looks into
                         for (const face of t.faces)
                             for (const accessory of accessories) {
                                 const child = pole + ' > ' + t.template + '_' + face + '_' + accessory + '.0';
                                 setMorphFactor(child, 'Height', heightMorph);
-                                changeVis(child, accessory == "Rail plug");
+                                changeVis(child, accessory == rails[face]);
                             }
                     }
                     this.enablePoleSupport(i, poles[i].support, position, width, depth, isEnd);
@@ -1538,6 +1583,45 @@ function createPL(v3d = window.v3d) {
                 hideCachedClones(this.intermediatePoleCache, poles.length);
                 hideCachedClones(this.bracketCache, poles.length);
                 hideCachedClones(this.foundationCache, poles.length);
+            }
+
+            // The rail each face of a pole shows: an integrated screen rail next to a builtIn vertical sunblind, else the
+            // plug. An intermediate looks at the bays before (End) and after (Start) it; a corner looks into its side's
+            // first / last bay and, with its other face, into the neighbouring side's bay at that corner.
+            poleRails(kind, isEnd, position) {
+                const bays = this.side.bays;
+                const faces = kind == "intermediate" ? { End: this.bayNextTo(bays, position, -1), Start: this.bayNextTo(bays, position, 1) }
+                    : isEnd ? { Inward: this.bayNextTo(bays, position, -1), Along: this.neighbourBay(true) }
+                    : { Along: this.bayNextTo(bays, position, 1), Inward: this.neighbourBay(false) };
+                const rails = {};
+                for (const face in faces)
+                    rails[face] = faces[face] && isBuiltIn(faces[face].verticalSunblind) ? "Integrated screen rail" : "Rail plug";
+                return rails;
+            }
+
+            // The nearest bay before (dir -1) or after (dir 1) a position on this side (m), or null.
+            bayNextTo(bays, position, dir) {
+                let nearest = null;
+                for (const bay of bays) {
+                    const distance = (mm(bayPosition(bay)) - position) * dir;
+                    if (distance > 0 && (!nearest || distance < nearest.distance))
+                        nearest = { bay: bay, distance: distance };
+                }
+                return nearest ? nearest.bay : null;
+            }
+
+            // The bay of the neighbouring side at this side's start (its last bay) or end (its first bay): the side
+            // that ends where this one starts, or starts where this one ends.
+            neighbourBay(atEnd) {
+                const corner = sidePoint(this.side, atEnd ? this.side.length : 0);
+                for (const other of sceneParameters.sideOpenings) {
+                    const touch = sidePoint(other, atEnd ? 0 : other.length);
+                    if (other === this.side || Math.hypot(touch[0] - corner[0], touch[1] - corner[1]) > 1 || !other.bays.length)
+                        continue;
+                    const sorted = other.bays.slice().sort((a, b) => bayPosition(a) - bayPosition(b));
+                    return atEnd ? sorted[0] : sorted[sorted.length - 1];
+                }
+                return null;
             }
 
             // The footing under pole i: a bracket (bracketUnder: 0.1 m lower, as legacy), a foundation, or none.
