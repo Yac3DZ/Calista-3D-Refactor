@@ -112,8 +112,6 @@ function createPL(v3d = window.v3d) {
     let measurementsShown = false;
     let measurementsInStep = false;
     let measurementField = '';
-    let cameraAngle = 0;                // the camera's angle around the structure, degrees 0 ... 360 (label flipping)
-    let flipApp = null;                 // the app the label-flip callback runs in
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -124,7 +122,33 @@ function createPL(v3d = window.v3d) {
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
         PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache, clickables };
 
+        
+
+        // #region Custom functions
+        function keepTextFront(objName) {
+            const obj = getObjectByName(objName);
+            const text = obj && obj.geometry;
+            if (!text || !text.cloneWithText || !text.groups.length || text.isFrontOnly)
+                return;
+            const lids = text.groups.filter(group => group.materialIndex == 0);
+            const front = new v3d.BufferGeometry();
+            for (const name in text.attributes) {
+                const attribute = text.attributes[name], size = attribute.itemSize, parts = [];
+                for (const lid of lids)
+                    parts.push(attribute.array.slice((lid.start + lid.count / 2) * size, (lid.start + lid.count) * size));
+                const array = new attribute.array.constructor(parts.reduce((sum, part) => sum + part.length, 0));
+                parts.reduce((offset, part) => (array.set(part, offset), offset + part.length), 0);
+                front.setAttribute(name, new v3d.BufferAttribute(array, size));
+            }
+            front.isFrontOnly = true;
+            front.parameters = text.parameters;
+            front.cloneWithText = value => text.cloneWithText(value);   // so updateTextObj keeps working
+            obj.geometry = front;
+            text.dispose();
+        }
+
         //#region Verge3D 4.13 helpers
+        
         function getObjectByName(objName) {
             let objFound = null;
             const isID = v3d.MathUtils.checkUUID ? v3d.MathUtils.checkUUID(objName) : false;
@@ -210,6 +234,8 @@ function createPL(v3d = window.v3d) {
             retrieveObjectNamesAccum(objNames, accum);
             return accum.filter(name => name !== '');
         }
+
+
 
         function changeVis(objSelector, bool) {
             var objNames = retrieveObjectNames(objSelector);
@@ -2296,9 +2322,9 @@ function createPL(v3d = window.v3d) {
         //#region Measurements ---------------------------------------------------------------
         // As legacy, on the GLB's own measurement objects: width and depth on the ground, the highest point and the
         // walk-through height at the front corners, and with a horizontal screen its height at the front and the back.
-        // Each label exists twice (Text / TextFlipped): the one that reads right from the camera's side is shown, and
-        // switched as the camera turns (initMeasurementFlip). justFlip: only that switch.
-        function enableMeasurements(justFlip) {
+        // Each label exists twice (Text / TextFlipped), back to back; both are shown and, with only their front face kept
+        // (keepTextFront), their material's backface culling leaves the one facing the camera.
+        function enableMeasurements() {
             const shown = measurementsShown || measurementsInStep;
             const W = mm(sceneParameters.widthTotal), D = mm(sceneParameters.depthTotal);
             const sections = sceneParameters.structureSections;
@@ -2306,26 +2332,20 @@ function createPL(v3d = window.v3d) {
             const screen = sections.length && sections[0].horizontalScreen ? sections[0].horizontalScreen.type : null;
             const screenHeight = { zipper: { front: H + 0.07, back: H + 0.145 }, nonZipper: { front: H + 0.138, back: H + 0.138 },
                 bottomZipper: { front: H - 0.075, back: H - 0.16 } }[screen];
-            // each bar, and the camera angle from which its plain Text reads right (flipped: from the other side)
             const bars = [
-                { name: "widthMeasurement", angle: 270, flipped: true },
-                { name: "depthMeasurement", angle: 180, flipped: true },
-                { name: "highestPointMeasurement", angle: 90, flipped: false },
-                { name: "WalkThroughHeightMeasurement", angle: 180, flipped: true },
-                { name: "HorizontalScreenHeightMeasurement", angle: 270, flipped: true, screen: true },
-                { name: "HorizontalScreenFrontMeasurement", angle: 180, flipped: true, screen: true },
+                { name: "widthMeasurement" }, { name: "depthMeasurement" }, { name: "highestPointMeasurement" }, { name: "WalkThroughHeightMeasurement" },
+                { name: "HorizontalScreenHeightMeasurement", screen: true }, { name: "HorizontalScreenFrontMeasurement", screen: true },
             ];
-            for (const bar of bars) {
-                const on = shown && (!bar.screen || Boolean(screenHeight));
-                const plain = isCameraBehind(bar.angle) == bar.flipped;
-                changeVis(bar.name, on);
-                changeVis(bar.name + "Text", on && plain);
-                changeVis(bar.name + "TextFlipped", on && !plain);
-            }
-            if (justFlip || !shown)
+            for (const bar of bars)
+                changeVis([bar.name, bar.name + "Text", bar.name + "TextFlipped"], shown && (!bar.screen || Boolean(screenHeight)));
+            if (!shown)
                 return;
 
-            const label = (name, metres) => updateTextObj([name + "Text", name + "TextFlipped"], Math.round(metres * 1000) + "mm");
+            const label = (name, metres) => {
+                updateTextObj([name + "Text", name + "TextFlipped"], Math.round(metres * 1000) + "mm");
+                keepTextFront(name + "Text");
+                keepTextFront(name + "TextFlipped");
+            };
             setMorphFactor("widthMeasurement", 'Width', (W - 1) / 99);
             setObjTransform("widthMeasurement", false, "position", ['', D, ''], false);
             setObjTransform(["widthMeasurementText", "widthMeasurementTextFlipped"], false, "position", ['', '', -0.15], false);
@@ -2363,29 +2383,6 @@ function createPL(v3d = window.v3d) {
             setMaterialValue("Measurements_Width", "Value", measurementField == "width_field" ? 1 : 0);
             setMaterialValue("Measurements_Depth", "Value", measurementField == "depth_field" ? 1 : 0);
             setMaterialValue("Measurements_Height", "Value", measurementField == "height_field" ? 1 : 0);
-        }
-
-        // Whether the camera looks at a label from behind: it stands in the half circle from `angle` to `angle` + 180°
-        // (as legacy isTextElementFlipped).
-        function isCameraBehind(angle) {
-            if (angle <= 180)
-                return cameraAngle > angle && cameraAngle < angle + 180;
-            return cameraAngle > angle || cameraAngle < angle - 180;
-        }
-
-        // Installed once: as the camera turns, the readable label of every shown measurement is picked again.
-        function initMeasurementFlip() {
-            if (flipApp === appInstance || !appInstance.renderCallbacks || !appInstance.controls || !appInstance.controls.getAzimuthalAngle)
-                return;
-            flipApp = appInstance;
-            appInstance.renderCallbacks.push(() => {
-                const angle = Math.round(appInstance.controls.getAzimuthalAngle() * 180 / Math.PI + 180);
-                if (angle == cameraAngle)
-                    return;
-                cameraAngle = angle;
-                if (measurementsShown || measurementsInStep)
-                    enableMeasurements(true);
-            });
         }
 
         // updateTextObject puzzle
@@ -2481,7 +2478,6 @@ function createPL(v3d = window.v3d) {
         getParameters();
         enableScene();
         initClicks();
-        initMeasurementFlip();
         takeSnapshot();
 
         if (!sceneIsInitialized) {
