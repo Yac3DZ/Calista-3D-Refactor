@@ -65,6 +65,10 @@ function createPL(v3d = window.v3d) {
     _pGlob.raycasterTmp = new v3d.Raycaster();
     _pGlob.intervals = {};
     _pGlob.eventListeners = [];
+    _pGlob.materialsCache = new Map();
+
+    // three-bvh-csg, as the Verge3D 4.13 makeObjectCSG puzzle ships it (used to cut the last wood board)
+    var CSG = function (t, e) { "use strict"; const r = 1e-6, n = Math.pow(10, -Math.log10(r)), i = 5e-7 * n; function s(t) { return ~~(t * n + i) } function o(t) { return `${s(t.x)},${s(t.y)},${s(t.z)}` } function a(t) { return `${s(t.x)},${s(t.y)},${s(t.z)},${s(t.w)}` } function l(t, e, r) { r.direction.subVectors(e, t).normalize(); const n = t.dot(r.direction); return r.origin.copy(t).addScaledVector(r.direction, -n), r } function c() { return "undefined" != typeof SharedArrayBuffer } function u(t) { if (t.buffer instanceof SharedArrayBuffer) return t; const e = t.constructor, r = t.buffer, n = new SharedArrayBuffer(r.byteLength), i = new Uint8Array(r); return new Uint8Array(n).set(i, 0), new e(n) } function d(t, r) { if (!t.index) { const n = t.attributes.position.count, i = function (t, e = ArrayBuffer) { return t > 65535 ? new Uint32Array(new e(4 * t)) : new Uint16Array(new e(2 * t)) }(n, r.useSharedArrayBuffer ? SharedArrayBuffer : ArrayBuffer); t.setIndex(new e.BufferAttribute(i, 1)); for (let t = 0; t < n; t++)i[t] = t } } function h(t) { return function (t) { return t.index ? t.index.count : t.attributes.position.count }(t) / 3 } const f = 1e-8, g = new e.Vector3; function p(t) { return t % 3 } function m(t, e) { return t.start - e.start } function y(t, e) { return g.subVectors(e, t.origin).dot(t.direction) } const b = 1e-5, x = 1e-4; class w { constructor() { this._rays = [] } addRay(t) { this._rays.push(t) } findClosestRay(t) { const e = this._rays, r = t.clone(); r.direction.multiplyScalar(-1); let n = 1 / 0, i = null; for (let a = 0, l = e.length; a < l; a++) { const l = e[a]; if (s(l, t) && s(l, r)) continue; const c = o(l, t), u = o(l, r), d = Math.min(c, u); d < n && (n = d, i = l) } return i; function s(t, e) { const r = t.origin.distanceTo(e.origin) > b; return t.direction.angleTo(e.direction) > x || r } function o(t, e) { const r = t.origin.distanceTo(e.origin), n = t.direction.angleTo(e.direction); return r / b + n / x } } } const A = new e.Vector3, T = new e.Vector3, S = new e.Ray; function M(t, e, r) { const n = t.attributes, i = t.index, s = n.position, o = new Map, a = new Map, c = Array.from(e), u = new w; for (let t = 0, e = c.length; t < e; t++) { const e = c[t], r = ~~(e / 3), n = p(e); let o, d = 3 * r + n, h = 3 * r + (n + 1) % 3; i && (d = i.getX(d), h = i.getX(h)), A.fromBufferAttribute(s, d), T.fromBufferAttribute(s, h), l(A, T, S); let f = u.findClosestRay(S); null === f && (f = S.clone(), u.addRay(f)), a.has(f) || a.set(f, { forward: [], reverse: [], ray: f }), o = a.get(f); let g = y(f, A), m = y(f, T); g > m && ([g, m] = [m, g]), S.direction.dot(f.direction) < 0 ? o.reverse.push({ start: g, end: m, index: e }) : o.forward.push({ start: g, end: m, index: e }) } return a.forEach((({ forward: t, reverse: e }, n) => { !function (t, e, r, n = f) { t.sort(m), e.sort(m); for (let n = 0; n < t.length; n++) { const i = t[n]; for (let a = 0; a < e.length; a++) { const l = e[a]; if (l.start > i.end); else { if (i.end < l.start || l.end < i.start) continue; if (i.start <= l.start && i.end >= l.end) s(l.end, i.end) || t.splice(n + 1, 0, { start: l.end, end: i.end, index: i.index }), i.end = l.start, l.start = 0, l.end = 0; else if (i.start >= l.start && i.end <= l.end) s(i.end, l.end) || e.splice(a + 1, 0, { start: i.end, end: l.end, index: l.index }), l.end = i.start, i.start = 0, i.end = 0; else if (i.start <= l.start && i.end <= l.end) { const t = i.end; i.end = l.start, l.start = t } else { if (!(i.start >= l.start && i.end >= l.end)) throw new Error; { const t = l.end; l.end = i.start, i.start = t } } } if (r.has(i.index) || r.set(i.index, []), r.has(l.index) || r.set(l.index, []), r.get(i.index).push(l.index), r.get(l.index).push(i.index), o(l) && (e.splice(a, 1), a--), o(i)) { t.splice(n, 1), n--; break } } } function i(t) { for (let e = 0; e < t.length; e++)o(t[e]) && (t.splice(e, 1), e--) } function s(t, e) { return Math.abs(e - t) < n } function o(t) { return Math.abs(t.end - t.start) < n } i(t), i(e) }(t, e, o, r), 0 === t.length && 0 === e.length && a.delete(n) })), { disjointConnectivityMap: o, fragmentMap: a } } const B = new e.Vector2, I = new e.Vector3, E = new e.Vector4, z = ["", "", ""]; class V { constructor(t = null) { this.data = null, this.disjointConnections = null, this.unmatchedDisjointEdges = null, this.unmatchedEdges = -1, this.matchedEdges = -1, this.useDrawRange = !0, this.useAllAttributes = !1, this.matchDisjointEdges = !1, this.degenerateEpsilon = 1e-8, t && this.updateFrom(t) } getSiblingTriangleIndex(t, e) { const r = this.data[3 * t + e]; return -1 === r ? -1 : ~~(r / 3) } getSiblingEdgeIndex(t, e) { const r = this.data[3 * t + e]; return -1 === r ? -1 : r % 3 } getDisjointSiblingTriangleIndices(t, e) { const r = 3 * t + e, n = this.disjointConnections.get(r); return n ? n.map((t => ~~(t / 3))) : [] } getDisjointSiblingEdgeIndices(t, e) { const r = 3 * t + e, n = this.disjointConnections.get(r); return n ? n.map((t => t % 3)) : [] } isFullyConnected() { return 0 === this.unmatchedEdges } updateFrom(t) { const { useAllAttributes: e, useDrawRange: r, matchDisjointEdges: n, degenerateEpsilon: i } = this, l = e ? function (t) { let e = ""; for (let n = 0, i = d.length; n < i; n++) { const i = u[d[n]]; let l; switch (i.itemSize) { case 1: l = s(i.getX(t)); break; case 2: l = `${s((r = B.fromBufferAttribute(i, t)).x)},${s(r.y)}`; break; case 3: l = o(I.fromBufferAttribute(i, t)); break; case 4: l = a(E.fromBufferAttribute(i, t)) }"" !== e && (e += "|"), e += l } var r; return e } : function (t) { return I.fromBufferAttribute(g, t), o(I) }, c = new Map, { attributes: u } = t, d = e ? Object.keys(u) : null, f = t.index, g = u.position; let p = h(t); const m = p; let y = 0; r && (y = t.drawRange.start, t.drawRange.count !== 1 / 0 && (p = ~~(t.drawRange.count / 3))); let b = this.data; (!b || b.length < 3 * m) && (b = new Int32Array(3 * m)), b.fill(-1); let x = 0, w = new Set; for (let t = y, e = 3 * p + y; t < e; t += 3) { const e = t; for (let t = 0; t < 3; t++) { let r = e + t; f && (r = f.getX(r)), z[t] = l(r) } for (let t = 0; t < 3; t++) { const r = (t + 1) % 3, n = z[t], i = z[r], s = `${i}_${n}`; if (c.has(s)) { const r = e + t, n = c.get(s); b[r] = n, b[n] = r, c.delete(s), x += 2, w.delete(n) } else { const r = `${n}_${i}`, s = e + t; c.set(r, s), w.add(s) } } } if (n) { const { fragmentMap: e, disjointConnectivityMap: r } = M(t, w, i); w.clear(), e.forEach((({ forward: t, reverse: e }) => { t.forEach((({ index: t }) => w.add(t))), e.forEach((({ index: t }) => w.add(t))) })), this.unmatchedDisjointEdges = e, this.disjointConnections = r, x = 3 * p - w.size } this.matchedEdges = x, this.unmatchedEdges = w.size, this.data = b } } class C extends e.Mesh { constructor(...t) { super(...t), this.isBrush = !0, this._previousMatrix = new e.Matrix4, this._previousMatrix.elements.fill(0) } markUpdated() { this._previousMatrix.copy(this.matrix) } isDirty() { const { matrix: t, _previousMatrix: e } = this, r = t.elements, n = e.elements; for (let t = 0; t < 16; t++)if (r[t] !== n[t]) return !0; return !1 } prepareGeometry() { const t = this.geometry, r = t.attributes, n = c(); if (n) for (const t in r) { const e = r[t]; if (e.isInterleavedBufferAttribute) throw new Error("Brush: InterleavedBufferAttributes are not supported."); e.array = u(e.array) } if (t.boundsTree || (d(t, { useSharedArrayBuffer: n }), t.boundsTree = new e.MeshBVH(t, { maxLeafTris: 3, indirect: !0, useSharedArrayBuffer: n })), t.halfEdges || (t.halfEdges = new V(t)), !t.groupIndices) { const e = h(t), r = new Uint16Array(e), n = t.groups; for (let t = 0, e = n.length; t < e; t++) { const { start: e, count: i } = n[t]; for (let n = e / 3, s = (e + i) / 3; n < s; n++)r[n] = t } t.groupIndices = r } } disposeCacheData() { const { geometry: t } = this; t.halfEdges = null, t.boundsTree = null, t.groupIndices = null } } const v = 1e-14, _ = new e.Vector3, G = new e.Vector3, R = new e.Vector3; function O(t, e = v) { _.subVectors(t.b, t.a), G.subVectors(t.c, t.a), R.subVectors(t.b, t.c); const r = _.angleTo(G), n = _.angleTo(R), i = Math.PI - r - n; return Math.abs(r) < e || Math.abs(n) < e || Math.abs(i) < e || t.a.distanceToSquared(t.b) < e || t.a.distanceToSquared(t.c) < e || t.b.distanceToSquared(t.c) < e } const N = 1e-10, D = 1e-10, X = new e.Line3, $ = new e.Line3, k = new e.Vector3, U = new e.Vector3, W = new e.Vector3, j = new e.Plane, L = new e.ExtendedTriangle; class P { constructor() { this._pool = [], this._index = 0 } getTriangle() { return this._index >= this._pool.length && this._pool.push(new e.Triangle), this._pool[this._index++] } clear() { this._index = 0 } reset() { this._pool.length = 0, this._index = 0 } } class F { constructor() { this.trianglePool = new P, this.triangles = [], this.normal = new e.Vector3, this.coplanarTriangleUsed = !1 } initialize(t) { this.reset(); const { triangles: e, trianglePool: r, normal: n } = this; if (Array.isArray(t)) for (let i = 0, s = t.length; i < s; i++) { const s = t[i]; if (0 === i) s.getNormal(n); else if (Math.abs(1 - s.getNormal(k).dot(n)) > N) throw new Error("Triangle Splitter: Cannot initialize with triangles that have different normals."); const o = r.getTriangle(); o.copy(s), e.push(o) } else { t.getNormal(n); const i = r.getTriangle(); i.copy(t), e.push(i) } } splitByTriangle(t) { const { normal: e, triangles: r } = this; if (t.getNormal(U).normalize(), Math.abs(1 - Math.abs(U.dot(e))) < 1e-10) { this.coplanarTriangleUsed = !0; for (let t = 0, e = r.length; t < e; t++) { r[t].coplanarCount = 0 } const e = [t.a, t.b, t.c]; for (let r = 0; r < 3; r++) { const n = (r + 1) % 3, i = e[r], s = e[n]; k.subVectors(s, i).normalize(), W.crossVectors(U, k), j.setFromNormalAndCoplanarPoint(W, i), this.splitByPlane(j, t) } } else t.getPlane(j), this.splitByPlane(j, t) } splitByPlane(t, e) { const { triangles: r, trianglePool: n } = this; L.copy(e), L.needsUpdate = !0; for (let e = 0, i = r.length; e < i; e++) { const s = r[e]; if (!L.intersectsTriangle(s, X, !0)) continue; const { a: o, b: a, c: l } = s; let c = 0, u = -1, d = !1, h = [], f = []; const g = [o, a, l]; for (let e = 0; e < 3; e++) { const r = (e + 1) % 3; X.start.copy(g[e]), X.end.copy(g[r]); const n = t.distanceToPoint(X.start), i = t.distanceToPoint(X.end); if (Math.abs(n) < D && Math.abs(i) < D) { d = !0; break } if (n > 0 ? h.push(e) : f.push(e), Math.abs(n) < D) continue; let s = !!t.intersectLine(X, k); !s && Math.abs(i) < D && (k.copy(X.end), s = !0), !s || k.distanceTo(X.start) < N || (k.distanceTo(X.end) < N && (u = e), 0 === c ? $.start.copy(k) : $.end.copy(k), c++) } if (!d && 2 === c && $.distance() > D) if (-1 !== u) { u = (u + 1) % 3; let t = 0; t === u && (t = (t + 1) % 3); let o = t + 1; o === u && (o = (o + 1) % 3); const a = n.getTriangle(); a.a.copy(g[o]), a.b.copy($.end), a.c.copy($.start), O(a) || r.push(a), s.a.copy(g[t]), s.b.copy($.start), s.c.copy($.end), O(s) && (r.splice(e, 1), e--, i--) } else { const t = h.length >= 2 ? f[0] : h[0]; if (0 === t) { let t = $.start; $.start = $.end, $.end = t } const o = (t + 1) % 3, a = (t + 2) % 3, l = n.getTriangle(), c = n.getTriangle(); g[o].distanceToSquared($.start) < g[a].distanceToSquared($.end) ? (l.a.copy(g[o]), l.b.copy($.start), l.c.copy($.end), c.a.copy(g[o]), c.b.copy(g[a]), c.c.copy($.start)) : (l.a.copy(g[a]), l.b.copy($.start), l.c.copy($.end), c.a.copy(g[o]), c.b.copy(g[a]), c.c.copy($.end)), s.a.copy(g[t]), s.b.copy($.end), s.c.copy($.start), O(l) || r.push(l), O(c) || r.push(c), O(s) && (r.splice(e, 1), e--, i--) } else 3 === c && console.warn("TriangleClipper: Coplanar clip not handled") } } reset() { this.triangles.length = 0, this.trianglePool.clear(), this.coplanarTriangleUsed = !1 } } class H { constructor(t, e = 500) { this.expansionFactor = 1.5, this.type = t, this.length = 0, this.array = null, this.setSize(e) } setType(t) { if (0 !== this.length) throw new Error("TypeBackedArray: Cannot change the type while there is used data in the buffer."); const e = this.array.buffer; this.array = new t(e), this.type = t } setSize(t) { if (this.array && t === this.array.length) return; const e = this.type, r = new e(new (c() ? SharedArrayBuffer : ArrayBuffer)(4 + (n = ~~(n = t * e.BYTES_PER_ELEMENT)) - n % 4)); var n; this.array && r.set(this.array, 0), this.array = r } expand() { const { array: t, expansionFactor: e } = this; this.setSize(t.length * e) } push(...t) { let { array: e, length: r } = this; r + t.length > e.length && (this.expand(), e = this.array); for (let n = 0, i = t.length; n < i; n++)e[r + n] = t[n]; this.length += t.length } clear() { this.length = 0 } } class q { constructor() { this.groupAttributes = [{}], this.groupCount = 0 } getType(t) { return this.groupAttributes[0][t].type } getItemSize(t) { return this.groupAttributes[0][t].itemSize } getNormalized(t) { return this.groupAttributes[0][t].normalized } getCount(t) { if (this.groupCount <= t) return 0; const e = this.getGroupAttrArray("position", t); return e.length / e.itemSize } getTotalLength(t) { const { groupCount: e, groupAttributes: r } = this; let n = 0; for (let i = 0; i < e; i++) { n += r[i][t].length } return n } getGroupAttrSet(t = 0) { const { groupAttributes: e } = this; if (e[t]) return this.groupCount = Math.max(this.groupCount, t + 1), e[t]; const r = e[0]; for (this.groupCount = Math.max(this.groupCount, t + 1); t >= e.length;) { const t = {}; e.push(t); for (const e in r) { const n = r[e], i = new H(n.type); i.itemSize = n.itemSize, i.normalized = n.normalized, t[e] = i } } return e[t] } getGroupAttrArray(t, e = 0) { const { groupAttributes: r } = this; if (!r[0][t]) throw new Error(`TypedAttributeData: Attribute with "${t}" has not been initialized`); return this.getGroupAttrSet(e)[t] } initializeArray(t, e, r, n) { const { groupAttributes: i } = this, s = i[0][t]; if (s) { if (s.type !== e) for (let s = 0, o = i.length; s < o; s++) { const o = i[s][t]; o.setType(e), o.itemSize = r, o.normalized = n } } else for (let s = 0, o = i.length; s < o; s++) { const o = new H(e); o.itemSize = r, o.normalized = n, i[s][t] = o } } clear() { this.groupCount = 0; const { groupAttributes: t } = this; t.forEach((t => { for (const e in t) t[e].clear() })) } delete(t) { this.groupAttributes.forEach((e => { delete e[t] })) } reset() { this.groupAttributes = [], this.groupCount = 0 } } class Y { constructor() { this.intersectionSet = {}, this.ids = [] } add(t, e) { const { intersectionSet: r, ids: n } = this; r[t] || (r[t] = [], n.push(t)), r[t].push(e) } } const Z = 0, J = 1, K = 2, Q = 3, tt = 4, et = 5, rt = 6, nt = new e.Ray, it = new e.Matrix4, st = new e.Triangle, ot = new e.Vector3, at = new e.Vector4, lt = new e.Vector4, ct = new e.Vector4, ut = new e.Vector4, dt = new e.Vector4, ht = new e.Vector4, ft = new e.Line3, gt = new e.Vector3, pt = 1e-8, mt = 1e-15, yt = -1, bt = 1, xt = -2, wt = 2, At = 0, Tt = 1, St = 2, Mt = 1e-14; let Bt = null; function It(t) { Bt = t } function Et(t, r) { t.getMidpoint(nt.origin), t.getNormal(nt.direction); const n = r.raycastFirst(nt, e.DoubleSide); return Boolean(n && nt.direction.dot(n.face.normal) > 0) ? yt : bt } function zt(t, r) { function n() { return Math.random() - .5 } t.getNormal(gt), nt.direction.copy(gt), t.getMidpoint(nt.origin); let i = 0, s = 1 / 0; for (let t = 0; t < 3; t++) { nt.direction.x += n() * pt, nt.direction.y += n() * pt, nt.direction.z += n() * pt, nt.direction.multiplyScalar(-1); const o = r.raycastFirst(nt, e.DoubleSide); if (Boolean(o && nt.direction.dot(o.face.normal) > 0) && i++, null !== o && (s = Math.min(s, o.distance)), s <= mt) return o.face.normal.dot(gt) > 0 ? wt : xt; if (i / 3 > .5 || (t - i + 1) / 3 > .5) break } return i / 3 > .5 ? yt : bt } function Vt(t, e, r, n, i, s, o = !1) { const a = r.attributes, l = r.index, c = 3 * t, u = l.getX(c + 0), d = l.getX(c + 1), h = l.getX(c + 2); for (const t in s) { const r = a[t], l = s[t]; if (!(t in a)) throw new Error(`CSG Operations: Attribute ${t} not available on geometry.`); const c = r.itemSize; "position" === t ? (st.a.fromBufferAttribute(r, u).applyMatrix4(n), st.b.fromBufferAttribute(r, d).applyMatrix4(n), st.c.fromBufferAttribute(r, h).applyMatrix4(n), _t(st.a, st.b, st.c, e, 3, l, o)) : "normal" === t ? (st.a.fromBufferAttribute(r, u).applyNormalMatrix(i), st.b.fromBufferAttribute(r, d).applyNormalMatrix(i), st.c.fromBufferAttribute(r, h).applyNormalMatrix(i), o && (st.a.multiplyScalar(-1), st.b.multiplyScalar(-1), st.c.multiplyScalar(-1)), _t(st.a, st.b, st.c, e, 3, l, o, !0)) : (at.fromBufferAttribute(r, u), lt.fromBufferAttribute(r, d), ct.fromBufferAttribute(r, h), _t(at, lt, ct, e, c, l, o)) } } function Ct(t, e, r, n, i, s, o, a = !1) { Gt(t, n, i, s, o, a), Gt(a ? r : e, n, i, s, o, a), Gt(a ? e : r, n, i, s, o, a) } function vt(t, e, r = !1) { switch (t) { case Z: if (e === bt || e === wt && !r) return Tt; break; case J: if (r) { if (e === yt) return At } else if (e === bt || e === xt) return Tt; break; case K: if (r) { if (e === bt || e === xt) return Tt } else if (e === yt) return At; break; case tt: if (e === yt) return At; if (e === bt) return Tt; break; case Q: if (e === yt || e === wt && !r) return Tt; break; case et: if (!r && (e === bt || e === xt)) return Tt; break; case rt: if (!r && (e === yt || e === wt)) return Tt; break; default: throw new Error(`Unrecognized CSG operation enum "${t}".`) }return St } function _t(t, e, r, n, i, s, o = !1, a = !1) { const l = t => { s.push(t.x), i > 1 && s.push(t.y), i > 2 && s.push(t.z), i > 3 && s.push(t.w) }; ut.set(0, 0, 0, 0).addScaledVector(t, n.a.x).addScaledVector(e, n.a.y).addScaledVector(r, n.a.z), dt.set(0, 0, 0, 0).addScaledVector(t, n.b.x).addScaledVector(e, n.b.y).addScaledVector(r, n.b.z), ht.set(0, 0, 0, 0).addScaledVector(t, n.c.x).addScaledVector(e, n.c.y).addScaledVector(r, n.c.z), a && (ut.normalize(), dt.normalize(), ht.normalize()), l(ut), o ? (l(ht), l(dt)) : (l(dt), l(ht)) } function Gt(t, e, r, n, i, s = !1) { for (const o in i) { const a = e[o], l = i[o]; if (!(o in e)) throw new Error(`CSG Operations: Attribute ${o} no available on geometry.`); const c = a.itemSize; "position" === o ? (ot.fromBufferAttribute(a, t).applyMatrix4(r), l.push(ot.x, ot.y, ot.z)) : "normal" === o ? (ot.fromBufferAttribute(a, t).applyNormalMatrix(n), s && ot.multiplyScalar(-1), l.push(ot.x, ot.y, ot.z)) : (l.push(a.getX(t)), c > 1 && l.push(a.getY(t)), c > 2 && l.push(a.getZ(t)), c > 3 && l.push(a.getW(t))) } } class Rt { constructor(t) { this.triangle = (new e.Triangle).copy(t), this.intersects = {} } addTriangle(t, r) { this.intersects[t] = (new e.Triangle).copy(r) } getIntersectArray() { const t = [], { intersects: e } = this; for (const r in e) t.push(e[r]); return t } } class Ot { constructor() { this.data = {} } addTriangleIntersection(t, e, r, n) { const { data: i } = this; i[t] || (i[t] = new Rt(e)), i[t].addTriangle(r, n) } getTrianglesAsArray(t = null) { const { data: e } = this, r = []; if (null !== t) t in e && r.push(e[t].triangle); else for (const t in e) r.push(e[t].triangle); return r } getTriangleIndices() { return Object.keys(this.data).map((t => parseInt(t))) } getIntersectionIndices(t) { const { data: e } = this; return e[t] ? Object.keys(e[t].intersects).map((t => parseInt(t))) : [] } getIntersectionsAsArray(t = null, e = null) { const { data: r } = this, n = new Set, i = [], s = t => { if (r[t]) if (null !== e) r[t].intersects[e] && i.push(r[t].intersects[e]); else { const e = r[t].intersects; for (const t in e) n.has(t) || (n.add(t), i.push(e[t])) } }; if (null !== t) s(t); else for (const t in r) s(t); return i } reset() { this.data = {} } } class Nt { constructor() { this.enabled = !1, this.triangleIntersectsA = new Ot, this.triangleIntersectsB = new Ot, this.intersectionEdges = [] } addIntersectingTriangles(t, e, r, n) { const { triangleIntersectsA: i, triangleIntersectsB: s } = this; i.addTriangleIntersection(t, e, r, n), s.addTriangleIntersection(r, n, t, e) } addEdge(t) { this.intersectionEdges.push(t.clone()) } reset() { this.triangleIntersectsA.reset(), this.triangleIntersectsB.reset(), this.intersectionEdges = [] } init() { this.enabled && (this.reset(), It(this)) } complete() { this.enabled && It(null) } } const Dt = new e.Matrix4, Xt = new e.Matrix3, $t = new e.Triangle, kt = new e.Triangle, Ut = new e.Triangle, Wt = new e.Triangle, jt = [], Lt = []; function Pt(t) { for (const e of t) return e } function Ft(t, e, r, n, i, s = {}) { const { useGroups: o = !0 } = s, { aIntersections: a, bIntersections: l } = function (t, e) { const r = new Y, n = new Y; return it.copy(t.matrixWorld).invert().multiply(e.matrixWorld), t.geometry.boundsTree.bvhcast(e.geometry.boundsTree, it, { intersectsTriangles(i, s, o, a) { if (!O(i) && !O(s)) { let l = i.intersectsTriangle(s, ft, !0); if (!l) { const t = i.plane, e = s.plane, r = t.normal, n = e.normal; 1 === r.dot(n) && Math.abs(t.constant - e.constant) < Mt && (l = !0) } if (l) { let l = t.geometry.boundsTree.resolveTriangleIndex(o), c = e.geometry.boundsTree.resolveTriangleIndex(a); r.add(l, c), n.add(c, l), Bt && (Bt.addEdge(ft), Bt.addIntersectingTriangles(o, i, a, s)) } } return !1 } }), { aIntersections: r, bIntersections: n } }(t, e); let c; c = o ? 0 : -1, Ht(t, e, a, r, !1, n, i, c), qt(t, e, a, r, !1, i, c); return -1 !== r.findIndex((t => t !== rt && t !== et)) && (c = o ? t.geometry.groups.length || 1 : -1, Ht(e, t, l, r, !0, n, i, c), qt(e, t, l, r, !0, i, c)), jt.length = 0, Lt.length = 0, { groups: [], materials: null } } function Ht(t, e, r, n, i, s, o, a = 0) { const l = t.matrixWorld.determinant() < 0; Dt.copy(e.matrixWorld).invert().multiply(t.matrixWorld), Xt.getNormalMatrix(t.matrixWorld).multiplyScalar(l ? -1 : 1); const c = t.geometry.groupIndices, u = t.geometry.index, d = t.geometry.attributes.position, h = e.geometry.boundsTree, f = e.geometry.index, g = e.geometry.attributes.position, p = r.ids, m = r.intersectionSet; for (let e = 0, r = p.length; e < r; e++) { const r = p[e], y = -1 === a ? 0 : c[r] + a, b = 3 * r, x = u.getX(b + 0), w = u.getX(b + 1), A = u.getX(b + 2); $t.a.fromBufferAttribute(d, x).applyMatrix4(Dt), $t.b.fromBufferAttribute(d, w).applyMatrix4(Dt), $t.c.fromBufferAttribute(d, A).applyMatrix4(Dt), s.reset(), s.initialize($t); const T = m[r]; for (let t = 0, e = T.length; t < e; t++) { const e = 3 * T[t], r = f.getX(e + 0), n = f.getX(e + 1), i = f.getX(e + 2); kt.a.fromBufferAttribute(g, r), kt.b.fromBufferAttribute(g, n), kt.c.fromBufferAttribute(g, i), s.splitByTriangle(kt) } const S = s.triangles; for (let e = 0, a = S.length; e < a; e++) { const a = S[e], c = s.coplanarTriangleUsed ? zt(a, h) : Et(a, h); jt.length = 0, Lt.length = 0; for (let t = 0, e = n.length; t < e; t++) { const e = vt(n[t], c, i); e !== St && (Lt.push(e), jt.push(o[t].getGroupAttrSet(y))) } if (0 !== jt.length) { $t.getBarycoord(a.a, Wt.a), $t.getBarycoord(a.b, Wt.b), $t.getBarycoord(a.c, Wt.c); for (let e = 0, n = jt.length; e < n; e++) { const n = jt[e], i = Lt[e] === At; Vt(r, Wt, t.geometry, t.matrixWorld, Xt, n, l !== i) } } } } return p.length } function qt(t, e, r, n, i, s, o = 0) { const a = t.matrixWorld.determinant() < 0; Dt.copy(e.matrixWorld).invert().multiply(t.matrixWorld), Xt.getNormalMatrix(t.matrixWorld).multiplyScalar(a ? -1 : 1); const l = e.geometry.boundsTree, c = t.geometry.groupIndices, u = t.geometry.index, d = t.geometry.attributes, f = d.position, g = [], p = t.geometry.halfEdges, m = new Set; for (let e = 0, n = h(t.geometry); e < n; e++)e in r.intersectionSet || m.add(e); for (; m.size > 0;) { const e = Pt(m); m.delete(e), g.push(e); const r = 3 * e, h = u.getX(r + 0), y = u.getX(r + 1), b = u.getX(r + 2); Ut.a.fromBufferAttribute(f, h).applyMatrix4(Dt), Ut.b.fromBufferAttribute(f, y).applyMatrix4(Dt), Ut.c.fromBufferAttribute(f, b).applyMatrix4(Dt); const x = Et(Ut, l); Lt.length = 0, jt.length = 0; for (let t = 0, e = n.length; t < e; t++) { const e = vt(n[t], x, i); e !== St && (Lt.push(e), jt.push(s[t])) } for (; g.length > 0;) { const e = g.pop(); for (let t = 0; t < 3; t++) { const r = p.getSiblingTriangleIndex(e, t); -1 !== r && m.has(r) && (g.push(r), m.delete(r)) } if (0 !== jt.length) { const r = 3 * e, n = u.getX(r + 0), i = u.getX(r + 1), s = u.getX(r + 2), l = -1 === o ? 0 : c[e] + o; if (Ut.a.fromBufferAttribute(f, n), Ut.b.fromBufferAttribute(f, i), Ut.c.fromBufferAttribute(f, s), !O(Ut)) for (let e = 0, r = jt.length; e < r; e++) { const r = Lt[e], o = jt[e].getGroupAttrSet(l), c = r === At; Ct(n, i, s, d, t.matrixWorld, Xt, o, c !== a) } } } } } function Yt(t, e) { let r = e; return Array.isArray(e) || (r = [], t.forEach((t => { r[t.materialIndex] = e }))), r } class Zt extends e.Group { constructor() { super(), this.isOperationGroup = !0, this._previousMatrix = new e.Matrix4 } markUpdated() { this._previousMatrix.copy(this.matrix) } isDirty() { const { matrix: t, _previousMatrix: e } = this, r = t.elements, n = e.elements; for (let t = 0; t < 16; t++)if (r[t] !== n[t]) return !0; return !1 } } function Jt(...t) { function e(t) { return `new THREE.Vector3( ${t.x}, ${t.y}, ${t.z} )` } return t.map((t => `\nnew THREE.Triangle(\n\t${e(t.a)},\n\t${e(t.b)},\n\t${e(t.c)},\n)\n\t\t`.trim())) } const Kt = new e.Triangle, Qt = new e.Vector3, te = new e.Vector3; function ee(t, e, r) { return 1 / 6 * (-(r.x * e.y * t.z) + e.x * r.y * t.z + r.x * t.y * e.z - t.x * r.y * e.z - e.x * t.y * r.z + t.x * e.y * r.z) } function re(t, e) { t.a.sub(e), t.b.sub(e), t.c.sub(e) } function ne(t, e = null) { null !== e && (t.a.applyMatrix4(e), t.b.applyMatrix4(e), t.c.applyMatrix4(e)) } return t.ADDITION = Z, t.Brush = C, t.DIFFERENCE = tt, t.Evaluator = class { constructor() { this.triangleSplitter = new F, this.attributeData = [], this.attributes = ["position", "uv", "normal"], this.useGroups = !0, this.consolidateGroups = !0, this.debug = new Nt } getGroupRanges(t) { return this.useGroups && 0 !== t.groups.length ? t.groups.map((t => ({ ...t }))) : [{ start: 0, count: 1 / 0, materialIndex: 0 }] } evaluate(t, r, n, i = new C) { let s = !0; if (Array.isArray(n) || (n = [n]), Array.isArray(i) || (i = [i], s = !1), i.length !== n.length) throw new Error("Evaluator: operations and target array passed as different sizes."); t.prepareGeometry(), r.prepareGeometry(); const { triangleSplitter: o, attributeData: a, attributes: l, useGroups: c, consolidateGroups: u, debug: d } = this; for (; a.length < i.length;)a.push(new q); i.forEach(((e, r) => { !function (t, e, r, n) { r.clear(); const i = t.attributes; for (let t = 0, e = n.length; t < e; t++) { const e = n[t], s = i[e]; r.initializeArray(e, s.array.constructor, s.itemSize, s.normalized) } for (const t in r.attributes) n.includes(t) || r.delete(t); for (const t in e.attributes) n.includes(t) || (e.deleteAttribute(t), e.dispose()) }(t.geometry, e.geometry, a[r], l) })), d.init(), Ft(t, r, n, o, a, { useGroups: c }), d.complete(); const h = this.getGroupRanges(t.geometry), f = Yt(h, t.material), g = this.getGroupRanges(r.geometry), p = Yt(g, r.material); g.forEach((t => t.materialIndex += f.length)); let m = [...h, ...g].map(((t, e) => ({ ...t, index: e }))); if (c) { const t = [...f, ...p]; u && (m = m.map((e => { const r = t[e.materialIndex]; return e.materialIndex = t.indexOf(r), e })).sort(((t, e) => t.materialIndex - e.materialIndex))); const e = []; for (let r = 0, n = t.length; r < n; r++) { let n = !1; for (let t = 0, i = m.length; t < i; t++) { const i = m[t]; i.materialIndex === r && (n = !0, i.materialIndex = e.length) } n && e.push(t[r]) } i.forEach((t => { t.material = e })) } else m = [{ start: 0, count: 1 / 0, index: 0, materialIndex: 0 }], i.forEach((t => { t.material = f[0] })); return i.forEach(((t, r) => { const n = t.geometry; !function (t, r, n) { let i = !1, s = -1; const o = t.attributes, a = r.groupAttributes[0]; for (const l in a) { const a = r.getTotalLength(l), c = r.getType(l), u = r.getItemSize(l), d = r.getNormalized(l); let h = o[l]; (!h || h.array.length < a) && (h = new e.BufferAttribute(new c(a), u, d), t.setAttribute(l, h), i = !0); let f = 0; for (let t = 0, e = Math.min(n.length, r.groupCount); t < e; t++) { const e = n[t].index, { array: i, type: s, length: o } = r.groupAttributes[e][l], a = new s(i.buffer, 0, o); h.array.set(a, f), f += a.length } h.needsUpdate = !0, s = a / h.itemSize } if (t.index) { const e = t.index.array; if (e.length < s) t.index = null, i = !0; else for (let t = 0, r = e.length; t < r; t++)e[t] = t } let l = 0; t.clearGroups(); for (let e = 0, i = Math.min(n.length, r.groupCount); e < i; e++) { const { index: i, materialIndex: s } = n[e], o = r.getCount(i); 0 !== o && (t.addGroup(l, o, s), l += o) } t.setDrawRange(0, s), t.boundsTree = null, i && t.dispose() }(n, a[r], m), u && function (t) { for (let e = 0; e < t.length - 1; e++) { const r = t[e], n = t[e + 1]; if (r.materialIndex === n.materialIndex) { const i = r.start, s = n.start + n.count; n.start = i, n.count = s - i, t.splice(e, 1), e-- } } }(n.groups) })), s ? i : i[0] } evaluateHierarchy(t, e = new C) { t.updateMatrixWorld(!0); const r = (t, e) => { const n = t.children; for (let t = 0, i = n.length; t < i; t++) { const i = n[t]; i.isOperationGroup ? r(i, e) : e(i) } }, n = t => { const e = t.children; let i = !1; for (let t = 0, r = e.length; t < r; t++) { const r = e[t]; i = n(r) || i } const s = t.isDirty(); if (s && t.markUpdated(), i && !t.isOperationGroup) { let e; return r(t, (r => { e = e ? this.evaluate(e, r, r.operation) : this.evaluate(t, r, r.operation) })), t._cachedGeometry = e.geometry, t._cachedMaterials = e.material, !0 } return i || s }; return n(t), e.geometry = t._cachedGeometry, e.material = t._cachedMaterials, e } reset() { this.triangleSplitter.reset() } }, t.HOLLOW_INTERSECTION = rt, t.HOLLOW_SUBTRACTION = et, t.HalfEdgeMap = V, t.INTERSECTION = Q, t.Operation = class extends C { constructor(...t) { super(...t), this.isOperation = !0, this.operation = Z, this._cachedGeometry = new e.BufferGeometry, this._cachedMaterials = null, this._previousOperation = null } markUpdated() { super.markUpdated(), this._previousOperation = this.operation } isDirty() { return this.operation !== this._previousOperation || super.isDirty() } insertBefore(t) { const e = this.parent, r = e.children.indexOf(this); e.children.splice(r, 0, t) } insertAfter(t) { const e = this.parent, r = e.children.indexOf(this); e.children.splice(r + 1, 0, t) } }, t.OperationGroup = Zt, t.REVERSE_SUBTRACTION = K, t.SUBTRACTION = J, t.TriangleSplitter = F, t.computeMeshVolume = function (t) { let e, r; t.isBufferGeometry ? (e = t, r = null) : (e = t.geometry, r = Math.abs(t.matrixWorld.determinant() - 1) < 1e-15 ? null : t.matrixWorld); const n = e.index, i = e.attributes.position, s = e.drawRange, o = Math.min(h(e), s.count / 3); Kt.setFromAttributeAndIndices(i, 0, 1, 2), ne(Kt, r), Kt.getNormal(Qt), Kt.getMidpoint(te).add(Qt); let a = 0; const l = s.start / 3; for (let t = l, e = l + o; t < e; t++) { let e = 3 * t + 0, s = 3 * t + 1, o = 3 * t + 2; n && (e = n.getX(e), s = n.getX(s), o = n.getX(o)), Kt.setFromAttributeAndIndices(i, e, s, o), ne(Kt, r), re(Kt, te), a += ee(Kt.a, Kt.b, Kt.c) } return Math.abs(a) }, t.generateRandomTriangleColors = function (t) { const r = t.attributes.position, n = new Float32Array(3 * r.count), i = new e.Color; for (let t = 0, r = n.length; t < r; t += 9)i.setHSL(Math.random(), e.MathUtils.lerp(.5, 1, Math.random()), e.MathUtils.lerp(.5, .75, Math.random())), n[t + 0] = i.r, n[t + 1] = i.g, n[t + 2] = i.b, n[t + 3] = i.r, n[t + 4] = i.g, n[t + 5] = i.b, n[t + 6] = i.r, n[t + 7] = i.g, n[t + 8] = i.b; t.setAttribute("color", new e.BufferAttribute(n, 3)) }, t.getTriangleDefinitions = Jt, t.logTriangleDefinitions = function (...t) { console.log(Jt(...t).join(",\n")) }, t }({}, v3d);
 
     var PL = v3d.PL = v3d.PL || {};
 
@@ -728,6 +732,280 @@ function createPL(v3d = window.v3d) {
                     }
                 }
             });
+        }
+
+        // assignMaterial puzzle
+        function assignMat(objSelector, matName, matIndex) {
+            const objNames = retrieveObjectNames(objSelector);
+            if (!matName)
+                return;
+
+            const isMaterialInScene = (mat) => v3d.SceneUtils.getMaterialsByName(appInstance, mat.name).some(iMat => iMat === mat);
+            const materialsCache = _pGlob.materialsCache;
+            const mat = materialsCache.get(matName) || v3d.SceneUtils.getMaterialByName(appInstance, matName);
+            if (!mat)
+                return;
+            for (let i = 0; i < objNames.length; i++) {
+                const objName = objNames[i];
+                if (!objName)
+                    continue;
+                const obj = getObjectByName(objName);
+                if (obj) {
+                    const objsM = obj.resolveMultiMaterial();
+
+                    let objM;
+                    if (Number.isInteger(matIndex)) {
+                        if (matIndex >= 1 && matIndex <= objsM.length) {
+                            objM = objsM[matIndex - 1];
+                        } else {
+                            console.error('assign material puzzle: Invalid material index ' + matIndex);
+                            continue;
+                        }
+                    } else {
+                        objM = objsM[0];
+                    }
+
+                    const oldMat = objM.material;
+                    if (!oldMat)
+                        continue; // pass silently
+
+                    objM.material = mat;
+
+                    if (!isMaterialInScene(oldMat)) {
+                        materialsCache.set(oldMat.name, oldMat);
+                    }
+                }
+            }
+
+            if (materialsCache.has(mat.name) && isMaterialInScene(mat)) {
+                materialsCache.delete(mat.name);
+            }
+        }
+
+        function isMeshObject(obj) {
+            if (obj.isMesh) {
+                return true;
+            }
+
+            for (let i = 0; i < obj.children.length; i++) {
+                const child = obj.children[i];
+                if (child.isMesh && child.isMaterialGeneratedMesh) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function getMaterialProfile() {
+            if (appInstance && appInstance.scene && appInstance.scene.worldMaterial)
+                return appInstance.scene.worldMaterial.profile;
+            else
+                return 'blender';
+        }
+
+        function removeObject(obj, objName) {
+            if (obj.isClippingPlaneObject)
+                // COMPAT: < 4.10, new puzzles, old engine
+                if (v3d.SceneUtils.removeClipPlanesFromMats)
+                    v3d.SceneUtils.removeClipPlanesFromMats(obj, appInstance.scene);
+
+            obj.parent.remove(obj);
+
+            // remove object and its children from cache
+            _pGlob.objCache.delete(objName);
+
+            obj.traverse(child => {
+                _pGlob.objCache.delete(child.name);
+            });
+        }
+
+        function makeObjectCSG(name, operation, objName1, objName2, clean) {
+
+            if (!objName1 || !objName2)
+                return;
+
+            const obj1 = getObjectByName(objName1);
+            const obj2 = getObjectByName(objName2);
+            if (!obj1 || !obj2)
+                return;
+
+            function createClippingBox(obj) {
+                const geometry = new v3d.BoxGeometry(1000, 1000, 1000);
+                geometry.translate(0, obj.negated ? 500 : -500, 0);
+
+                let material;
+
+                const auxMeshes = obj.getAuxClippingMeshes();
+                if (auxMeshes.length) {
+                    // COMPAT: <4.7
+                    if (v3d.MaterialUtils.createStandardPBRMaterial) {
+                        material = new v3d.MaterialUtils.createStandardPBRMaterial(getMaterialProfile(), {
+                            color: obj.crossSectionColor,
+                            opacity: obj.crossSectionOpacity,
+                            roughness: 1.0,
+                            metalness: 0.0
+                        });
+                    } else {
+                        material = new v3d.MeshStandardMaterial({
+                            color: obj.crossSectionColor,
+                            opacity: obj.crossSectionOpacity,
+                            roughness: 1.0,
+                            metalness: 0.0
+                        });
+                    }
+                } else {
+                    // fully transparent
+                    material = new v3d.MeshBasicMaterial({
+                        color: 'white',
+                        alphaTest: 1,
+                        opacity: 0
+                    });
+                }
+                // same as in ClippingPlaneObject.createCrossSectionPlane()
+                material.name = 'ClipCrossSectionColor';
+
+                const mesh = new CSG.Brush(geometry, material);
+
+                mesh.copyTransform(obj);
+                mesh.updateWorldMatrix(false, true);
+
+                return mesh;
+            }
+
+            // bake when necessary
+            function getMeshGeometry(mesh) {
+                if (mesh.isSkinnedMesh || (mesh.morphTargetInfluences && mesh.morphTargetInfluences.length > 0)) {
+                    const attrs = v3d.BufferGeometryUtils.computeMorphedAttributes(mesh);
+                    const geometry = mesh.geometry.clone();
+                    geometry.morphAttributes = {};
+                    geometry.setAttribute('position', attrs.morphedPositionAttribute);
+                    geometry.setAttribute('normal', attrs.morphedNormalAttribute);
+                    return geometry;
+                } else {
+                    return mesh.geometry;
+                }
+            }
+
+            // if assigned for both objects, obj1 takes priority
+            function findSourceMeshByMaterial(material, obj1, obj2) {
+                let result = null;
+
+                obj1.resolveMultiMaterial().forEach(function (objR) {
+                    if (objR.material == material)
+                        result = objR;
+                })
+
+                if (!result)
+                    obj2.resolveMultiMaterial().forEach(function (objR) {
+                        if (objR.material == material)
+                            result = objR;
+                    })
+
+                return result;
+            }
+
+            // see Object3D.copy()
+            function inheritMeshProps(srcMesh, dstMesh) {
+                dstMesh.hidpiCompositing = srcMesh.hidpiCompositing;
+                dstMesh.objectIndex = srcMesh.objectIndex;
+                dstMesh.objectColor.copy(srcMesh.objectColor);
+                dstMesh.objectAlpha = srcMesh.objectAlpha;
+                dstMesh.groupNames = srcMesh.groupNames.slice();
+                dstMesh.castShadow = srcMesh.castShadow;
+                dstMesh.receiveShadow = srcMesh.receiveShadow;
+                dstMesh.frustumCulled = srcMesh.frustumCulled;
+                dstMesh.renderOrder = srcMesh.renderOrder;
+            }
+
+            if (obj1.isClippingPlaneObject && obj2.isClippingPlaneObject) {
+                console.error('make object from puzzle: both objects cannot be clipping planes');
+                return;
+            }
+
+            let obj1Process, obj2Process;
+
+            if (obj1.isClippingPlaneObject) {
+                if (operation == 'INTERSECT') {
+                    obj1Process = createClippingBox(obj1);
+                    // subtract is faster
+                    operation = 'SUBTRACT';
+                } else {
+                    console.error('make object from puzzle: only "intesection" mode is supported for clipping planes');
+                    return;
+                }
+            } else if (isMeshObject(obj1)) {
+                // meshMulti == obj1 in case of single-material mesh object
+                const meshMulti = v3d.SceneUtils.createMultiMaterialMesh(obj1);
+                obj1Process = new CSG.Brush(getMeshGeometry(meshMulti));
+                obj1Process.matrixWorld.copy(meshMulti.matrixWorld);
+                obj1Process.material = meshMulti.material;
+            } else {
+                console.error('make object from puzzle: first object should be mesh or clipping plane');
+                return;
+            }
+
+            if (obj2.isClippingPlaneObject) {
+                if (operation == 'INTERSECT') {
+                    obj2Process = createClippingBox(obj2);
+                    // subtract is faster
+                    operation = 'SUBTRACT';
+                } else {
+                    console.error('make object from puzzle: only "intesection" mode is supported for clipping planes');
+                    return;
+                }
+            } else if (isMeshObject(obj2)) {
+                // meshMulti == obj2 in case of single-material mesh object
+                const meshMulti = v3d.SceneUtils.createMultiMaterialMesh(obj2);
+                obj2Process = new CSG.Brush(getMeshGeometry(meshMulti));
+                obj2Process.matrixWorld.copy(meshMulti.matrixWorld);
+                obj2Process.material = meshMulti.material;
+            } else {
+                console.error('make object from puzzle: second object should be mesh or clipping plane');
+                return;
+            }
+
+            let objNew;
+            const evaluator = new CSG.Evaluator();
+
+            switch (operation) {
+                case 'UNION':
+                    objNew = evaluator.evaluate(obj1Process, obj2Process, CSG.ADDITION);
+                    break;
+                case 'SUBTRACT':
+                    objNew = evaluator.evaluate(obj1Process, obj2Process, CSG.SUBTRACTION);
+                    break;
+                case 'INTERSECT':
+                    objNew = evaluator.evaluate(obj1Process, obj2Process, CSG.INTERSECTION);
+                    break;
+            }
+
+            objNew.name = name;
+
+            if (Array.isArray(objNew.material)) {
+                objNew = v3d.SceneUtils.createMeshesFromMultiMaterialMesh(objNew);
+
+                // inherit some props from the corresponding meshes
+                objNew.resolveMultiMaterial().forEach(function (objR) {
+                    if (objR.material) {
+                        const srcMesh = findSourceMeshByMaterial(objR.material, obj1, obj2);
+                        if (srcMesh)
+                            inheritMeshProps(srcMesh, objR);
+                    }
+                });
+            } else {
+                inheritMeshProps(obj1, objNew);
+            }
+
+            obj1.parent.attach(objNew);
+
+            // clean object cache
+            _pGlob.objCache.clear();
+
+            if (clean) {
+                removeObject(obj1, objName1);
+                removeObject(obj2, objName2);
+            }
         }
         //#endregion
 
@@ -1463,6 +1741,13 @@ function createPL(v3d = window.v3d) {
                 this.ledStripCache = [];
                 this.ledPlugCache = [];
                 this.verticalSunblindCache = [];   // per bay, a builtIn vertical sunblind
+                this.wallCrownCache = [];          // per bay, the fixed wall's top piece in the crown
+                // the fixed walls' parts, all bays of the side together (see enableFixedWalls)
+                this.wallCaches = { glass: [], white: [], anthracite: [], top: [], bottom: [], start: [], mid: [], end: [], doorway: [],
+                    exterior: [], interior: [], frame: [], woodEnd: [] };
+                this.woodCuts = [];          // the cut last boards: { name, key } (see cutBoard)
+                this.woodCutSourceCache = [];   // the uncut board and the cutter a cut is made from
+                this.woodCutterCache = [];
             }
 
             enable(side) {
@@ -1475,6 +1760,153 @@ function createPL(v3d = window.v3d) {
                 this.enablePoles(side.poles);
                 this.enableCrownAccessories(side.bays);
                 this.enableVerticalSunblinds(side.bays);
+                this.enableFixedWalls(side.bays);
+            }
+
+            // BuiltIn fixed walls: each bay's partitions side by side, 26 mm inside the side line (legacy). The parts are
+            // modelled for the left side (running along Y), so they are turned -90° into the side frame. A partition is
+            // glass (clear / opal) or a sandwich panel between a top and a bottom profile, or an opening ("none") between
+            // two doorway posts; where two partitions meet, a vertical profile (mid between two panels, else the panel's
+            // start / end profile). The bay's ends need none: the pole rails hold the wall there.
+            // Wood: an aluminium frame (in 0.675 m sections, as legacy) with 135 mm boards outside and / or inside, from the
+            // partition's start; the last board is cut to end exactly at the partition's end (cutBoard), and a wood end
+            // profile closes the wood where it meets something else.
+            enableFixedWalls(bays) {
+                const templates = {
+                    glass: "Integrated wall_glass.0", white: "Integrated wall_sandwich panelWW.0", anthracite: "Integrated wall_sandwich panelAA.0",
+                    top: "Integrated wall_top profile.0", bottom: "Integrated wall_bottom profile.0",
+                    start: "Integrated wall_panel_start_profile.0", mid: "Integrated wall_panel_mid_profile.0", end: "Integrated wall_panel_end_profile.0",
+                    doorway: "Integrated wall_doorway post.0",
+                    exterior: "Integrated wall_wood_exterior.0", interior: "Integrated wall_wood_interior.0",
+                    frame: "Integrated wall_wood_frame.0", woodEnd: "Integrated wall_wood_end_profile.0",
+                };
+                const woods = { woodOutside: ["exterior"], woodInside: ["interior"], woodBothSides: ["exterior", "interior"] };
+                const board = 0.135, frameSection = 0.675;
+                // the wood texture is in world space: boards along X (front, rear) need the grain turned
+                const woodMaterial = this.side.rotation % 180 == 90 ? "Integrated wall wood 90" : "Integrated wall wood";
+                this.woodCutCount = 0;
+                const panels = { glassClear: "glass", glassOpal: "glass", sandwichPanelWhite: "white", sandwichPanelAnthracite: "anthracite" };
+                const counts = {};
+                for (const part in this.wallCaches)
+                    counts[part] = 0;
+                // the next clone of a part, placed at x along the side
+                const place = (part, x) => {
+                    const name = getCachedClone(this.wallCaches[part], counts[part]++, templates[part], this.anchor, undefined, part == "glass");
+                    setObjTransform(name, false, "position", [x, 0.026, 0], false);
+                    setObjTransform(name, false, "rotation", [0, 0, -90], false);
+                    return name;
+                };
+
+                for (const bay of bays) {
+                    if (!isBuiltIn(bay.fixedWall))
+                        continue;
+                    const heightMorph = (mm(num(toObject(bay.generalSpecs).height, 2500)) - 1) / 99;
+                    const partitions = toArray(bay.fixedWall.partitions);
+
+                    for (let k = 0; k < partitions.length; k++) {
+                        const x = mm(num(partitions[k].position, 0));
+                        const width = mm(num(partitions[k].width, 1000));
+                        const lengthMorph = (width - 1) / 100;
+                        const panel = panels[partitions[k].fillType];
+
+                        if (panel) {
+                            const name = place(panel, x);
+                            setMorphFactor(name, 'Length', lengthMorph);
+                            setMorphFactor(name, 'Height', heightMorph);
+                            if (panel == "glass") {   // on this panel's own material copy (by UUID), opal as legacy
+                                setMaterialValue(getObjectMaterial(name, 1, true), 'NoGlass', 0);
+                                setMaterialValue(getObjectMaterial(name, 1, true), 'Tint', partitions[k].fillType == "glassOpal" ? 0.8 : 0);
+                            }
+                            setMorphFactor(place("bottom", x), 'Length', lengthMorph);
+                            const top = place("top", x);
+                            setMorphFactor(top, 'Length', lengthMorph);
+                            setMorphFactor(top, 'Height', heightMorph);
+                        }
+                        else if (woods[partitions[k].fillType]) {
+                            const start = x - width / 2;
+                            const full = Math.floor(width / board + 1e-6);
+                            for (const face of woods[partitions[k].fillType]) {
+                                for (let b = 0; b < full; b++) {
+                                    const name = place(face, start + board / 2 + b * board);
+                                    setMorphFactor(name, 'Height', heightMorph);
+                                    assignMat(name, woodMaterial);
+                                }
+                                if (width - full * board > 0.001)
+                                    this.cutBoard(templates[face], start + board / 2 + full * board, start + width, heightMorph, woodMaterial);
+                            }
+                            for (let f = 0; f * frameSection < width - 0.001; f++) {
+                                const sectionWidth = Math.min(frameSection, width - f * frameSection);
+                                const frame = place("frame", start + f * frameSection + sectionWidth / 2);
+                                setMorphFactor(frame, 'Width', (sectionWidth - 1) / 99);
+                                setMorphFactor(frame, 'Height', heightMorph);
+                            }
+                            setMorphFactor(place("bottom", x), 'Length', lengthMorph);
+                            const top = place("top", x);
+                            setMorphFactor(top, 'Length', lengthMorph);
+                            setMorphFactor(top, 'Height', heightMorph);
+                            // a wood end profile where the wood meets something else (or the bay's end)
+                            if (!(k > 0 && woods[partitions[k - 1].fillType]))
+                                setMorphFactor(place("woodEnd", start), 'Height', heightMorph);
+                            if (!(k < partitions.length - 1 && woods[partitions[k + 1].fillType]))
+                                setMorphFactor(place("woodEnd", start + width), 'Height', heightMorph);
+                        }
+                        else if (partitions[k].fillType == "none") {   // an opening: a doorway post on each inner edge
+                            if (k > 0)
+                                setMorphFactor(place("doorway", x - width / 2 + 0.01), 'Height', heightMorph);
+                            if (k < partitions.length - 1)
+                                setMorphFactor(place("doorway", x + width / 2 - 0.01), 'Height', heightMorph);
+                        }
+
+                        // where this partition meets the next one
+                        if (k < partitions.length - 1) {
+                            const before = Boolean(panel), after = Boolean(panels[partitions[k + 1].fillType]);
+                            if (before || after)
+                                setMorphFactor(place(before && after ? "mid" : before ? "end" : "start", x + width / 2), 'Height', heightMorph);
+                        }
+                    }
+                }
+
+                for (const part in this.wallCaches)
+                    hideCachedClones(this.wallCaches[part], counts[part]);
+                for (let c = this.woodCutCount; c < this.woodCuts.length; c++)
+                    changeVis(this.woodCuts[c].name, false);
+            }
+
+            // The last board of a wood partition: a board at x, cut where the partition ends (makeObjectCSG, subtracting
+            // Wood cut box.0, whose body lies behind its +X face: turned 180° it covers everything past the end). The cut
+            // piece is a new object under the anchor; it is only made again when the cut changes, the old one removed.
+            cutBoard(template, x, end, heightMorph, material) {
+                const index = this.woodCutCount++;
+                const key = [template, x, end, heightMorph, material].join('|');
+                const cut = this.woodCuts[index];
+                if (cut && cut.key == key && getObjectByName(cut.name)) {
+                    changeVis(cut.name, true);
+                    return;
+                }
+                if (cut && getObjectByName(cut.name)) {
+                    const old = getObjectByName(cut.name);
+                    old.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); });
+                    removeObject(old, cut.name);
+                }
+
+                const source = getCachedClone(this.woodCutSourceCache, 0, template, this.anchor);
+                const cutter = getCachedClone(this.woodCutterCache, 0, "Wood cut box.0", this.anchor);
+                if (!source || !cutter || !getObjectByName(this.anchor))
+                    return;
+                setObjTransform(source, false, "position", [x, 0.026, 0], false);
+                setObjTransform(source, false, "rotation", [0, 0, -90], false);
+                setMorphFactor(source, 'Height', heightMorph);
+                assignMat(source, material);
+                setObjTransform(cutter, false, "position", [end, 0.026, 0], false);
+                setObjTransform(cutter, false, "rotation", [0, 0, 180], false);
+                assignMat(cutter, material);   // the cut face takes the cutter's material
+                getObjectByName(this.anchor).updateMatrixWorld(true);
+
+                const name = this.anchor + ' wood cut ' + index;
+                makeObjectCSG(name, 'SUBTRACT', source, cutter, false);
+                changeVis([source, cutter], false);
+                changeVis(name, true);
+                this.woodCuts[index] = { name: name, key: key };
             }
 
             // A builtIn vertical sunblind hangs from the crown over its bay (in the rail groove) down to the ground, shut
@@ -1503,13 +1935,14 @@ function createPL(v3d = window.v3d) {
             }
 
             // Per bay, in the crown beam's grooves over its span: the LED strip (builtIn) or its plug, and the rail plug
-            // unless a builtIn screen or wall hangs there (those come with the bay options). The crown frame is turned
+            // unless a builtIn sunblind or fixed wall hangs there (a fixed wall has its own top piece in the groove). The crown frame is turned
             // 180°, so its x runs back along the side: x = -bay position.
             enableCrownAccessories(bays) {
                 const accessories = [
                     { cache: this.ledStripCache, template: "Horizontal_Gutter_LED strip integrated.0", show: bay => isBuiltIn(bay.ledStrip) },
                     { cache: this.ledPlugCache, template: "Horizontal_Gutter_LED strip integrated plug.0", show: bay => !isBuiltIn(bay.ledStrip) },
                     { cache: this.railPlugCache, template: "Horizontal_Gutter_Rail plug.0", show: bay => !isBuiltIn(bay.verticalSunblind) && !isBuiltIn(bay.fixedWall) },
+                    { cache: this.wallCrownCache, template: "Horizontal_Gutter_Integrated wall.0", show: bay => isBuiltIn(bay.fixedWall) },
                 ];
 
                 for (let i = 0; i < bays.length; i++) {
@@ -1585,8 +2018,8 @@ function createPL(v3d = window.v3d) {
                 hideCachedClones(this.foundationCache, poles.length);
             }
 
-            // The rail each face of a pole shows: an integrated screen rail next to a builtIn vertical sunblind, else the
-            // plug. An intermediate looks at the bays before (End) and after (Start) it; a corner looks into its side's
+            // The rail each face of a pole shows: an integrated screen rail next to a builtIn vertical sunblind, a wall rail
+            // next to a builtIn fixed wall, else the plug. An intermediate looks at the bays before (End) and after (Start) it; a corner looks into its side's
             // first / last bay and, with its other face, into the neighbouring side's bay at that corner.
             poleRails(kind, isEnd, position) {
                 const bays = this.side.bays;
@@ -1594,8 +2027,11 @@ function createPL(v3d = window.v3d) {
                     : isEnd ? { Inward: this.bayNextTo(bays, position, -1), Along: this.neighbourBay(true) }
                     : { Along: this.bayNextTo(bays, position, 1), Inward: this.neighbourBay(false) };
                 const rails = {};
-                for (const face in faces)
-                    rails[face] = faces[face] && isBuiltIn(faces[face].verticalSunblind) ? "Integrated screen rail" : "Rail plug";
+                for (const face in faces) {
+                    const bay = faces[face];
+                    rails[face] = bay && isBuiltIn(bay.verticalSunblind) ? "Integrated screen rail"
+                        : bay && isBuiltIn(bay.fixedWall) ? "Integrated wall rail" : "Rail plug";
+                }
                 return rails;
             }
 
