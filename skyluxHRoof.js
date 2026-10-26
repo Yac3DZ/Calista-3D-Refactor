@@ -116,7 +116,7 @@ function createPL(v3d = window.v3d) {
         this.procedures["handleValue"] = handleValue;
 
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
-        PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache };
+        PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache, clickables };
 
         //#region Verge3D 4.13 helpers
         function getObjectByName(objName) {
@@ -1412,6 +1412,25 @@ function createPL(v3d = window.v3d) {
                 return 1 - speed * (1 - t) * (1 - t) / (2 * ramp);
             return speed * (t - ramp / 2);
         }
+
+        // Something a click opens and closes (a screen, a sunblind, a Climaglide): its state is kept on the object that
+        // owns it, so it survives configurator changes. opening: 0 shut ... 100 open; target: where it is going (or went).
+        function openingState() {
+            return { opening: 0, target: 0, stop: null };
+        }
+
+        // Clicked: open it or shut it. A click while it moves turns it back from where it is, at the same speed (the time
+        // scales with the distance left). apply(opening) draws it at every frame.
+        function toggleOpening(state, apply) {
+            if (state.stop)
+                state.stop();
+            state.target = state.target == 100 ? 0 : 100;
+            const duration = ANIMATION_TIME * Math.abs(state.target - state.opening) / 100;
+            state.stop = animateValue(state.opening, state.target, duration, value => {
+                state.opening = value;
+                apply(value);
+            }, () => state.stop = null);
+        }
         //#endregion ---------------------------------------------------------------
 
         //#region StructureSection ---------------------------------------------------------------
@@ -1444,9 +1463,7 @@ function createPL(v3d = window.v3d) {
                 this.selectedFillingCache = [];     // the highlight over the selected filling
 
                 // horizontal screen, opened / closed by a click: 0 shut … 100 open (kept between configurator changes)
-                this.screenOpening = 0;
-                this.screenTarget = 0;              // where it is going (or went): 0 or 100
-                this.stopScreenAnimation = null;    // set while it moves
+                this.screenState = openingState();
                 this.activeScreen = null;           // the shown screen clone, null without a screen
             }
 
@@ -1639,24 +1656,15 @@ function createPL(v3d = window.v3d) {
                 }
             }
 
-            // Clicked in 3D: roll the horizontal screen open or shut. A click while it moves turns it back from where
-            // it is, at the same speed (the time scales with the distance left).
+            // Clicked in 3D: roll the horizontal screen open or shut (toggleOpening).
             toggleHorizontalScreen() {
-                if (!this.activeScreen)
-                    return;
-                if (this.stopScreenAnimation)
-                    this.stopScreenAnimation();
-                this.screenTarget = this.screenTarget == 100 ? 0 : 100;
-                const duration = ANIMATION_TIME * Math.abs(this.screenTarget - this.screenOpening) / 100;
-                this.stopScreenAnimation = animateValue(this.screenOpening, this.screenTarget, duration, value => {
-                    this.screenOpening = value;
-                    this.setHorizontalScreenOpening();
-                }, () => this.stopScreenAnimation = null);
+                if (this.activeScreen)
+                    toggleOpening(this.screenState, () => this.setHorizontalScreenOpening());
             }
 
             setHorizontalScreenOpening() {
                 if (this.activeScreen)
-                    setMorphFactor(this.activeScreen, 'Opening', this.screenOpeningMorph * this.screenOpening);
+                    setMorphFactor(this.activeScreen, 'Opening', this.screenOpeningMorph * this.screenState.opening);
             }
 
             // Select a filling or rafter (type "filling" | "rafter", or null for none) and rebuild to show it.
@@ -1755,6 +1763,12 @@ function createPL(v3d = window.v3d) {
                 this.climaglideFoundationCache = [];   // per bay
                 // per panel: its side profile (outer panels), brush profiles and handle
                 this.climaglidePartCaches = { sideLeft: [], sideRight: [], aluLeft: [], aluRight: [], pvcLeft: [], pvcRight: [], handle: [] };
+
+                // per bay, opened / closed by a click (toggleOpening): kept between configurator changes
+                this.sunblindStates = [];
+                this.sunblindOpeningMorphs = [];
+                this.climaglideStates = [];
+                this.climaglideLayouts = [];   // per bay, per panel: { panel, closed, open, y } (setClimaglideOpening)
             }
 
             enable(side) {
@@ -1830,6 +1844,9 @@ function createPL(v3d = window.v3d) {
                         changeVis(this.climaglideFoundationCache[i], false);
                     const panelWidth = span / amount;
                     const draft = glide.draftProfile == "pvc" ? "pvc" : glide.draftProfile == "alu" ? "alu" : null;
+                    // a click slides it open or closed: each panel between its closed place and where it parks when open
+                    const state = this.climaglideStates[i] = this.climaglideStates[i] || openingState();
+                    const layout = this.climaglideLayouts[i] = [];
 
                     for (let k = 0; k < amount; k++) {
                         const p = panelCount++;
@@ -1837,7 +1854,10 @@ function createPL(v3d = window.v3d) {
                         const x = centre - span / 2 + panelWidth * (k + 0.5);
                         const firstHalf = k < amount / 2;
                         const panel = getCachedClone(this.climaglidePanelCache, p, "Climaglide_Panel.000", this.anchor, undefined, true);
-                        setObjTransform(panel, false, "position", [x, trackY(track), 0], false);
+                        // open, the panels stack at the side they open to (middle: each half at its own end)
+                        const parkedAt = direction == "left" ? 0 : direction == "right" ? amount - 1 : firstHalf ? 0 : amount - 1;
+                        layout.push({ panel: panel, closed: x, open: centre - span / 2 + panelWidth * (parkedAt + 0.5), y: trackY(track) });
+                        registerClickable(panel, () => toggleOpening(state, value => this.setClimaglideOpening(i, value)));
                         setObjTransform(panel, false, "rotation", [0, 0, 180], false);
                         setMorphFactor(panel, 'Width', (panelWidth - 0.1) / 100);
                         setMorphFactor(panel, 'Height', (height - 1) / 99);
@@ -1893,6 +1913,15 @@ function createPL(v3d = window.v3d) {
                 hideCachedClones(this.climaglideFoundationCache, bays.length);
                 for (const part in this.climaglidePartCaches)
                     hideCachedClones(this.climaglidePartCaches[part], panelCount);
+                for (let i = 0; i < bays.length; i++)
+                    if (bays[i].climaglide)
+                        this.setClimaglideOpening(i, this.climaglideStates[i].opening);
+            }
+
+            // The Climaglide panels of bay i at `opening` (0 closed ... 100 open); their brushes and handles move with them.
+            setClimaglideOpening(i, opening) {
+                for (const l of this.climaglideLayouts[i] || [])
+                    setObjTransform(l.panel, false, "position", [l.closed + (l.open - l.closed) * opening / 100, l.y, 0], false);
             }
 
             // Where panel k's handle sits, in the panel's own frame (turned 180°: its x runs back along the side), or null
@@ -2055,8 +2084,8 @@ function createPL(v3d = window.v3d) {
                 this.woodCuts[index] = { name: name, key: key };
             }
 
-            // A builtIn vertical sunblind hangs from the crown over its bay (in the rail groove) down to the ground, shut
-            // for now (Opening 0, as legacy). Each one has its own material copies, so every bay can have its own fabric.
+            // A builtIn vertical sunblind hangs from the crown over its bay (in the rail groove) down to the ground; a click
+            // rolls it up or down. Each one has its own material copies, so every bay can have its own fabric.
             enableVerticalSunblinds(bays) {
                 for (let i = 0; i < bays.length; i++) {
                     const sunblind = bays[i].verticalSunblind;
@@ -2069,7 +2098,12 @@ function createPL(v3d = window.v3d) {
                     setObjTransform(name, false, "position", [-mm(num(bay.position, 0)), 0, 0], false);   // the crown frame is turned 180°
                     setMorphFactor(name, 'Width', (mm(num(bay.length, 1000)) - 1) / 100);
                     setMorphFactor(name, 'Height', mm(num(bay.height, 2500)) / 100);   // legacy: height under the gutter / 100
-                    setMorphFactor(name, 'Opening', 0);
+                    // a click rolls it up (100) or down (0): over its height minus the cassette (legacy: totalHeight - 0.445)
+                    const state = this.sunblindStates[i] = this.sunblindStates[i] || openingState();
+                    this.sunblindOpeningMorphs[i] = ((mm(num(bay.height, 2500)) - 0.185) / 99) / 100;
+                    setMorphFactor(name, 'Opening', this.sunblindOpeningMorphs[i] * state.opening);
+                    registerClickable(name, () => toggleOpening(state, value =>
+                        setMorphFactor(this.verticalSunblindCache[i], 'Opening', this.sunblindOpeningMorphs[i] * value)));
 
                     // fabric: its 3rd material (1 Powdercoat, 2 Rubber), on this sunblind's own copy (by UUID)
                     const colors = Array.isArray(sunblind.screenColor) ? sunblind.screenColor : [];
