@@ -4,7 +4,7 @@
 
 // Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
-const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
+const DEV_SCOPE = 'wallRear'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
 
 // Convert from mm to m
 function mm(value) {
@@ -1748,6 +1748,13 @@ function createPL(v3d = window.v3d) {
                 this.woodCuts = [];          // the cut last boards: { name, key } (see cutBoard)
                 this.woodCutSourceCache = [];   // the uncut board and the cutter a cut is made from
                 this.woodCutterCache = [];
+                this.climaglidePanelCache = [];        // all bays of the side together
+                this.climaglideBottomRailCache = [];   // per track
+                this.climaglideTopRailCache = [];
+                this.climaglideMainRailCache = [];     // per bay
+                this.climaglideFoundationCache = [];   // per bay
+                // per panel: its side profile (outer panels), brush profiles and handle
+                this.climaglidePartCaches = { sideLeft: [], sideRight: [], aluLeft: [], aluRight: [], pvcLeft: [], pvcRight: [], handle: [] };
             }
 
             enable(side) {
@@ -1761,6 +1768,145 @@ function createPL(v3d = window.v3d) {
                 this.enableCrownAccessories(side.bays);
                 this.enableVerticalSunblinds(side.bays);
                 this.enableFixedWalls(side.bays);
+                this.enableClimaglides(side.bays);
+            }
+
+            // Climaglide (sliding glass doors, surface mounted): per bay `panelAmount` panels side by side over the clear
+            // span, closed for now. Each panel runs in a track: the first 58 mm inside the side line, every next one 20 mm
+            // further in (legacy). Panels open to the left (the bay's start), the right, or both ways from the middle; the
+            // panels that stay put run in the outer track. Per track a bottom and a top rail, and one top main rail over
+            // them all. The parts are modelled along X like the front beam, so they are turned 180° (the main rail 0°).
+            // Per panel (as the standalone Climaglide file): a 30 mm overhang over each neighbour, a side profile on the
+            // outer panels (sideProfile), a brush profile (draftProfile alu / pvc) on each edge that slides past another
+            // panel, and a handle 0.1 m from the leading edge of the panels that open. Brushes and handles hang under
+            // their panel, so they move with it. The template's Left is the side's +X (towards the bay's end).
+            enableClimaglides(bays) {
+                const partTemplates = {
+                    sideLeft: "Climaglide side profile Left.0", sideRight: "Climaglide side profile Right.0",
+                    aluLeft: "Climaglide brush profile Alu Left.0", aluRight: "Climaglide brush profile Alu Right.0",
+                    pvcLeft: "Climaglide brush profile PVC Left.0", pvcRight: "Climaglide brush profile PVC Right.0",
+                    handle: "Climaglide_Manipulator.000",
+                };
+                let panelCount = 0, railCount = 0;
+                for (let i = 0; i < bays.length; i++) {
+                    const glide = bays[i].climaglide;
+                    if (!glide) {
+                        changeVis(this.climaglideMainRailCache[i], false);
+                        changeVis(this.climaglideFoundationCache[i], false);
+                        continue;
+                    }
+                    const bay = toObject(bays[i].generalSpecs);
+                    const span = mm(num(bay.length, 1000));
+                    const centre = mm(num(bay.position, 0));
+                    const height = mm(num(bay.height, 2500)) + 0.01;   // up into the crown, as legacy
+                    const amount = Math.max(1, Math.round(num(glide.panelAmount, 2)));
+                    const direction = ["left", "right", "middle"].includes(glide.openingDirection) ? glide.openingDirection : "left";
+                    const tracks = direction == "middle" ? Math.ceil(amount / 2) : amount;
+                    const trackY = t => 0.058 + t * 0.02;
+
+                    for (let t = 0; t < tracks; t++) {
+                        const bottom = getCachedClone(this.climaglideBottomRailCache, railCount, "Climaglide_Rails_Bottom.000", this.anchor);
+                        const top = getCachedClone(this.climaglideTopRailCache, railCount++, "Climaglide_Rails_Top.000", this.anchor);
+                        setObjTransform(bottom, false, "position", [centre, trackY(t), 0], false);
+                        setObjTransform(top, false, "position", [centre, trackY(t), height], false);
+                        for (const rail of [bottom, top]) {
+                            setObjTransform(rail, false, "rotation", [0, 0, 180], false);
+                            setMorphFactor(rail, 'Width', (span - 1) / 99);
+                        }
+                    }
+                    const main = getCachedClone(this.climaglideMainRailCache, i, "Climaglide_Rails_Top_Main.000", this.anchor);
+                    setObjTransform(main, false, "position", [centre, trackY(0), height], false);
+                    setObjTransform(main, false, "rotation", [0, 0, 0], false);
+                    setMorphFactor(main, 'Width', (span - 1) / 99);
+                    setMorphFactor(main, 'panelAmount', tracks - 1);
+                    if (glide.foundationProfile) {
+                        const foundation = getCachedClone(this.climaglideFoundationCache, i, "Climaglide foundation profile.0", this.anchor);
+                        setObjTransform(foundation, false, "position", [centre, trackY(0), 0], false);
+                        setObjTransform(foundation, false, "rotation", [0, 0, 0], false);
+                        setMorphFactor(foundation, 'Width', (span - 1) / 99);
+                        setMorphFactor(foundation, 'panelAmount', tracks - 1);
+                    }
+                    else
+                        changeVis(this.climaglideFoundationCache[i], false);
+                    const panelWidth = span / amount;
+                    const draft = glide.draftProfile == "pvc" ? "pvc" : glide.draftProfile == "alu" ? "alu" : null;
+
+                    for (let k = 0; k < amount; k++) {
+                        const p = panelCount++;
+                        const track = direction == "left" ? k : direction == "right" ? amount - 1 - k : Math.min(k, amount - 1 - k);
+                        const x = centre - span / 2 + panelWidth * (k + 0.5);
+                        const firstHalf = k < amount / 2;
+                        const panel = getCachedClone(this.climaglidePanelCache, p, "Climaglide_Panel.000", this.anchor, undefined, true);
+                        setObjTransform(panel, false, "position", [x, trackY(track), 0], false);
+                        setObjTransform(panel, false, "rotation", [0, 0, 180], false);
+                        setMorphFactor(panel, 'Width', (panelWidth - 0.1) / 100);
+                        setMorphFactor(panel, 'Height', (height - 1) / 99);
+                        // overhang over the neighbours, none at the bay's ends nor where the two halves of a middle door meet
+                        setMorphFactor(panel, 'Right overhang', k != 0 && !(direction == "middle" && k == amount / 2) ? 0.03 / 100 : 0);
+                        setMorphFactor(panel, 'Left overhang', k != amount - 1 && !(direction == "middle" && k == amount / 2 - 1) ? 0.03 / 100 : 0);
+
+                        // which of its parts this panel shows
+                        const shows = {
+                            sideRight: Boolean(glide.sideProfile) && k == 0,
+                            sideLeft: Boolean(glide.sideProfile) && k == amount - 1,
+                            // brush on the edge that slides past the next panel
+                            Left: direction == "right" ? k != amount - 1 : direction == "middle" ? !firstHalf && k != amount - 1 : false,
+                            Right: direction == "left" ? k != 0 : direction == "middle" ? firstHalf && k != 0 : false,
+                        };
+                        for (const part in this.climaglidePartCaches) {
+                            const cache = this.climaglidePartCaches[part];
+                            const brushSide = part.startsWith(draft) ? part.slice(draft.length) : null;
+                            const handleX = this.climaglideHandleX(direction, k, amount, panelWidth);
+                            const show = part == "handle" ? Boolean(glide.handle) && handleX !== null
+                                : part.startsWith("side") ? shows[part] : Boolean(draft) && Boolean(brushSide) && shows[brushSide];
+                            if (!show) {
+                                changeVis(cache[p], false);
+                                continue;
+                            }
+                            if (part.startsWith("side")) {   // fixed against the pole: not under the (sliding) panel
+                                const profile = getCachedClone(cache, p, partTemplates[part], this.anchor);
+                                setObjTransform(profile, false, "position", [x, trackY(track), 0], false);
+                                setObjTransform(profile, false, "rotation", [0, 0, 180], false);
+                                setMorphFactor(profile, 'Width', (panelWidth - 0.1) / 100);
+                                setMorphFactor(profile, 'Height', (height - 1 - 0.052) / 99);
+                                setMorphFactor(profile, part == "sideLeft" ? 'Left overhang' : 'Right overhang', 0.03 / 100);
+                                continue;
+                            }
+                            const child = getCachedClone(cache, p, partTemplates[part], panel);   // under the panel, in its frame
+                            if (part == "handle") {
+                                setObjTransform(child, false, "position", [handleX, 0, 0], false);
+                                continue;
+                            }
+                            setMorphFactor(child, 'Width', (panelWidth - 0.1) / 100);
+                            setMorphFactor(child, 'Height', (height - 1 - 0.052) / 99);
+                            setMorphFactor(child, brushSide + ' overhang', 0.03 / 100);
+                        }
+                        // glass: its 2nd material, on this panel's own copy (by UUID), opal as legacy
+                        setMaterialValue(getObjectMaterial(panel, 2, true), 'NoGlass', 0);
+                        setMaterialValue(getObjectMaterial(panel, 2, true), 'Tint', glide.glass == "glassOpal" ? 0.8 : 0);
+                    }
+                }
+                hideCachedClones(this.climaglidePanelCache, panelCount);
+                hideCachedClones(this.climaglideBottomRailCache, railCount);
+                hideCachedClones(this.climaglideTopRailCache, railCount);
+                hideCachedClones(this.climaglideMainRailCache, bays.length);
+                hideCachedClones(this.climaglideFoundationCache, bays.length);
+                for (const part in this.climaglidePartCaches)
+                    hideCachedClones(this.climaglidePartCaches[part], panelCount);
+            }
+
+            // Where panel k's handle sits, in the panel's own frame (turned 180°: its x runs back along the side), or null
+            // when it has none: 0.1 m from the edge it is pulled by. Left: the last panel, at its end; right: the first,
+            // at its start; middle: the two middle panels, where they meet (as legacy).
+            climaglideHandleX(direction, k, amount, panelWidth) {
+                const fromEdge = panelWidth / 2 - 0.1;
+                if (direction == "left")
+                    return k == amount - 1 ? -fromEdge : null;
+                if (direction == "right")
+                    return k == 0 ? fromEdge : null;
+                if (k == amount / 2 - 1)
+                    return -fromEdge;
+                return k == amount / 2 ? fromEdge : null;
             }
 
             // BuiltIn fixed walls: each bay's partitions side by side, 26 mm inside the side line (legacy). The parts are
@@ -2888,4 +3034,4 @@ const DEV_SCOPES = {
 };
 //#endregion
 
-export { createPL, mm, DEV_SCOPES };
+export { createPL, mm, DEV_SCOPE, DEV_SCOPES };
