@@ -1256,8 +1256,9 @@ function createPL(v3d = window.v3d) {
             }
 
             // One panel per roof filling, between the rafters. A filling's position is its centre, measured from the
-            // section's left edge like the rafters. Glass panels get their own material copy, so clear and opal
-            // panels can sit side by side. sandwichPanelTile has no mesh yet and uses the anthracite panel.
+            // section's left edge like the rafters. Until the configurator sends the real panel widths (Team questions),
+            // the outer panels are trimmed to the side beams' inner face (0.19 m in, as legacy). Glass panels get their own material copy, so clear
+            // and opal panels can sit side by side. sandwichPanelTile has no mesh yet and uses the anthracite panel.
             enableRoofFillings(fillings) {
                 const depthMorph = ((this.depth - 2 * 0.15) - 1) / 100;
                 const meshes = [
@@ -1269,8 +1270,13 @@ function createPL(v3d = window.v3d) {
 
                 hideCachedClones(this.selectedFillingCache, 0);
                 for (let i = 0; i < fillings.length; i++) {
-                    const x = this.width / 2 - mm(num(fillings[i].position, 0));
-                    const widthMorph = (mm(num(fillings[i].width, 1000)) - 1) / 100;
+                    const centre = this.width / 2 - mm(num(fillings[i].position, 0));
+                    const halfWidth = mm(num(fillings[i].width, 1000)) / 2;
+                    const inside = this.width / 2 - 0.19;
+                    const left = Math.min(centre + halfWidth, inside);    // +X edge
+                    const right = Math.max(centre - halfWidth, -inside);
+                    const x = (left + right) / 2;
+                    const widthMorph = (Math.max(left - right, 0) - 1) / 100;
 
                     for (const m of meshes) {
                         if (!m.types.includes(fillings[i].type)) {
@@ -1400,13 +1406,11 @@ function createPL(v3d = window.v3d) {
             // The four gutter beams on top of the poles. They span between the corner poles (0.15 m each).
             enableCrown() {
                 const beams = [
-                    { template: "Horizontal_Gutter_Front", position: [0, this.depth / 2, this.totalHeight], length: this.width },
-                    { template: "Horizontal_Gutter_Rear", position: [0, -this.depth / 2, this.totalHeight], length: this.width },
-                    { template: "Horizontal_Gutter_Left", position: [this.width / 2, 0, this.totalHeight], length: this.depth },
-                    { template: "Horizontal_Gutter_Right", position: [-this.width / 2, 0, this.totalHeight], length: this.depth },
+                    { template: "Horizontal_Gutter_Front.0", position: [0, this.depth / 2, this.totalHeight], length: this.width },
+                    { template: "Horizontal_Gutter_Rear.0", position: [0, -this.depth / 2, this.totalHeight], length: this.width },
+                    { template: "Horizontal_Gutter_Left.0", position: [this.width / 2, 0, this.totalHeight], length: this.depth },
+                    { template: "Horizontal_Gutter_Right.0", position: [-this.width / 2, 0, this.totalHeight], length: this.depth },
                 ];
-                // The beam's own accessories run its full length: hidden, the sides place them per bay (enableCrownAccessories).
-                const accessories = ["LED strip integrated", "LED strip integrated plug", "Rail plug", "Integrated wall", "Vertical sunblind"];
 
                 for (let i = 0; i < beams.length; i++) {
                     const beam = getCachedClone(this.crownBeamCache, i, beams[i].template, this.anchor);
@@ -1416,8 +1420,6 @@ function createPL(v3d = window.v3d) {
                     setObjTransform(beam, false, "position", beams[i].position, false);
                     setMorphFactor(beam, 'Width', widthMorph);
 
-                    for (const accessory of accessories)
-                        changeVis(beam + ' > ' + beams[i].template + '_' + accessory, false);
                 }
             }
         }
@@ -1432,8 +1434,8 @@ function createPL(v3d = window.v3d) {
                 this.anchor = cloneObject("empty.0");
                 if (!this.anchor)
                     console.warn('[Calista 3D] "empty.0" is not in the scene, the side cannot be placed');
-                this.startPoleCache = [];   // per pole, one of these two: Front_Left (start corner, intermediate)…
-                this.endPoleCache = [];     // …or Front_Right (end corner)
+                this.cornerPoleCache = [];        // per pole, one of these two posts
+                this.intermediatePoleCache = [];
                 this.bracketCache = [];     // per pole, its support: a bracket or a foundation
                 this.foundationCache = [];
 
@@ -1452,7 +1454,7 @@ function createPL(v3d = window.v3d) {
                 setObjTransform(this.crownAnchor, false, "position", [0, 0, mm(side.height) + 0.26], false);   // top of the crown, like the beams
                 setObjTransform(this.crownAnchor, false, "rotation", [0, 0, 180], false);
                 this.enablePoles(side.poles);
-                this.enableCrownAccessories(side.bays);
+                this.enableCrownAccessories(side.bays); 
             }
 
             // Per bay, in the crown beam's grooves over its span: the LED strip (builtIn) or its plug, and the rail plug
@@ -1461,9 +1463,9 @@ function createPL(v3d = window.v3d) {
             enableCrownAccessories(bays) {
                 const isBuiltIn = option => Boolean(option) && option.mounting == "builtIn";
                 const accessories = [
-                    { cache: this.ledStripCache, template: "Horizontal_Gutter_Front_LED strip integrated", show: bay => isBuiltIn(bay.ledStrip) },
-                    { cache: this.ledPlugCache, template: "Horizontal_Gutter_Front_LED strip integrated plug", show: bay => !isBuiltIn(bay.ledStrip) },
-                    { cache: this.railPlugCache, template: "Horizontal_Gutter_Front_Rail plug", show: bay => !isBuiltIn(bay.verticalSunblind) && !isBuiltIn(bay.fixedWall) },
+                    { cache: this.ledStripCache, template: "Horizontal_Gutter_LED strip integrated.0", show: bay => isBuiltIn(bay.ledStrip) },
+                    { cache: this.ledPlugCache, template: "Horizontal_Gutter_LED strip integrated plug.0", show: bay => !isBuiltIn(bay.ledStrip) },
+                    { cache: this.railPlugCache, template: "Horizontal_Gutter_Rail plug.0", show: bay => !isBuiltIn(bay.verticalSunblind) && !isBuiltIn(bay.fixedWall) },
                 ];
 
                 for (let i = 0; i < bays.length; i++) {
@@ -1485,42 +1487,46 @@ function createPL(v3d = window.v3d) {
                     hideCachedClones(a.cache, bays.length);
             }
 
-            // The GLB has no pole template, so the front corner posts are used for every side (turned by the
-            // anchor). Their origin is the outer corner and the post runs along -X and inward from it: Front_Left
-            // fits the start of a side, Front_Right the end. An intermediate pole is a Front_Left scaled to its width.
+            // Two posts: Pole_Corner.0 (corners; wallAdjacent too for now) and Pole_Intermediate.0. Both have their origin on
+            // the outer face's corner and run along the side and inward from it; a corner at the end of a side is turned a
+            // quarter to run back along the side. Each post is scaled from its modelled size to the pole's width x depth.
+            // Rails: a corner's Along face looks into the side's bay, Inward into the neighbouring side's; an intermediate's
+            // End face looks back at the bay before it, Start at the bay after it.
             enablePoles(poles) {
-                const templates = [
-                    { cache: this.startPoleCache, template: "Horizontal_Corner_Post_Front_Left", faces: ["Front", "Left"] },
-                    { cache: this.endPoleCache, template: "Horizontal_Corner_Post_Front_Right", faces: ["Front", "Right"] },
-                ];
+                const types = {
+                    corner: { cache: this.cornerPoleCache, template: "Pole_Corner", size: [0.15, 0.15], faces: ["Along", "Inward"] },
+                    intermediate: { cache: this.intermediatePoleCache, template: "Pole_Intermediate", size: [0.1, 0.13], faces: ["Start", "End"] },
+                };
                 const accessories = ["Integrated screen rail", "Integrated wall rail", "Rail plug"];
 
                 for (let i = 0; i < poles.length; i++) {
                     const position = mm(num(poles[i].position, 0));
                     const width = mm(num(poles[i].width, 150));
                     const depth = mm(num(poles[i].depth, 150));
-                    const isEnd = poles[i].type != "intermediate" && position > this.length / 2;
-                    // a corner post runs up through the crown (+ 0.26), an intermediate one stops just inside it
-                    const height = mm(num(poles[i].length, 2500)) + (poles[i].type == "intermediate" ? 0.02 : 0.26);
+                    const kind = poles[i].type == "intermediate" ? "intermediate" : "corner";
+                    const isEnd = kind == "corner" && position > this.length / 2;
+                    // a corner post runs up through the crown (+ 0.26), an intermediate one clicks in under it
+                    const height = mm(num(poles[i].length, 2500)) + (kind == "corner" ? 0.26 : 0);
                     const heightMorph = (height - 1) / 99;
 
-                    for (let t = 0; t < templates.length; t++) {
-                        if (t != (isEnd ? 1 : 0)) {
-                            changeVis(templates[t].cache[i], false);   // this pole may have been at the other end before
+                    for (const [type, t] of Object.entries(types)) {
+                        if (type != kind) {
+                            changeVis(t.cache[i], false);   // this pole may have been of the other type before
                             continue;
                         }
-                        const pole = getCachedClone(templates[t].cache, i, templates[t].template, this.anchor);
+                        const pole = getCachedClone(t.cache, i, t.template + ".0", this.anchor);
                         if (!pole)
                             continue;
+                        const scale = [width / t.size[0], depth / t.size[1], 1];
                         setObjTransform(pole, false, "position", [isEnd ? position + width / 2 : position - width / 2, 0, 0], false);
-                        setObjTransform(pole, false, "rotation", [0, 0, 180], false);
-                        setObjTransform(pole, false, "scale", [width / 0.15, depth / 0.15, 1], false);
+                        setObjTransform(pole, false, "rotation", [0, 0, isEnd ? 270 : 180], false);
+                        setObjTransform(pole, false, "scale", isEnd ? [scale[1], scale[0], 1] : scale, false);
                         setMorphFactor(pole, 'Height', heightMorph);
 
                         // the rails on its faces: plugged for now, the bays decide later
-                        for (const face of templates[t].faces)
+                        for (const face of t.faces)
                             for (const accessory of accessories) {
-                                const child = pole + ' > ' + templates[t].template + '_' + face + '_' + accessory;
+                                const child = pole + ' > ' + t.template + '_' + face + '_' + accessory + '.0';
                                 setMorphFactor(child, 'Height', heightMorph);
                                 changeVis(child, accessory == "Rail plug");
                             }
@@ -1528,8 +1534,8 @@ function createPL(v3d = window.v3d) {
                     this.enablePoleSupport(i, poles[i].support, position, width, depth, isEnd);
                 }
 
-                for (const t of templates)
-                    hideCachedClones(t.cache, poles.length);
+                hideCachedClones(this.cornerPoleCache, poles.length);
+                hideCachedClones(this.intermediatePoleCache, poles.length);
                 hideCachedClones(this.bracketCache, poles.length);
                 hideCachedClones(this.foundationCache, poles.length);
             }
