@@ -2100,9 +2100,11 @@ function createPL(v3d = window.v3d) {
                     setObjTransform(name, false, "position", [-mm(num(bay.position, 0)), 0, 0], false);   // the crown frame is turned 180°
                     setMorphFactor(name, 'Width', (mm(num(bay.length, 1000)) - 1) / 100);
                     setMorphFactor(name, 'Height', mm(num(bay.height, 2500)) / 100);   // legacy: height under the gutter / 100
-                    // a click rolls it up (100) or down (0): over its height minus the cassette (legacy: totalHeight - 0.445)
+                    // a click rolls it up (100) or down (0). Height drops the bottom bar and Opening lifts it, both 100 m per
+                    // unit; fully up, the bar stops just under the crown (50 mm short of its rest place in the beam), so it
+                    // stays in sight and can be clicked to roll the sunblind down again
                     const state = this.sunblindStates[i] = this.sunblindStates[i] || openingState();
-                    this.sunblindOpeningMorphs[i] = ((mm(num(bay.height, 2500)) - 0.185) / 99) / 100;
+                    this.sunblindOpeningMorphs[i] = ((mm(num(bay.height, 2500)) - 0.05) / 100) / 100;
                     setMorphFactor(name, 'Opening', this.sunblindOpeningMorphs[i] * state.opening);
                     registerClickable(name, () => toggleOpening(state, value =>
                         setMorphFactor(this.verticalSunblindCache[i], 'Opening', this.sunblindOpeningMorphs[i] * value)));
