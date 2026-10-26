@@ -108,6 +108,12 @@ function createPL(v3d = window.v3d) {
     const sideOpeningCache = [];        // one SideOpening per _3d_SideOpenings[] entry, reused
     const clickables = {};              // object name -> what a click on it does (registerClickable)
     let clickElement = null;            // the element the click listener is on
+    // measurements: shown by the toolbar button or while the dimensions step is open; the focused field
+    let measurementsShown = false;
+    let measurementsInStep = false;
+    let measurementField = '';
+    let cameraAngle = 0;                // the camera's angle around the structure, degrees 0 ... 360 (label flipping)
+    let flipApp = null;                 // the app the label-flip callback runs in
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -1141,6 +1147,10 @@ function createPL(v3d = window.v3d) {
                 case 'RELOAD_3D':
                     cameraPosition();
                     break;
+                case 'SHOW_MEASUREMENTS':
+                    measurementsShown = !data.active;   // data.active is the state before the click
+                    enableMeasurements();
+                    break;
             }
         }
 
@@ -1150,10 +1160,17 @@ function createPL(v3d = window.v3d) {
         // The configurator opened a field (no data: closed it). A roof group label selects that filling / rafter;
         // the labels don't name a section, so they go to the first one.
         function handleFocus(data) {
+            const label = data ? String(data.uniqueLabel || '') : '';
+            // the dimensions step and its fields show the measurements, the focused field's bar highlighted
+            if (data) {
+                measurementsInStep = ["dimensions_step", "width_field", "depth_field", "height_field"].includes(label);
+                measurementField = label;
+                enableMeasurements();
+            }
+
             const section = structureSectionCache[0];
             if (!section)
                 return;
-            const label = data ? String(data.uniqueLabel || '') : '';
             if (!data)
                 section.select(null, -1);
             else if (label.startsWith('filling_group~'))
@@ -2276,6 +2293,118 @@ function createPL(v3d = window.v3d) {
         }
         //#endregion ---------------------------------------------------------------
 
+        //#region Measurements ---------------------------------------------------------------
+        // As legacy, on the GLB's own measurement objects: width and depth on the ground, the highest point and the
+        // walk-through height at the front corners, and with a horizontal screen its height at the front and the back.
+        // Each label exists twice (Text / TextFlipped): the one that reads right from the camera's side is shown, and
+        // switched as the camera turns (initMeasurementFlip). justFlip: only that switch.
+        function enableMeasurements(justFlip) {
+            const shown = measurementsShown || measurementsInStep;
+            const W = mm(sceneParameters.widthTotal), D = mm(sceneParameters.depthTotal);
+            const sections = sceneParameters.structureSections;
+            const H = Math.max(0, ...sections.map(section => mm(section.heightUnderGutter))) + 0.26;   // top of the crown
+            const screen = sections.length && sections[0].horizontalScreen ? sections[0].horizontalScreen.type : null;
+            const screenHeight = { zipper: { front: H + 0.07, back: H + 0.145 }, nonZipper: { front: H + 0.138, back: H + 0.138 },
+                bottomZipper: { front: H - 0.075, back: H - 0.16 } }[screen];
+            // each bar, and the camera angle from which its plain Text reads right (flipped: from the other side)
+            const bars = [
+                { name: "widthMeasurement", angle: 270, flipped: true },
+                { name: "depthMeasurement", angle: 180, flipped: true },
+                { name: "highestPointMeasurement", angle: 90, flipped: false },
+                { name: "WalkThroughHeightMeasurement", angle: 180, flipped: true },
+                { name: "HorizontalScreenHeightMeasurement", angle: 270, flipped: true, screen: true },
+                { name: "HorizontalScreenFrontMeasurement", angle: 180, flipped: true, screen: true },
+            ];
+            for (const bar of bars) {
+                const on = shown && (!bar.screen || Boolean(screenHeight));
+                const plain = isCameraBehind(bar.angle) == bar.flipped;
+                changeVis(bar.name, on);
+                changeVis(bar.name + "Text", on && plain);
+                changeVis(bar.name + "TextFlipped", on && !plain);
+            }
+            if (justFlip || !shown)
+                return;
+
+            const label = (name, metres) => updateTextObj([name + "Text", name + "TextFlipped"], Math.round(metres * 1000) + "mm");
+            setMorphFactor("widthMeasurement", 'Width', (W - 1) / 99);
+            setObjTransform("widthMeasurement", false, "position", ['', D, ''], false);
+            setObjTransform(["widthMeasurementText", "widthMeasurementTextFlipped"], false, "position", ['', '', -0.15], false);
+            label("widthMeasurement", W);
+
+            setMorphFactor("depthMeasurement", 'Depth', (D - 1) / 99);
+            setObjTransform("depthMeasurement", false, "position", [W / 2, 0, ''], false);
+            setObjTransform(["depthMeasurementText", "depthMeasurementTextFlipped"], false, "position", [W / 2, D / 2, -0.15], false);
+            label("depthMeasurement", D);
+
+            setMorphFactor("highestPointMeasurement", 'Height', (H - 1) / 99);
+            setObjTransform("highestPointMeasurement", false, "position", [W / 2, D, ''], false);
+            setObjTransform(["highestPointMeasurementText", "highestPointMeasurementTextFlipped"], false, "position", [W / 2 + 0.57, D, H / 2], false);
+            label("highestPointMeasurement", H);
+
+            setMorphFactor("WalkThroughHeightMeasurement", 'Height', (H - 0.26 - 1) / 99);
+            setObjTransform("WalkThroughHeightMeasurement", false, "position", [-W / 2 + 0.15, D, ''], false);
+            setObjTransform(["WalkThroughHeightMeasurementText", "WalkThroughHeightMeasurementTextFlipped"], false, "position", ['', '', H / 2], false);
+            label("WalkThroughHeightMeasurement", H - 0.26);
+
+            if (screenHeight) {
+                setMorphFactor("HorizontalScreenHeightMeasurement", 'Height', (screenHeight.back - 1) / 99);
+                setObjTransform("HorizontalScreenHeightMeasurement", false, "position", [W / 2, '', ''], false);
+                setObjTransform("HorizontalScreenHeightMeasurementText", false, "position", ['', '', H / 2], false);
+                setObjTransform("HorizontalScreenHeightMeasurementTextFlipped", false, "position", ['', '', (H + 0.15) / 2], false);
+                label("HorizontalScreenHeightMeasurement", screenHeight.back);
+
+                setMorphFactor("HorizontalScreenFrontMeasurement", 'Height', (screenHeight.front - 1) / 99);
+                setObjTransform("HorizontalScreenFrontMeasurement", false, "position", [W / 2, D, ''], false);
+                setObjTransform(["HorizontalScreenFrontMeasurementText", "HorizontalScreenFrontMeasurementTextFlipped"], false, "position", ['', '', screenHeight.front / 2], false);
+                label("HorizontalScreenFrontMeasurement", screenHeight.front);
+            }
+
+            // the focused dimension field's bar lights up
+            setMaterialValue("Measurements_Width", "Value", measurementField == "width_field" ? 1 : 0);
+            setMaterialValue("Measurements_Depth", "Value", measurementField == "depth_field" ? 1 : 0);
+            setMaterialValue("Measurements_Height", "Value", measurementField == "height_field" ? 1 : 0);
+        }
+
+        // Whether the camera looks at a label from behind: it stands in the half circle from `angle` to `angle` + 180°
+        // (as legacy isTextElementFlipped).
+        function isCameraBehind(angle) {
+            if (angle <= 180)
+                return cameraAngle > angle && cameraAngle < angle + 180;
+            return cameraAngle > angle || cameraAngle < angle - 180;
+        }
+
+        // Installed once: as the camera turns, the readable label of every shown measurement is picked again.
+        function initMeasurementFlip() {
+            if (flipApp === appInstance || !appInstance.renderCallbacks || !appInstance.controls || !appInstance.controls.getAzimuthalAngle)
+                return;
+            flipApp = appInstance;
+            appInstance.renderCallbacks.push(() => {
+                const angle = Math.round(appInstance.controls.getAzimuthalAngle() * 180 / Math.PI + 180);
+                if (angle == cameraAngle)
+                    return;
+                cameraAngle = angle;
+                if (measurementsShown || measurementsInStep)
+                    enableMeasurements(true);
+            });
+        }
+
+        // updateTextObject puzzle
+        function updateTextObj(objSelector, text) {
+            const objNames = retrieveObjectNames(objSelector);
+
+            for (let i = 0; i < objNames.length; i++) {
+                const objName = objNames[i];
+                if (!objName) continue;
+                const obj = getObjectByName(objName);
+                if (!obj || !obj.geometry || !obj.geometry.cloneWithText)
+                    continue;
+                const textGeom = obj.geometry;
+                obj.geometry = textGeom.cloneWithText(String(text));
+                textGeom.dispose();
+            }
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region Scene
         function enableScene() {
             clearScene();
@@ -2296,6 +2425,7 @@ function createPL(v3d = window.v3d) {
                 sideOpeningCache[i].enable(sides[i]);
             }
             enableLighting();
+            enableMeasurements();
             // outside frame colour: every profile shares the Powdercoat material
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
         }
@@ -2351,6 +2481,7 @@ function createPL(v3d = window.v3d) {
         getParameters();
         enableScene();
         initClicks();
+        initMeasurementFlip();
         takeSnapshot();
 
         if (!sceneIsInitialized) {
