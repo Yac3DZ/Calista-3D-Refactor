@@ -121,6 +121,10 @@ function createPL(v3d = window.v3d) {
     let measurementsInStep = false;
     let measurementField = '';
     let stepView = null;                // the camera view of the open configurator step (cameraPosition), null: the main view
+    // environment (house, ground, furniture): a second GLB, appended the first time it is shown
+    let environmentShown = false;
+    let environmentLoaded = false;
+    let environmentLoading = false;
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -1107,6 +1111,7 @@ function createPL(v3d = window.v3d) {
                 walls: Object.assign({ front: false, right: false, rear: false, left: false }, toObject(scope['_3d_walls'])),
                 colorOutside: scope['_3d_colorOutside'] || '#293133',
                 perspective: scope['_perspective'] || 'main',    // camera view for the snapshot / SSR
+                environmentFile: Array.isArray(scope['_3dFiles']) ? scope['_3dFiles'][0] : null,   // the environment GLB (as legacy)
             };
             // after the general values: sections and sides fall back on them
             sceneParameters.structureSections = toArray(scope['_3d_StructureSections']).map(getSectionParameters);
@@ -1185,6 +1190,10 @@ function createPL(v3d = window.v3d) {
                 case 'SHOW_MEASUREMENTS':
                     measurementsShown = !data.active;   // data.active is the state before the click
                     enableMeasurements();
+                    break;
+                case 'SHOW_ENVIRONMENT':
+                    environmentShown = !data.active;
+                    enableScene();
                     break;
             }
         }
@@ -2344,8 +2353,13 @@ function createPL(v3d = window.v3d) {
                 { name: "widthMeasurement" }, { name: "depthMeasurement" }, { name: "highestPointMeasurement" }, { name: "WalkThroughHeightMeasurement" },
                 { name: "HorizontalScreenHeightMeasurement", screen: true }, { name: "HorizontalScreenFrontMeasurement", screen: true },
             ];
-            for (const bar of bars)
-                changeVis([bar.name, bar.name + "Text", bar.name + "TextFlipped"], shown && (!bar.screen || Boolean(screenHeight)));
+            for (const bar of bars) {
+                // with the environment, width and depth go up on the crown (the ground is taken)
+                const onTop = environmentShown && (bar.name == "widthMeasurement" || bar.name == "depthMeasurement");
+                const on = shown && (!bar.screen || Boolean(screenHeight));
+                changeVis([bar.name, bar.name + "Text", bar.name + "TextFlipped"], on && !onTop);
+                changeVis([bar.name + "Top", bar.name + "TopText", bar.name + "TopTextFlipped"], on && onTop);
+            }
             if (!shown)
                 return;
 
@@ -2363,6 +2377,15 @@ function createPL(v3d = window.v3d) {
             setObjTransform("depthMeasurement", false, "position", [W / 2, 0, ''], false);
             setObjTransform(["depthMeasurementText", "depthMeasurementTextFlipped"], false, "position", [W / 2, D / 2, -0.15], false);
             label("depthMeasurement", D);
+
+            setMorphFactor("widthMeasurementTop", 'Width', (W - 1) / 99);
+            setObjTransform("widthMeasurementTop", false, "position", ['', D, H], false);
+            setObjTransform(["widthMeasurementTopText", "widthMeasurementTopTextFlipped"], false, "position", ['', D, H + 0.35], false);
+            label("widthMeasurementTop", W);
+            setMorphFactor("depthMeasurementTop", 'Depth', (D - 1) / 99);
+            setObjTransform("depthMeasurementTop", false, "position", [W / 2, 0, H], false);
+            setObjTransform(["depthMeasurementTopText", "depthMeasurementTopTextFlipped"], false, "position", [W / 2, D / 2, H + 0.35], false);
+            label("depthMeasurementTop", D);
 
             setMorphFactor("highestPointMeasurement", 'Height', (H - 1) / 99);
             setObjTransform("highestPointMeasurement", false, "position", [W / 2, D, ''], false);
@@ -2410,6 +2433,112 @@ function createPL(v3d = window.v3d) {
         }
         //#endregion ---------------------------------------------------------------
 
+        //#region Environment ---------------------------------------------------------------
+        // As legacy (the modern house): the house and its ground around the structure, furniture that fits, and the house
+        // walls from _3d_walls. Everything but the rear wall comes from environment.glb (_3dFiles[0]), appended the first
+        // time the environment is shown. Without the environment, the house walls are transparent (the rear one from the
+        // main GLB); with it, the house is the rear wall.
+        function enableEnvironment() {
+            const W = mm(sceneParameters.widthTotal), D = mm(sceneParameters.depthTotal);
+            const gutter = Math.max(0, ...sceneParameters.structureSections.map(section => mm(section.heightUnderGutter)));
+            const walls = sceneParameters.walls;
+            if (environmentShown && !environmentLoaded) {
+                loadEnvironment();
+                if (environmentLoaded)   // loaded at once (from the cache): the scene was just built again with it
+                    return;
+            }
+            const shown = environmentShown && environmentLoaded;
+
+            // the rear wall without the environment
+            setMorphFactor("Rear Wall_standalone", 'Width', (W - 1 + 0.4) / 99);
+            setMorphFactor("Rear Wall_standalone", 'Height', (gutter - 1 + 0.5) / 99);
+            changeVis("Rear Wall_standalone", walls.rear && !shown);
+            if (!environmentLoaded)
+                return;
+
+            // the other house walls: the house's own with the environment, transparent without
+            const noFront = walls.front ? 0 : 0.5;
+            setObjTransform(["Left Wall_modern", "Left Wall Transparent"], false, "position", [W / 2, 0, ''], false);
+            setObjTransform(["Right Wall_modern", "Right Wall Transparent"], false, "position", [-W / 2, 0, ''], false);
+            setObjTransform("Front Wall", false, "position", [0, D, ''], false);
+            setMorphFactor(["Left Wall_modern", "Right Wall_modern", "Left Wall Transparent", "Right Wall Transparent"], 'Depth', (D - 1 + noFront) / 99);
+            for (const wall of ["Left Wall_modern", "Right Wall_modern", "Left Wall Transparent", "Right Wall Transparent", "Front Wall"]) {
+                setMorphFactor(wall, 'Height', shown ? 2.05 / 99 : (gutter - 1 + 0.5) / 99);
+                setMorphFactor(wall, 'Zero height', shown ? 0 : 1);
+            }
+            setMorphFactor("Front Wall", 'Width', (W - 1 + 0.4) / 99);
+            changeVis("Left Wall_modern", walls.left && shown);
+            changeVis("Right Wall_modern", walls.right && shown);
+            changeVis("Left Wall Transparent", walls.left && !shown);
+            changeVis("Right Wall Transparent", walls.right && !shown);
+            changeVis("Front Wall", walls.front);
+            if (!shown)
+                return;
+
+            // the house and its ground: right behind a wall-mounted structure, 10.5 m back from a freestanding one
+            const back = sceneParameters.isFreeStanding ? -10.5 : 0;
+            setObjTransform(["House_modern", "Ground_modern"], false, "position", ['', back, 0], false);
+            setMorphFactor("House_modern", 'Driveway', 0);
+            setMorphFactor("Ground_modern", 'Deck', sceneParameters.isFreeStanding ? 0.3 : 0);
+            setMorphFactor("Ground_modern", 'Distance front', sceneParameters.isFreeStanding ? 0.3 : (D + 1.5) / 10);
+            setMorphFactor("Ground_modern", 'Distance rear', sceneParameters.isFreeStanding ? (D - 0.5) / 10 : 0);
+            setMorphFactor("Ground_modern", 'Extra environment depth', D > 7 ? (D - 7) / 10 : 0);
+            setMorphFactor("Furniture_modern_pool_rear", 'Distance front', (D + 2) / 10);
+            changeVis(["Ground_modern", "House_modern", "House_modern_facade", "House_modern_roof"], true);
+            changeVis("Furniture_modern_pool_front", sceneParameters.isFreeStanding);
+            houseFacade(W, gutter);
+
+            // furniture that fits under / around the structure
+            changeVis("Furniture_modern_veranda_23", W > 4.2 && D > 2.3);
+            changeVis("Furniture_modern_veranda_32", W > 4.2 && D > 3.2);
+            changeVis("Furniture_modern_umbrella", W < 9.2);
+            changeVis("Furniture_modern_pots", W < 10.8);
+        }
+
+        // The house front's windows around the structure's width, and its window height over the structure (legacy).
+        function houseFacade(W, gutter) {
+            const facade = W < 5.5 ? [(W - 1.5) / 20, 0.1, 0.15, 0.08, 0.1]
+                : W < 7.4 ? [0.175, 0.05, 0.05, 0.05, 0.05]
+                : W < 8.5 ? [0.175, 0.07, 0.07, 0.02, 0.02]
+                : W < 9.3 ? [0.175, 0.03, 0.03, 0, 0]
+                : [0.175, 0.03, 0.3, 0.03, 0.2];
+            ['Center width', 'Left width', 'Left distance', 'Right width', 'Right distance'].forEach((morph, k) =>
+                setMorphFactor("House_modern_facade", morph, facade[k]));
+            setMorphFactor("House_modern", 'Window height', gutter > 4.8 ? 0.8 : gutter >= 3.3 ? (gutter - 3.3) / 2 : 0);
+        }
+
+        // Append environment.glb once; then build the scene again with it.
+        function loadEnvironment() {
+            if (environmentLoading || !sceneParameters.environmentFile) {
+                if (!sceneParameters.environmentFile)
+                    console.warn('[Calista 3D] no environment file (_3dFiles[0]) in the scope');
+                return;
+            }
+            environmentLoading = true;
+            appendScene(sceneParameters.environmentFile, "Environment", false, false, function () {
+                environmentLoaded = true;
+                enableScene();
+            }, function () { }, function () {
+                environmentLoading = false;
+                console.warn('[Calista 3D] the environment file could not be loaded:', sceneParameters.environmentFile);
+            });
+        }
+
+        // appendScene puzzle
+        function appendScene(url, sceneName, loadCameras, loadLights, loadCb, progCb, errorCb) {
+            _pGlob.percentage = 0;
+
+            appInstance.appendScene(url, function (loadedScene) {
+                loadedScene.name = sceneName;
+                _pGlob.percentage = 100;
+                loadCb();
+            }, function (percentage) {
+                _pGlob.percentage = percentage;
+                progCb();
+            }, errorCb, loadCameras, loadLights);
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region Scene
         function enableScene() {
             clearScene();
@@ -2430,6 +2559,7 @@ function createPL(v3d = window.v3d) {
                 sideOpeningCache[i].enable(sides[i]);
             }
             enableLighting();
+            enableEnvironment();
             enableMeasurements();
             // outside frame colour: every profile shares the Powdercoat material
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
