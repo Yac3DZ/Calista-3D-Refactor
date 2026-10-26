@@ -6,6 +6,14 @@
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
 const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
 
+// The configurator's side steps and fields, and the camera view each one turns to (as legacy; check these ids and
+// labels when the configurator changes)
+const STEP_VIEWS = {
+    '0b6319e5cf034ee3b60df7fc13b27412': 'left', '49d117e0f820471da9864895f81fca81': 'right',
+    'eff99be6146d44e4ac4efba7dc0c0646': 'front', 'bb7c1e530ea2474692f4dd5affec1ff6': 'rear',
+};
+const FOCUS_VIEWS = { left: 'left', opti_2: 'right', opti_1: 'front', opti_3: 'rear', roof: 'top' };
+
 // Convert from mm to m
 function mm(value) {
     return value / 1000;
@@ -112,6 +120,7 @@ function createPL(v3d = window.v3d) {
     let measurementsShown = false;
     let measurementsInStep = false;
     let measurementField = '';
+    let stepView = null;                // the camera view of the open configurator step (cameraPosition), null: the main view
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -1180,7 +1189,12 @@ function createPL(v3d = window.v3d) {
             }
         }
 
+        // A step opens: a side step turns the camera to that side; another step leaves the camera where it is.
         function handleEvents(data) {
+            const view = data && data.step ? STEP_VIEWS[data.step.id] : null;
+            stepView = view || null;
+            if (view)
+                cameraPosition();
         }
 
         // The configurator opened a field (no data: closed it). A roof group label selects that filling / rafter;
@@ -1192,6 +1206,12 @@ function createPL(v3d = window.v3d) {
                 measurementsInStep = ["dimensions_step", "width_field", "depth_field", "height_field"].includes(label);
                 measurementField = label;
                 enableMeasurements();
+            }
+
+            // a side's (or the roof's) field turns the camera to it
+            if (data && FOCUS_VIEWS[label]) {
+                stepView = FOCUS_VIEWS[label];
+                cameraPosition();
             }
 
             const section = structureSectionCache[0];
@@ -1212,38 +1232,26 @@ function createPL(v3d = window.v3d) {
         //#region Camera ---------------------------------------------------------------------
         // Frame the structure: ScaleCube (a 1 m cube in the GLB, origin at its bottom) is wrapped around it,
         // Camerapos / Cameratarget give the viewing direction, fitCameraToObjects zooms until it fits.
-        // The direction depends on the perspective the configurator asks for (_perspective, e.g. for the SSR).
+        // The direction: the open side step's view (stepView), else the perspective the configurator asks for
+        // (_perspective, e.g. for the SSR). A side view looks at that side from 8 m out, a bit above (legacy).
         function cameraPosition(onFinish) {
             const section = sceneParameters.structureSections[0];
             const width = mm(sceneParameters.widthTotal);
             const depth = mm(sceneParameters.depthTotal);
             const totalHeight = section ? mm(section.heightUnderGutter) + 0.26 : 2.76;   // + crown beam height
             const size = (width + depth + totalHeight) / 10;
-            let camPosX, camPosY, camPosZ;
+            const views = {
+                main: [width + size + 2, width + size + 8, totalHeight + size + 2],
+                perspective: [width + size + 5, width + size + 8, totalHeight + size + 2],
+                side: [-(width + 8), depth / 2, totalHeight / 2],
+                front: [0, depth + 8, totalHeight / 2],
+                top: [0, depth / 2, totalHeight + 16],
+                left: [width / 2 + 8, depth / 2, totalHeight],
+                right: [-(width / 2 + 8), depth / 2, totalHeight],
+                rear: [0, -8, totalHeight],
+            };
 
-            if (sceneParameters.perspective == "perspective") {
-                camPosX = width + size + 5;
-                camPosY = width + size + 8;
-                camPosZ = totalHeight + size + 2;
-            } else if (sceneParameters.perspective == "side") {
-                camPosX = -(width + 8);
-                camPosY = depth / 2;
-                camPosZ = totalHeight / 2;
-            } else if (sceneParameters.perspective == "front") {
-                camPosX = 0;
-                camPosY = depth + 8;
-                camPosZ = totalHeight / 2;
-            } else if (sceneParameters.perspective == "top") {
-                camPosX = 0;
-                camPosY = depth / 2;
-                camPosZ = totalHeight + 16;
-            } else { // default + "main"
-                camPosX = width + size + 2;
-                camPosY = width + size + 8;
-                camPosZ = totalHeight + size + 2;
-            }
-
-            setObjTransform("Camerapos", false, "position", [camPosX, camPosY, camPosZ], false);
+            setObjTransform("Camerapos", false, "position", views[stepView || sceneParameters.perspective] || views.main, false);
             setObjTransform("Cameratarget", false, "position", [0, depth / 2, totalHeight / 2], false);
             setObjTransform("ScaleCube", false, "position", [0, depth / 2, 0], false);
             setObjTransform("ScaleCube", false, "scale", [width, depth, totalHeight], false);
