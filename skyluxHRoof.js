@@ -2735,15 +2735,6 @@ function createPL(v3d = window.v3d) {
                 applyDayNight.worldStep = step;
                 setMaterialValue("Verge3D_Environment_World", "Value", day.world + (night.world - day.world) * step);
             }
-            // the lights' glow (the bloom puzzle's pass, added once): it grows in with the night, off by day
-            const bloom = { threshold: 1, strength: 1, radius: 0.4 };
-            if (blend > 0 && appInstance.enablePostprocessing && !(appInstance.postprocessing && appInstance.postprocessing.bloomPass))
-                appInstance.enablePostprocessing([{ type: 'bloom', threshold: bloom.threshold, strength: 0, radius: bloom.radius }]);
-            const bloomPass = appInstance.postprocessing && appInstance.postprocessing.bloomPass;
-            if (bloomPass) {
-                bloomPass.strength = bloom.strength * blend;
-                bloomPass.enabled = blend > 0;
-            }
         }
         function lightIntensity(lightName, intensity) {
             var areaLight = getObjectByName(lightName);
