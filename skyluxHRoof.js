@@ -131,9 +131,6 @@ function createPL(v3d = window.v3d) {
     let isNight = false;                // the day / night button: the sun turns into a moon, the world dims
     let nightBlend = 0;                 // where the fade is: 0 day ... 1 night
     let stopDayNightFade = null;        // set while it fades
-    let environmentInView = [];         // the environment's parts that may hide when they block the camera's view
-    let viewCheckedFrom = null;         // the camera position they were last checked from
-    let viewCheckApp = null;            // the app the view check runs in
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -1710,20 +1707,21 @@ function createPL(v3d = window.v3d) {
                     }
 
                     // a top screen covers the whole section, on the beams; the bottom one sits inside the beams, against
-                    // them: 0.188 m in at the sides and the rear, 0.21 m at the front (the gutter is deeper), its underside
-                    // level with theirs (its frame is modelled 0.419 m under the top, the beams are 0.26 m high)
+                    // their lower faces: 0.152 m in at the sides, 0.15 m at the rear, 0.21 m at the front gutter; its
+                    // frame (modelled 0.419 m under the top) is raised 0.075 m
                     const inside = types[t].type == "bottomZipper";
-                    const width = inside ? this.width - 2 * 0.188 : this.width;
-                    const depth = inside ? this.depth - 0.188 - 0.21 : this.depth;
-                    const y = inside ? (0.188 - 0.21) / 2 : 0;
-                    const z = this.totalHeight + (inside ? 0.419 - 0.26 : 0);
+                    const width = inside ? this.width - 2 * 0.152 : this.width;
+                    const depth = inside ? this.depth - 0.15 - 0.21 : this.depth;
+                    const y = inside ? -(this.depth - depth) / 2 + 0.15 : 0;   // the rear edge 0.15 m in
+                    const z = this.totalHeight + (inside ? 0.075 : 0);
                     const widthMorph = (width - 1) / 100;
                     const name = getCachedClone(this.screenCache, t, types[t].screen, this.anchor);
                     setObjTransform(name, false, "position", [0, y, z], false);
                     setMorphFactor(name, 'Width', widthMorph);
                     setMorphFactor(name, 'Depth', (depth - 1) / 100);
-                    // the fabric rolls up over the depth minus 0.25 m (the bottom screen also minus the corner posts), as legacy
-                    this.screenOpeningMorph = ((this.depth - 0.25 - (types[t].type == "bottomZipper" ? 2 * 0.15 : 0)) / 99) / 100;
+                    // the fabric rolls up over the depth minus 0.25 m (the bottom screen also minus the corner posts and
+                    // 0.1 m, so it stops short of its cassette), as legacy
+                    this.screenOpeningMorph = ((this.depth - 0.25 - (inside ? 2 * 0.15 + 0.1 : 0)) / 99) / 100;
                     this.activeScreen = name;
                     this.setHorizontalScreenOpening();
                     registerClickable(name, () => this.toggleHorizontalScreen());
@@ -2496,8 +2494,6 @@ function createPL(v3d = window.v3d) {
                     return;
             }
             const shown = environmentShown && environmentLoaded;
-            if (!shown)
-                environmentInView = [];
 
             // the rear wall without the environment
             setMorphFactor("Rear Wall_standalone", 'Width', (W - 1 + 0.4) / 99);
@@ -2543,45 +2539,6 @@ function createPL(v3d = window.v3d) {
             changeVis("Furniture_modern_veranda_32", W > 4.2 && D > 3.2);
             changeVis("Furniture_modern_umbrella", W < 9.2);
             changeVis("Furniture_modern_pots", W < 10.8);
-
-            // the building's parts may hide when they block the view (not the ground nor the furniture): checked again at the next frame
-            environmentInView = ["House_modern", "House_modern_facade", "House_modern_roof", "Left Wall_modern", "Right Wall_modern", "Front Wall"]
-                .filter(name => getObjectByName(name) && getObjectByName(name).visible);
-            viewCheckedFrom = null;
-        }
-
-        // Installed once: at every frame the camera has moved, the building's parts between the camera and what it looks
-        // at (the orbit target) are hidden, and the others shown again, so the camera never looks through a wall. One ray
-        // from the target to the camera; it also hits hidden parts, so they come back once out of the way.
-        function initEnvironmentView() {
-            if (viewCheckApp === appInstance || !appInstance.renderCallbacks)
-                return;
-            viewCheckApp = appInstance;
-            const raycaster = new v3d.Raycaster();
-            raycaster.params.checkVisibility = false;
-            appInstance.renderCallbacks.push(() => {
-                const camera = appInstance.getCamera(true), controls = appInstance.controls;
-                if (!environmentInView.length || !camera || !controls || !(controls.targetObj || controls.target))
-                    return;
-                const from = camera.getWorldPosition(new v3d.Vector3());
-                if (viewCheckedFrom && viewCheckedFrom.distanceTo(from) < 0.01)
-                    return;
-                viewCheckedFrom = from;
-                const target = controls.targetObj ? controls.targetObj.getWorldPosition(new v3d.Vector3()) : controls.target.clone();
-                const toCamera = from.clone().sub(target);
-                raycaster.set(target, toCamera.clone().normalize());
-                raycaster.far = toCamera.length();
-                const parts = environmentInView.map(name => getObjectByName(name)).filter(Boolean);
-                const blocking = new Set();
-                for (const hit of raycaster.intersectObjects(parts, true))
-                    for (let obj = hit.object; obj; obj = obj.parent)
-                        if (environmentInView.includes(obj.name)) {
-                            blocking.add(obj.name);
-                            break;
-                        }
-                for (const name of environmentInView)
-                    changeVis(name, !blocking.has(name));
-            });
         }
 
         // The house front's windows around the structure's width, and its window height over the structure (legacy).
@@ -2818,7 +2775,6 @@ function createPL(v3d = window.v3d) {
             getParameters();
             enableScene();
             initClicks();
-            initEnvironmentView();
             initDayNightButton();
         }
         catch (error) {
