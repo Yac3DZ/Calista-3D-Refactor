@@ -138,7 +138,7 @@ function createPL(v3d = window.v3d) {
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
         PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache, clickables };
 
-        
+
 
         // #region Custom functions
         function keepTextFront(objName) {
@@ -164,7 +164,7 @@ function createPL(v3d = window.v3d) {
         }
 
         //#region Verge3D 4.13 helpers
-        
+
         function getObjectByName(objName) {
             let objFound = null;
             const isID = v3d.MathUtils.checkUUID ? v3d.MathUtils.checkUUID(objName) : false;
@@ -657,7 +657,7 @@ function createPL(v3d = window.v3d) {
 
                 if (Number.isInteger(matIndex)) {
                     if (matIndex >= 1 && matIndex <= objsM.length) {
-                        obj = objsM[matIndex-1];
+                        obj = objsM[matIndex - 1];
                     } else {
                         console.error('get object material puzzle: invalid material index ' + matIndex);
                         continue;
@@ -714,7 +714,7 @@ function createPL(v3d = window.v3d) {
         function setMaterialColor(matSelector, colName, r, g, b, cssCode) {
             const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
 
-            matNames.forEach(function(matName) {
+            matNames.forEach(function (matName) {
                 const colors = getMaterialEditableColors(matName);
                 if (colors.indexOf(colName) < 0)
                     return;
@@ -758,7 +758,7 @@ function createPL(v3d = window.v3d) {
         function setMaterialValue(matSelector, valName, value) {
             const matNames = Array.isArray(matSelector) ? matSelector : [matSelector];
 
-            matNames.forEach(function(matName) {
+            matNames.forEach(function (matName) {
                 const values = getMaterialEditableValues(matName);
                 if (values.indexOf(valName) < 0)
                     return;
@@ -1261,11 +1261,11 @@ function createPL(v3d = window.v3d) {
                 main: [width + size + 2, width + size + 8, totalHeight + size + 2],
                 perspective: [width + size + 5, width + size + 8, totalHeight + size + 2],
                 side: [-(width + 8), depth / 2, totalHeight / 2],
-                front: [0, depth + 8, totalHeight / 1.4],
+                front: [0, depth + 8, totalHeight / 1.25],
                 top: [0, depth / 2, totalHeight + 16],
                 left: [width / 2 + 8, depth / 2, totalHeight],
                 right: [-(width / 2 + 8), depth / 2, totalHeight],
-                rear: [0, -8, totalHeight],
+                rear: [0, -8, totalHeight / 1.25],
             };
 
             setObjTransform("Camerapos", false, "position", views[stepView || sceneParameters.perspective] || views.main, false);
@@ -1818,10 +1818,13 @@ function createPL(v3d = window.v3d) {
                 this.ledStripCache = [];
                 this.ledPlugCache = [];
                 this.verticalSunblindCache = [];   // per bay, a builtIn vertical sunblind
+                this.ledLightCache = [];           // per bay, the light of its LED strip
                 this.wallCrownCache = [];          // per bay, the fixed wall's top piece in the crown
                 // the fixed walls' parts, all bays of the side together (see enableFixedWalls)
-                this.wallCaches = { glass: [], white: [], anthracite: [], top: [], bottom: [], start: [], mid: [], end: [], doorway: [],
-                    exterior: [], interior: [], frame: [], woodEnd: [] };
+                this.wallCaches = {
+                    glass: [], white: [], anthracite: [], top: [], bottom: [], start: [], mid: [], end: [], doorway: [],
+                    exterior: [], interior: [], frame: [], woodEnd: []
+                };
                 this.woodCuts = [];          // the cut last boards: { name, key } (see cutBoard)
                 this.woodCutSourceCache = [];   // the uncut board and the cutter a cut is made from
                 this.woodCutterCache = [];
@@ -2213,13 +2216,26 @@ function createPL(v3d = window.v3d) {
                         setMorphFactor(name, 'Width', widthMorph);
                     }
 
-                    // the LED strip's colour, on its own material copy (by UUID), like the rafter strips
+                    // the LED strip's colour, on its own material copy (by UUID), like the rafter strips, and its light: an area
+                    // light under the groove (0.14 m in from the outer face, at the crown's underside), as long as the bay
                     if (isBuiltIn(bays[i].ledStrip)) {
-                        if (bays[i].ledStrip.color)
-                            setMaterialColor(getObjectMaterial(this.ledStripCache[i], 1, true), 'Color', 0, 0, 0, bays[i].ledStrip.color);
+                        const color = bays[i].ledStrip.color;
+                        if (color)
+                            setMaterialColor(getObjectMaterial(this.ledStripCache[i], 1, true), 'Color', 0, 0, 0, color);
                         this.ledStripCount++;
+                        const light = getCachedClone(this.ledLightCache, i, "Horizontal_Gutter_Front_Light_Source.0", this.crownAnchor);
+                        if (light) {
+                            setObjTransform(light, false, "position", [-x, -0.14, -0.261], false);
+                            const area = getObjectByName(light);
+                            area.height = mm(num(bay.length, 1000));
+                            if (color)
+                                area.color.set(color);
+                        }
                     }
+                    else
+                        changeVis(this.ledLightCache[i], false);
                 }
+                hideCachedClones(this.ledLightCache, bays.length);
 
                 for (const a of accessories)
                     hideCachedClones(a.cache, bays.length);
@@ -2286,7 +2302,7 @@ function createPL(v3d = window.v3d) {
                 const bays = this.side.bays;
                 const faces = kind == "intermediate" ? { End: this.bayNextTo(bays, position, -1), Start: this.bayNextTo(bays, position, 1) }
                     : isEnd ? { Inward: this.bayNextTo(bays, position, -1), Along: this.neighbourBay(true) }
-                    : { Along: this.bayNextTo(bays, position, 1), Inward: this.neighbourBay(false) };
+                        : { Along: this.bayNextTo(bays, position, 1), Inward: this.neighbourBay(false) };
                 const rails = {};
                 for (const face in faces) {
                     const bay = faces[face];
@@ -2356,8 +2372,10 @@ function createPL(v3d = window.v3d) {
             const sections = sceneParameters.structureSections;
             const H = Math.max(0, ...sections.map(section => mm(section.heightUnderGutter))) + 0.26;   // top of the crown
             const screen = sections.length && sections[0].horizontalScreen ? sections[0].horizontalScreen.type : null;
-            const screenHeight = { zipper: { front: H + 0.07, back: H + 0.145 }, nonZipper: { front: H + 0.138, back: H + 0.138 },
-                bottomZipper: { front: H - 0.075, back: H - 0.16 } }[screen];
+            const screenHeight = {
+                zipper: { front: H + 0.07, back: H + 0.145 }, nonZipper: { front: H + 0.138, back: H + 0.138 },
+                bottomZipper: { front: H - 0.075, back: H - 0.16 }
+            }[screen];
             const bars = [
                 { name: "widthMeasurement" }, { name: "depthMeasurement" }, { name: "highestPointMeasurement" }, { name: "WalkThroughHeightMeasurement" },
                 { name: "HorizontalScreenHeightMeasurement", screen: true }, { name: "HorizontalScreenFrontMeasurement", screen: true },
@@ -2549,9 +2567,9 @@ function createPL(v3d = window.v3d) {
         function houseFacade(W, gutter) {
             const facade = W < 5.5 ? [(W - 1.5) / 20, 0.1, 0.15, 0.08, 0.1]
                 : W < 7.4 ? [0.175, 0.05, 0.05, 0.05, 0.05]
-                : W < 8.5 ? [0.175, 0.07, 0.07, 0.02, 0.02]
-                : W < 9.3 ? [0.175, 0.03, 0.03, 0, 0]
-                : [0.175, 0.03, 0.3, 0.03, 0.2];
+                    : W < 8.5 ? [0.175, 0.07, 0.07, 0.02, 0.02]
+                        : W < 9.3 ? [0.175, 0.03, 0.03, 0, 0]
+                            : [0.175, 0.03, 0.3, 0.03, 0.2];
             ['Center width', 'Left width', 'Left distance', 'Right width', 'Right distance'].forEach((morph, k) =>
                 setMorphFactor("House_modern_facade", morph, facade[k]));
             setMorphFactor("House_modern", 'Window height', gutter > 4.8 ? 0.8 : gutter >= 3.3 ? (gutter - 3.3) / 2 : 0);
