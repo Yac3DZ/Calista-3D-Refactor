@@ -2575,6 +2575,23 @@ function createPL(v3d = window.v3d) {
             setMorphFactor("House_modern", 'Window height', gutter > 4.8 ? 0.8 : gutter >= 3.3 ? (gutter - 3.3) / 2 : 0);
         }
 
+        // Without the environment there is no ground: an invisible floor under the structure that only shows the shadows
+        // falling on it (made once; three.js frame: the plane is turned flat and sized in its own X / Y).
+        function enableShadowCatcher() {
+            let floor = getObjectByName("Shadow catcher");
+            if (!floor) {
+                floor = new v3d.Mesh(new v3d.PlaneGeometry(1, 1), new v3d.ShadowMaterial({ opacity: 0.25 }));
+                floor.name = "Shadow catcher";
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                appInstance.scene.add(floor);
+            }
+            const W = mm(sceneParameters.widthTotal), D = mm(sceneParameters.depthTotal);
+            floor.scale.set(W + 10, D + 10, 1);
+            setObjTransform("Shadow catcher", false, "position", [0, D / 2, 0.001], false);
+            changeVis("Shadow catcher", !(environmentShown && environmentLoaded));
+        }
+
         // Append environment.glb once; then build the scene again with it. Meanwhile the configurator's loader shows the
         // progress (as at the start); it gets 100 at the end, also when the file fails, so it never stays open.
         function loadEnvironment() {
@@ -2635,6 +2652,7 @@ function createPL(v3d = window.v3d) {
             }
             enableLighting();
             enableEnvironment();
+            enableShadowCatcher();
             enableMeasurements();
             // outside frame colour: every profile shares the Powdercoat material
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
