@@ -125,6 +125,9 @@ function createPL(v3d = window.v3d) {
     let environmentShown = false;
     let environmentLoaded = false;
     let environmentLoading = false;
+    let environmentInView = [];         // the environment's parts that may hide when they block the camera's view
+    let viewCheckedFrom = null;         // the camera position they were last checked from
+    let viewCheckApp = null;            // the app the view check runs in
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -1258,7 +1261,7 @@ function createPL(v3d = window.v3d) {
                 main: [width + size + 2, width + size + 8, totalHeight + size + 2],
                 perspective: [width + size + 5, width + size + 8, totalHeight + size + 2],
                 side: [-(width + 8), depth / 2, totalHeight / 2],
-                front: [0, depth + 8, totalHeight / 2],
+                front: [0, depth + 8, totalHeight / 1.4],
                 top: [0, depth / 2, totalHeight + 16],
                 left: [width / 2 + 8, depth / 2, totalHeight],
                 right: [-(width / 2 + 8), depth / 2, totalHeight],
@@ -1543,7 +1546,6 @@ function createPL(v3d = window.v3d) {
                 this.yPos = mm(section.yPos);
 
                 setObjTransform(this.anchor, false, "position", [this.xPos, this.yPos, 0], false);
-                changeVis(this.anchor, true);   // the shadow pass skips everything under a hidden object (the render does not)
                 this.enableCrown();
                 this.enableRafters(section.rafters);
                 this.enableRoofFillings(section.roofFillings);
@@ -1842,7 +1844,6 @@ function createPL(v3d = window.v3d) {
                 this.side = side;   // to find the neighbouring sides (poleRails)
                 this.length = mm(side.length);
                 setObjTransform(this.anchor, false, "position", [mm(side.xPos), mm(side.yPos), 0], false);
-                changeVis([this.anchor, this.crownAnchor], true);   // the shadow pass skips everything under a hidden object
                 setObjTransform(this.anchor, false, "rotation", [0, 0, 90 - side.rotation], false);   // left 0 -> X along +Y
                 setObjTransform(this.crownAnchor, false, "position", [0, 0, mm(side.height) + 0.26], false);   // top of the crown, like the beams
                 setObjTransform(this.crownAnchor, false, "rotation", [0, 0, 180], false);
@@ -2456,6 +2457,8 @@ function createPL(v3d = window.v3d) {
                     return;
             }
             const shown = environmentShown && environmentLoaded;
+            if (!shown)
+                environmentInView = [];
 
             // the rear wall without the environment
             setMorphFactor("Rear Wall_standalone", 'Width', (W - 1 + 0.4) / 99);
@@ -2501,6 +2504,45 @@ function createPL(v3d = window.v3d) {
             changeVis("Furniture_modern_veranda_32", W > 4.2 && D > 3.2);
             changeVis("Furniture_modern_umbrella", W < 9.2);
             changeVis("Furniture_modern_pots", W < 10.8);
+
+            // the building's parts may hide when they block the view (not the ground nor the furniture): checked again at the next frame
+            environmentInView = ["House_modern", "House_modern_facade", "House_modern_roof", "Left Wall_modern", "Right Wall_modern", "Front Wall"]
+                .filter(name => getObjectByName(name) && getObjectByName(name).visible);
+            viewCheckedFrom = null;
+        }
+
+        // Installed once: at every frame the camera has moved, the building's parts between the camera and what it looks
+        // at (the orbit target) are hidden, and the others shown again, so the camera never looks through a wall. One ray
+        // from the target to the camera; it also hits hidden parts, so they come back once out of the way.
+        function initEnvironmentView() {
+            if (viewCheckApp === appInstance || !appInstance.renderCallbacks)
+                return;
+            viewCheckApp = appInstance;
+            const raycaster = new v3d.Raycaster();
+            raycaster.params.checkVisibility = false;
+            appInstance.renderCallbacks.push(() => {
+                const camera = appInstance.getCamera(true), controls = appInstance.controls;
+                if (!environmentInView.length || !camera || !controls || !(controls.targetObj || controls.target))
+                    return;
+                const from = camera.getWorldPosition(new v3d.Vector3());
+                if (viewCheckedFrom && viewCheckedFrom.distanceTo(from) < 0.01)
+                    return;
+                viewCheckedFrom = from;
+                const target = controls.targetObj ? controls.targetObj.getWorldPosition(new v3d.Vector3()) : controls.target.clone();
+                const toCamera = from.clone().sub(target);
+                raycaster.set(target, toCamera.clone().normalize());
+                raycaster.far = toCamera.length();
+                const parts = environmentInView.map(name => getObjectByName(name)).filter(Boolean);
+                const blocking = new Set();
+                for (const hit of raycaster.intersectObjects(parts, true))
+                    for (let obj = hit.object; obj; obj = obj.parent)
+                        if (environmentInView.includes(obj.name)) {
+                            blocking.add(obj.name);
+                            break;
+                        }
+                for (const name of environmentInView)
+                    changeVis(name, !blocking.has(name));
+            });
         }
 
         // The house front's windows around the structure's width, and its window height over the structure (legacy).
@@ -2571,6 +2613,22 @@ function createPL(v3d = window.v3d) {
             enableMeasurements();
             // outside frame colour: every profile shares the Powdercoat material
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
+            showParentsOfShown();
+        }
+
+        // The render draws an object by its own visible flag, but the shadow pass skips everything under a hidden object.
+        // So show the empties, groups and proxy nodes above every shown part (our anchors, environment.glb's root):
+        // they draw nothing. A multi-material object stays as it is: its material sub-meshes follow it.
+        function showParentsOfShown() {
+            const shown = [];
+            appInstance.scene.traverse(obj => {
+                if (obj.visible && obj.isMesh && !obj.isMaterialGeneratedMesh)
+                    shown.push(obj);
+            });
+            for (const obj of shown)
+                for (let parent = obj.parent; parent && parent !== appInstance.scene; parent = parent.parent)
+                    if (!parent.geometry && !parent.children.some(child => child.isMaterialGeneratedMesh))
+                        parent.visible = true;
         }
 
         // LEDs in the roof or in the crown turn on the Spot light under the roof and dim the sun (legacy changeWorldLightForLED
@@ -2625,6 +2683,7 @@ function createPL(v3d = window.v3d) {
         getParameters();
         enableScene();
         initClicks();
+        initEnvironmentView();
         takeSnapshot();
 
         if (!sceneIsInitialized) {
