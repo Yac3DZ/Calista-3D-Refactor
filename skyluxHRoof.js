@@ -1709,15 +1709,17 @@ function createPL(v3d = window.v3d) {
                         continue;
                     }
 
-                    // a top screen covers the whole section, on the beams; the bottom one hangs under the roof, inside
-                    // the beams: 0.188 m in at the sides and the rear, 0.21 m at the front (the gutter is deeper)
+                    // a top screen covers the whole section, on the beams; the bottom one sits inside the beams, against
+                    // them: 0.188 m in at the sides and the rear, 0.21 m at the front (the gutter is deeper), its underside
+                    // level with theirs (its frame is modelled 0.419 m under the top, the beams are 0.26 m high)
                     const inside = types[t].type == "bottomZipper";
                     const width = inside ? this.width - 2 * 0.188 : this.width;
                     const depth = inside ? this.depth - 0.188 - 0.21 : this.depth;
                     const y = inside ? (0.188 - 0.21) / 2 : 0;
+                    const z = this.totalHeight + (inside ? 0.419 - 0.26 : 0);
                     const widthMorph = (width - 1) / 100;
                     const name = getCachedClone(this.screenCache, t, types[t].screen, this.anchor);
-                    setObjTransform(name, false, "position", [0, y, this.totalHeight], false);
+                    setObjTransform(name, false, "position", [0, y, z], false);
                     setMorphFactor(name, 'Width', widthMorph);
                     setMorphFactor(name, 'Depth', (depth - 1) / 100);
                     // the fabric rolls up over the depth minus 0.25 m (the bottom screen also minus the corner posts), as legacy
@@ -1729,7 +1731,7 @@ function createPL(v3d = window.v3d) {
                     for (let i = 0; i < supportAmount; i++) {
                         const y = 0.2 + 0.15 + ((this.depth - 2 * 0.15 - 0.4) / (supportAmount - 1) * i);   // from the rear edge
                         const support = getCachedClone(this.screenSupportCache[t], i, types[t].supports, this.anchor);
-                        setObjTransform(support, false, "position", [0, y - this.depth / 2, this.totalHeight], false);
+                        setObjTransform(support, false, "position", [0, y - this.depth / 2, z], false);
                         setMorphFactor(support, 'Width', widthMorph);
                     }
                     hideCachedClones(this.screenSupportCache[t], supportAmount);
