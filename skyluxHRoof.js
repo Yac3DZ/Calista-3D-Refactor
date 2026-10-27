@@ -4,7 +4,10 @@
 
 // Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
-const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
+const DEV_SCOPE = 'wallRear'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
+
+// Dev: our own day / night button over the 3D view, until the configurator's toolbar sends DAY_NIGHT. false to remove it.
+const DAY_NIGHT_BUTTON = true;
 
 // The configurator's side steps and fields, and the camera view each one turns to (as legacy; check these ids and
 // labels when the configurator changes)
@@ -125,6 +128,9 @@ function createPL(v3d = window.v3d) {
     let environmentShown = false;
     let environmentLoaded = false;
     let environmentLoading = false;
+    let isNight = false;                // the day / night button: the sun turns into a moon, the world dims
+    let nightBlend = 0;                 // where the fade is: 0 day ... 1 night
+    let stopDayNightFade = null;        // set while it fades
     let environmentInView = [];         // the environment's parts that may hide when they block the camera's view
     let viewCheckedFrom = null;         // the camera position they were last checked from
     let viewCheckApp = null;            // the app the view check runs in
@@ -1106,6 +1112,7 @@ function createPL(v3d = window.v3d) {
         // Lists and objects may arrive as real values or as JSON strings; anything missing or broken falls
         // back to a default, so a bad value never stops the build.
         function getParameters() {
+            scope = scope || {};   // the server-side render (quote image) calls PL.init without a scope
             // Dev: the live configurator doesn't send the new contract yet → use a bundled example.
             if (DEV_SCOPE && scope['_3d_StructureSections'] === undefined && scope['_3d_SideOpenings'] === undefined) {
                 console.warn('[Calista 3D] no _3d_StructureSections / _3d_SideOpenings in the scope, using DEV scope "' + DEV_SCOPE + '"');
@@ -1187,7 +1194,8 @@ function createPL(v3d = window.v3d) {
         function handleButtons(data) {
             switch (data.type) {
                 case 'FULL_SCREEN':
-                    appInstance._resizeCb();
+                    if (appInstance.onResize)   // Verge3D 4.13 (legacy: _resizeCb)
+                        appInstance.onResize();
                     break;
                 case 'DOWNLOAD_IMAGE':
                     generateScreenshot();
@@ -1202,6 +1210,10 @@ function createPL(v3d = window.v3d) {
                 case 'SHOW_ENVIRONMENT':
                     environmentShown = !data.active;
                     enableScene();
+                    break;
+                case 'DAY_NIGHT':
+                    isNight = !data.active;
+                    enableDayNight(true);
                     break;
             }
         }
@@ -1258,7 +1270,7 @@ function createPL(v3d = window.v3d) {
             const totalHeight = section ? mm(section.heightUnderGutter) + 0.26 : 2.76;   // + crown beam height
             const size = (width + depth + totalHeight) / 10;
             const views = {
-                main: [width + size + 2, width + size + 8, totalHeight + size + 2],
+                main: [-(width + size + 2), width + size + 8, totalHeight + size + 2],
                 perspective: [width + size + 5, width + size + 8, totalHeight + size + 2],
                 side: [-(width + 8), depth / 2, totalHeight / 2],
                 front: [0, depth + 8, totalHeight / 1.25],
@@ -1677,15 +1689,15 @@ function createPL(v3d = window.v3d) {
                     hideCachedClones(m.cache, fillings.length);
             }
 
-            // One horizontal screen over the section ("its width IS the section width"), centred, with its depth
-            // supports spread between the front and rear beams. A click opens / closes it (toggleHorizontalScreen).
+            // One horizontal screen per section ("its width IS the section width"): a top screen over the whole section,
+            // the bottom one under the roof inside the beams; its depth supports spread between the front and rear beams.
+            // A click opens / closes it (toggleHorizontalScreen).
             enableHorizontalScreen(screen) {
                 const types = [
                     { type: "zipper", screen: "Horizontal screen zipper top.0", supports: "Horizontal screen zipper top depth supports.0" },
                     { type: "nonZipper", screen: "Horizontal screen non zipper top.0", supports: "Horizontal screen non zipper top depth supports.0" },
                     { type: "bottomZipper", screen: "Horizontal screen bottom.0", supports: "Horizontal screen bottom depth supports.0" },
                 ];
-                const widthMorph = (this.width - 1) / 100;
                 // about one support per metre of depth, plus the two end ones, kept 0.2 m clear of the beams
                 const supportAmount = Math.round(this.depth - 0.001) + 2;
                 this.activeScreen = null;
@@ -1697,10 +1709,17 @@ function createPL(v3d = window.v3d) {
                         continue;
                     }
 
+                    // a top screen covers the whole section, on the beams; the bottom one hangs under the roof, inside
+                    // the beams: 0.188 m in at the sides and the rear, 0.21 m at the front (the gutter is deeper)
+                    const inside = types[t].type == "bottomZipper";
+                    const width = inside ? this.width - 2 * 0.188 : this.width;
+                    const depth = inside ? this.depth - 0.188 - 0.21 : this.depth;
+                    const y = inside ? (0.188 - 0.21) / 2 : 0;
+                    const widthMorph = (width - 1) / 100;
                     const name = getCachedClone(this.screenCache, t, types[t].screen, this.anchor);
-                    setObjTransform(name, false, "position", [0, 0, this.totalHeight], false);
+                    setObjTransform(name, false, "position", [0, y, this.totalHeight], false);
                     setMorphFactor(name, 'Width', widthMorph);
-                    setMorphFactor(name, 'Depth', (this.depth - 1) / 100);
+                    setMorphFactor(name, 'Depth', (depth - 1) / 100);
                     // the fabric rolls up over the depth minus 0.25 m (the bottom screen also minus the corner posts), as legacy
                     this.screenOpeningMorph = ((this.depth - 0.25 - (types[t].type == "bottomZipper" ? 2 * 0.15 : 0)) / 99) / 100;
                     this.activeScreen = name;
@@ -2223,7 +2242,7 @@ function createPL(v3d = window.v3d) {
                         if (color)
                             setMaterialColor(getObjectMaterial(this.ledStripCache[i], 1, true), 'Color', 0, 0, 0, color);
                         this.ledStripCount++;
-                        const light = getCachedClone(this.ledLightCache, i, "Horizontal_Gutter_Front_Light_Source.0", this.crownAnchor);
+                        const light = getCachedClone(this.ledLightCache, i, "Horizontal_Gutter_Light_Source.0", this.crownAnchor);
                         if (light) {
                             setObjTransform(light, false, "position", [-x, -0.14, -0.261], false);
                             const area = getObjectByName(light);
@@ -2580,7 +2599,15 @@ function createPL(v3d = window.v3d) {
         function enableShadowCatcher() {
             let floor = getObjectByName("Shadow catcher");
             if (!floor) {
-                floor = new v3d.Mesh(new v3d.PlaneGeometry(1, 1), new v3d.ShadowMaterial({ opacity: 0.25 }));
+                const material = new v3d.ShadowMaterial({ opacity: 0.25 });
+                // only the sun's shadows: the spot, point and area light shadows are left out of its shader
+                material.onBeforeCompile = shader => {
+                    const sunOnly = v3d.ShaderChunk.shadowmask_pars_fragment
+                        .replace(/NUM_(SPOT|POINT|RECT_AREA)_LIGHT_SHADOWS/g, '0');
+                    shader.fragmentShader = shader.fragmentShader.replace('#include <shadowmask_pars_fragment>', sunOnly);
+                };
+                material.customProgramCacheKey = () => 'sunOnly';
+                floor = new v3d.Mesh(new v3d.PlaneGeometry(1, 1), material);
                 floor.name = "Shadow catcher";
                 floor.rotation.x = -Math.PI / 2;
                 floor.receiveShadow = true;
@@ -2688,7 +2715,67 @@ function createPL(v3d = window.v3d) {
                 setObjTransform("Spot", false, "position", [section.xPos, section.yPos, section.totalHeight - 0.2], false);
             lightIntensity("Spot", anyLed ? 6 + strips * 2.5 + spots * 0.5 : 0);
             changeVis("Spot", anyLed);
-            lightIntensity("Sun_modern", anyLed ? 4 : 4);   // dimmed with LEDs, not off: it casts the shadows
+            enableDayNight();   // the sun and the world
+        }
+
+        // Our own day / night button over the 3D view (DAY_NIGHT_BUTTON), made once; it does what the toolbar's DAY_NIGHT does.
+        function initDayNightButton() {
+            const container = appInstance.container;
+            if (!DAY_NIGHT_BUTTON || !container || typeof document === 'undefined' || container.querySelector('.calista-day-night'))
+                return;
+            const button = document.createElement('button');
+            button.className = 'calista-day-night';
+            button.style.cssText = 'position:absolute; top:12px; left:30px; z-index:10; padding:6px 12px; border:none; border-radius:16px;'
+                + 'background:rgba(30,30,30,0.7); color:#fff; font:13px sans-serif; cursor:pointer;';
+            const label = () => button.textContent = isNight ? '☀ Day' : '☾ Night';
+            button.addEventListener('click', () => {
+                isNight = !isNight;
+                enableDayNight(true);
+                label();
+            });
+            label();
+            if (getComputedStyle(container).position == 'static')   // so the button sits in the 3D view's corner
+                container.style.position = 'relative';
+            container.appendChild(button);
+        }
+
+        // Day or night (the DAY_NIGHT button): at night the sun becomes a faint, cool moon (it still casts the shadows), the
+        // world (the HDRI's light) dims through its Value and the background behind the canvas turns dark; the LEDs then stand
+        // out. fade: from the button, over 0.75 s; a configurator change sets it at once (and ends a fade).
+        function enableDayNight(fade) {
+            if (stopDayNightFade) {
+                stopDayNightFade();
+                stopDayNightFade = null;
+            }
+            const target = isNight ? 1 : 0;
+            if (fade && typeof requestAnimationFrame !== 'undefined')
+                stopDayNightFade = animateValue(nightBlend, target, 0.75, applyDayNight, () => stopDayNightFade = null);
+            else
+                applyDayNight(target);
+            // the 3D is drawn on a transparent background (the page shows through): darken behind the canvas at night
+            const canvas = appInstance.renderer.domElement;
+            if (canvas.style) {
+                canvas.style.transition = "background-color 0.75s";
+                canvas.style.backgroundColor = isNight ? "#0b1020" : "";
+            }
+        }
+
+        // The look between day (0) and night (1). The world's light is rebuilt at each change (updateEnvironment), too
+        // heavy for every frame: it follows in 10 steps.
+        function applyDayNight(blend) {
+            const day = { sun: 6, sunColor: "#ffffff", world: 2 };
+            const night = { sun: 2, sunColor: "#9fb4ff", world: 0.15 };
+            nightBlend = blend;
+            const sun = getObjectByName("Sun_modern");
+            if (sun) {
+                sun.intensity = day.sun + (night.sun - day.sun) * blend;
+                sun.color.set(day.sunColor).lerp(new v3d.Color(night.sunColor), blend);
+            }
+            const step = Math.round(blend * 20) / 20;
+            if (step !== applyDayNight.worldStep) {
+                applyDayNight.worldStep = step;
+                setMaterialValue("Verge3D_Environment_World", "Value", day.world + (night.world - day.world) * step);
+            }
         }
         function lightIntensity(lightName, intensity) {
             var areaLight = getObjectByName(lightName);
@@ -2722,11 +2809,19 @@ function createPL(v3d = window.v3d) {
         //#endregion
 
         //#region Entry
-        setCameraOptions();
-        getParameters();
-        enableScene();
-        initClicks();
-        initEnvironmentView();
+        // The configurator and the server-side render (quote image) wait for the snapshot: an error while building is
+        // logged, never allowed to stop it.
+        try {
+            setCameraOptions();
+            getParameters();
+            enableScene();
+            initClicks();
+            initEnvironmentView();
+            initDayNightButton();
+        }
+        catch (error) {
+            console.error('[Calista 3D] the scene could not be built completely:', error);
+        }
         takeSnapshot();
 
         if (!sceneIsInitialized) {
