@@ -2575,7 +2575,8 @@ function createPL(v3d = window.v3d) {
             setMorphFactor("House_modern", 'Window height', gutter > 4.8 ? 0.8 : gutter >= 3.3 ? (gutter - 3.3) / 2 : 0);
         }
 
-        // Append environment.glb once; then build the scene again with it.
+        // Append environment.glb once; then build the scene again with it. Meanwhile the configurator's loader shows the
+        // progress (as at the start); it gets 100 at the end, also when the file fails, so it never stays open.
         function loadEnvironment() {
             if (environmentLoading || !sceneParameters.environmentFile) {
                 if (!sceneParameters.environmentFile)
@@ -2583,11 +2584,17 @@ function createPL(v3d = window.v3d) {
                 return;
             }
             environmentLoading = true;
+            const loader = getJSFunction('getLoadPercentageFrom3D');
+            loader(0);
             appendScene(sceneParameters.environmentFile, "Environment", false, false, function () {
                 environmentLoaded = true;
                 enableScene();
-            }, function () { }, function () {
+                loader(100);
+            }, function () {
+                loader(Math.min(99, Math.round(_pGlob.percentage)));   // 100 only once it is built
+            }, function () {
                 environmentLoading = false;
+                loader(100);
                 console.warn('[Calista 3D] the environment file could not be loaded:', sceneParameters.environmentFile);
             });
         }
