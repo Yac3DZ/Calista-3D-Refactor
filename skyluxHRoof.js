@@ -4,7 +4,7 @@
 
 // Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
-const DEV_SCOPE = 'wallRear'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'
+const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'   
 
 // Dev: our own day / night button over the 3D view, until the configurator's toolbar sends DAY_NIGHT. false to remove it.
 const DAY_NIGHT_BUTTON = true;
@@ -2579,7 +2579,7 @@ function createPL(v3d = window.v3d) {
         }
 
         // Append environment.glb once; then build the scene again with it. Meanwhile the configurator's loader shows the
-        // progress (as at the start); it gets 100 at the end, also when the file fails, so it never stays open.
+        // progress; it closes at the end, also when the file fails.
         function loadEnvironment() {
             if (environmentLoading || !sceneParameters.environmentFile) {
                 if (!sceneParameters.environmentFile)
@@ -2587,19 +2587,27 @@ function createPL(v3d = window.v3d) {
                 return;
             }
             environmentLoading = true;
-            const loader = getJSFunction('getLoadPercentageFrom3D');
-            loader(0);
+            getJSFunction('getLoadPercentageFrom3D')(0);
             appendScene(sceneParameters.environmentFile, "Environment", false, false, function () {
                 environmentLoaded = true;
                 enableScene();
-                loader(100);
+                closeLoader();
             }, function () {
-                loader(Math.min(99, Math.round(_pGlob.percentage)));   // 100 only once it is built
+                getJSFunction('getLoadPercentageFrom3D')(Math.min(99, Math.round(_pGlob.percentage)));   // 100 only once it is built
             }, function () {
                 environmentLoading = false;
-                loader(100);
+                closeLoader();
                 console.warn('[Calista 3D] the environment file could not be loaded:', sceneParameters.environmentFile);
             });
+        }
+
+        // The configurator's loader closes; Hive then rebuilds its 3D toolbar with every button at its default,
+        // so the buttons get their states back.
+        function closeLoader() {
+            getJSFunction('getLoadPercentageFrom3D')(100);
+            getJSFunction('toggleThreeDControls')({ type: 'SHOW_ENVIRONMENT', active: environmentShown });
+            getJSFunction('toggleThreeDControls')({ type: 'SHOW_MEASUREMENTS', active: measurementsShown });
+            getJSFunction('toggleThreeDControls')({ type: 'DAY_NIGHT', active: isNight });
         }
 
         // appendScene puzzle
