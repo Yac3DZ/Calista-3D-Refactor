@@ -131,6 +131,9 @@ function createPL(v3d = window.v3d) {
     let isNight = false;                // the day / night button: the sun turns into a moon, the world dims
     let nightBlend = 0;                 // where the fade is: 0 day ... 1 night
     let stopDayNightFade = null;        // set while it fades
+    let saved3dData = '';               // the toolbar states last saved with the configuration (save3dData), as JSON
+    let saveRequestCount = 0;
+    const snapshotsAfterEnvironment = [];   // snapshots waiting for the environment (it was saved as shown)
 
     PL.init = function (appInstance, scope, snapshot) {
         this.procedures["handleButtons"] = handleButtons;
@@ -1124,6 +1127,7 @@ function createPL(v3d = window.v3d) {
                 colorOutside: scope['_3d_colorOutside'] || '#293133',
                 perspective: scope['_perspective'] || 'main',    // camera view for the snapshot / SSR
                 environmentFile: Array.isArray(scope['_3dFiles']) ? scope['_3dFiles'][0] : null,   // the environment GLB (as legacy)
+                saved: toObject(scope['_hive_saved3dData']),        // what the 3D saved with the configuration (save3dData)
             };
             // after the general values: sections and sides fall back on them
             sceneParameters.structureSections = toArray(scope['_3d_StructureSections']).map(getSectionParameters);
@@ -1203,14 +1207,17 @@ function createPL(v3d = window.v3d) {
                 case 'SHOW_MEASUREMENTS':
                     measurementsShown = !data.active;   // data.active is the state before the click
                     enableMeasurements();
+                    save3dData();
                     break;
                 case 'SHOW_ENVIRONMENT':
                     environmentShown = !data.active;
                     enableScene();
+                    save3dData();
                     break;
                 case 'DAY_NIGHT':
                     isNight = !data.active;
                     enableDayNight(true);
+                    save3dData();
                     break;
             }
         }
@@ -1651,8 +1658,9 @@ function createPL(v3d = window.v3d) {
                     const x = (left + right) / 2;
                     const widthMorph = (Math.max(left - right, 0) - 1) / 100;
 
+                    // the selected filling shows only the highlight panel (as the rafters)
                     for (const m of meshes) {
-                        if (!m.types.includes(fillings[i].type)) {
+                        if (!m.types.includes(fillings[i].type) || i == this.selectedFilling) {
                             changeVis(m.cache[i], false);   // this filling may have had another type before
                             continue;
                         }
@@ -1663,7 +1671,7 @@ function createPL(v3d = window.v3d) {
                         registerClickable(panel, () => this.selectRoof("filling", i));
                     }
 
-                    // the selected filling: the highlight panel over it
+                    // the selected filling: the highlight panel in its place
                     if (i == this.selectedFilling) {
                         const highlight = getCachedClone(this.selectedFillingCache, 0, "Horizontal_Roof_Selected_Front.0", this.anchor);
                         setObjTransform(highlight, false, "position", [x, 0, this.totalHeight], false);
@@ -2592,13 +2600,33 @@ function createPL(v3d = window.v3d) {
                 environmentLoaded = true;
                 enableScene();
                 closeLoader();
+                snapshotsAfterEnvironment.splice(0).forEach(take => take());
             }, function () {
                 getJSFunction('getLoadPercentageFrom3D')(Math.min(99, Math.round(_pGlob.percentage)));   // 100 only once it is built
             }, function () {
                 environmentLoading = false;
                 closeLoader();
+                snapshotsAfterEnvironment.splice(0).forEach(take => take());
                 console.warn('[Calista 3D] the environment file could not be loaded:', sceneParameters.environmentFile);
             });
+        }
+
+        // The toolbar states are saved with the configuration (Hive's save3dData); they come back in
+        // scope._hive_saved3dData, so the next time it opens the 3D starts as it was left. Saved only when they change.
+        function save3dData() {
+            const data = JSON.stringify({ toolbar: { environment: environmentShown, measurements: measurementsShown, night: isNight } });
+            if (data === saved3dData)
+                return;
+            saved3dData = data;
+            getJSFunction('save3dData')({ requestId: '3d-save-' + (++saveRequestCount), data: JSON.parse(data) });
+        }
+        // At the start: the saved toolbar states (closeLoader then sets the buttons).
+        function loadSaved3dData() {
+            const toolbar = toObject(sceneParameters.saved.toolbar);
+            environmentShown = toolbar.environment === true;
+            measurementsShown = toolbar.measurements === true;
+            isNight = toolbar.night === true;
+            saved3dData = JSON.stringify({ toolbar: { environment: environmentShown, measurements: measurementsShown, night: isNight } });
         }
 
         // The configurator's loader closes; Hive then rebuilds its 3D toolbar with every button at its default,
@@ -2628,7 +2656,7 @@ function createPL(v3d = window.v3d) {
         //#region Scene
         function enableScene() {
             clearScene();
-            changeVis("Gizmo", true);        // marks the scene origin
+            //changeVis("Gizmo", true);        // marks the scene origin
             changeVis("Sun_modern", true);   // clearScene hides the lights too
 
             const sections = sceneParameters.structureSections;
@@ -2698,6 +2726,7 @@ function createPL(v3d = window.v3d) {
             button.addEventListener('click', () => {
                 isNight = !isNight;
                 enableDayNight(true);
+                save3dData();
                 label();
             });
             label();
@@ -2781,6 +2810,8 @@ function createPL(v3d = window.v3d) {
         try {
             setCameraOptions();
             getParameters();
+            if (!sceneIsInitialized)
+                loadSaved3dData();
             enableScene();
             initClicks();
             initDayNightButton();
@@ -2788,13 +2819,20 @@ function createPL(v3d = window.v3d) {
         catch (error) {
             console.error('[Calista 3D] the scene could not be built completely:', error);
         }
-        takeSnapshot();
+        // the image shows the environment too, once it is loaded
+        if (environmentShown && environmentLoading && !environmentLoaded)
+            snapshotsAfterEnvironment.push(takeSnapshot);
+        else
+            takeSnapshot();
 
         if (!sceneIsInitialized) {
             // the configurator's loader bar
             for (let i = 0; i <= 100; i++) {
                 setTimeout(() => {
-                    getJSFunction('getLoadPercentageFrom3D')(i);
+                    if (i < 100)
+                        getJSFunction('getLoadPercentageFrom3D')(i);
+                    else
+                        closeLoader();
                 }, i);
             }
             sceneIsInitialized = true;
