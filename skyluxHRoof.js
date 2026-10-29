@@ -4,7 +4,7 @@
 
 // Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
-const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'   
+const DEV_SCOPE = 'wallRearRight'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'   
 
 // Dev: our own day / night button over the 3D view, until the configurator's toolbar sends DAY_NIGHT. false to remove it.
 const DAY_NIGHT_BUTTON = true;
@@ -119,6 +119,8 @@ function createPL(v3d = window.v3d) {
     const sideOpeningCache = [];        // one SideOpening per _3d_SideOpenings[] entry, reused
     const clickables = {};              // object name -> what a click on it does (registerClickable)
     let clickElement = null;            // the element the click listener is on
+    let renderApp = null;               // the app the idle check is installed on (initRendering)
+    let renderUntil = 0;                // drawing stops after this time (performance.now(), ms)
     // measurements: shown by the toolbar button or while the dimensions step is open; the focused field
     let measurementsShown = false;
     let measurementsInStep = false;
@@ -136,10 +138,11 @@ function createPL(v3d = window.v3d) {
     const snapshotsAfterEnvironment = [];   // snapshots waiting for the environment (it was saved as shown)
 
     PL.init = function (appInstance, scope, snapshot) {
-        this.procedures["handleButtons"] = handleButtons;
-        this.procedures["handleEvents"] = handleEvents;
-        this.procedures["handleFocus"] = handleFocus;
-        this.procedures["handleValue"] = handleValue;
+        // every configurator call may change what is shown: draw again after it
+        this.procedures["handleButtons"] = data => { handleButtons(data); renderFrame(); };
+        this.procedures["handleEvents"] = data => { handleEvents(data); renderFrame(); };
+        this.procedures["handleFocus"] = data => { handleFocus(data); renderFrame(); };
+        this.procedures["handleValue"] = data => { handleValue(data); renderFrame(); };
 
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
         PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache, clickables };
@@ -1190,6 +1193,7 @@ function createPL(v3d = window.v3d) {
 
             appInstance.controls.minPolarAngle = 0;
             appInstance.controls.maxPolarAngle = 5;
+            appInstance.controls.enableKeys = false;   // the arrow keys belong to the configurator's fields (as brustor)
         }
 
         function handleButtons(data) {
@@ -1214,7 +1218,7 @@ function createPL(v3d = window.v3d) {
                     enableScene();
                     save3dData();
                     break;
-                case 'DAY_NIGHT':
+                case 'DAY_NIGHT': // not available, yet
                     isNight = !data.active;
                     enableDayNight(true);
                     save3dData();
@@ -1402,6 +1406,36 @@ function createPL(v3d = window.v3d) {
         }
         //#endregion
 
+        //#region Rendering ---------------------------------------------------------------
+        // Verge3D draws every frame; here it draws only while something changes (as brustor): the camera moves, the 3D
+        // view is resized, an animation runs, or something was changed (renderFrame). Idle, it stops drawing.
+        // Draw for the next `seconds` (2.5 s: time for textures that are still loading, as brustor).
+        function renderFrame(seconds = 2.5) {
+            renderUntil = Math.max(renderUntil, performance.now() + seconds * 1000);
+            if (appInstance.enableRendering)
+                appInstance.enableRendering();
+        }
+
+        // Installed once: every frame (Verge3D runs the render callbacks also while it doesn't draw) a moved camera or
+        // a new view size keeps it drawing; past renderUntil it stops.
+        function initRendering() {
+            if (renderApp === appInstance || !appInstance.disableRendering)
+                return;
+            renderApp = appInstance;
+            let last = '';
+            appInstance.renderCallbacks.push(() => {
+                const camera = appInstance.getCamera(), canvas = appInstance.renderer.domElement;
+                const view = camera ? camera.matrixWorld.elements.join() + canvas.clientWidth + 'x' + canvas.clientHeight : '';
+                if (view != last) {
+                    last = view;
+                    renderFrame(0.5);
+                }
+                else if (performance.now() > renderUntil && appInstance.enableRender)
+                    appInstance.disableRendering(0);
+            });
+        }
+        //#endregion ---------------------------------------------------------------
+
         //#region Clicks ---------------------------------------------------------------
         // One click listener for the whole scene. Each part registers its clickable objects with what a click does.
         function registerClickable(objName, onClick) {
@@ -1426,6 +1460,7 @@ function createPL(v3d = window.v3d) {
                     clickables[name]();
                 else
                     clearRoofSelection();
+                renderFrame();
             });
 
             // hand cursor over clickable objects (one raycast per frame at most, none while turning the camera)
@@ -1478,6 +1513,7 @@ function createPL(v3d = window.v3d) {
                     start = now;
                 const t = Math.min((now - start) / (duration * 1000), 1);
                 onUpdate(from + (to - from) * ease(t));
+                renderFrame();
                 if (t < 1)
                     requestAnimationFrame(step);
                 else if (onDone)
@@ -2679,6 +2715,7 @@ function createPL(v3d = window.v3d) {
             // outside frame colour: every profile shares the Powdercoat material
             setMaterialColor("Powdercoat", "RGB", 0, 0, 0, sceneParameters.colorOutside);
             showParentsOfShown();
+            renderFrame();
         }
 
         // The render draws an object by its own visible flag, but the shadow pass skips everything under a hidden object.
@@ -2814,6 +2851,7 @@ function createPL(v3d = window.v3d) {
                 loadSaved3dData();
             enableScene();
             initClicks();
+            initRendering();
             initDayNightButton();
         }
         catch (error) {
