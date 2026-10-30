@@ -4,7 +4,7 @@
 
 // Dev: while the live configurator doesn't send _3d_StructureSections / _3d_SideOpenings yet, use one of the
 // bundled example scopes (DEV_SCOPES, bottom of the file). null to switch off.
-const DEV_SCOPE = 'wallRearRight'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'   
+const DEV_SCOPE = 'freestanding'; // null | 'freestanding' | 'wallRear' | 'wallRearRight'   
 
 // Dev: our own day / night button over the 3D view, until the configurator's toolbar sends DAY_NIGHT. false to remove it.
 const DAY_NIGHT_BUTTON = true;
@@ -16,6 +16,10 @@ const STEP_VIEWS = {
     'eff99be6146d44e4ac4efba7dc0c0646': 'front', 'bb7c1e530ea2474692f4dd5affec1ff6': 'rear',
 };
 const FOCUS_VIEWS = { left: 'left', opti_2: 'right', opti_1: 'front', opti_3: 'rear', roof: 'top' };
+
+// Materials whose parts cast no shadow (glass lets the sun through). Needed where glass shares an object with a frame
+// (Blender's Shadow switch is per object, so it would take the frame's shadow too); glass-only objects have it off in the blend.
+const NO_SHADOW_MATERIALS = ["Climaglide glass", "Glass edges", "Glass", "Roof glass", "FixedWallGlass", "Selection"];
 
 // Convert from mm to m
 function mm(value) {
@@ -146,31 +150,6 @@ function createPL(v3d = window.v3d) {
 
         // For the Node tests and the browser console (v3d.PL.debug); nothing in the configurator uses it.
         PL.debug = { getCachedClone, hideCachedClones, getObjectByName, getObjTransform, sceneParameters: () => sceneParameters, structureSectionCache, sideOpeningCache, clickables };
-
-
-
-        // #region Custom functions
-        function keepTextFront(objName) {
-            const obj = getObjectByName(objName);
-            const text = obj && obj.geometry;
-            if (!text || !text.cloneWithText || !text.groups.length || text.isFrontOnly)
-                return;
-            const lids = text.groups.filter(group => group.materialIndex == 0);
-            const front = new v3d.BufferGeometry();
-            for (const name in text.attributes) {
-                const attribute = text.attributes[name], size = attribute.itemSize, parts = [];
-                for (const lid of lids)
-                    parts.push(attribute.array.slice((lid.start + lid.count / 2) * size, (lid.start + lid.count) * size));
-                const array = new attribute.array.constructor(parts.reduce((sum, part) => sum + part.length, 0));
-                parts.reduce((offset, part) => (array.set(part, offset), offset + part.length), 0);
-                front.setAttribute(name, new v3d.BufferAttribute(array, size));
-            }
-            front.isFrontOnly = true;
-            front.parameters = text.parameters;
-            front.cloneWithText = value => text.cloneWithText(value);   // so updateTextObj keeps working
-            obj.geometry = front;
-            text.dispose();
-        }
 
         //#region Verge3D 4.13 helpers
 
@@ -1086,9 +1065,9 @@ function createPL(v3d = window.v3d) {
                         _pGlob.objCache.set(child.name, child);
                     }
                 });
-                // Glass lets the sun through: the parts in a glass material cast no shadow (the frame around them does).
+                // the parts in a NO_SHADOW_MATERIALS material cast no shadow (the frame around them still does)
                 getObjectByName(name).traverse(part => {
-                    if (part.isMesh && part.material && /glass/i.test(part.material.name))
+                    if (part.isMesh && part.material && NO_SHADOW_MATERIALS.includes(part.material.name))
                         part.castShadow = false;
                 });
                 // makeParent keeps the world transform; reset it to the anchor's origin instead. The template's
@@ -2506,6 +2485,31 @@ function createPL(v3d = window.v3d) {
             setMaterialValue("Measurements_Height", "Value", measurementField == "height_field" ? 1 : 0);
         }
 
+        // A Verge3D text has two flat faces, front and back, facing opposite ways, so backface culling alone always
+        // leaves one shown (mirrored from behind). This keeps only the front face (each lid's second half): then culling
+        // hides the label from behind and its TextFlipped twin shows instead. The new geometry still regenerates its text.
+        function keepTextFront(objName) {
+            const obj = getObjectByName(objName);
+            const text = obj && obj.geometry;
+            if (!text || !text.cloneWithText || !text.groups.length || text.isFrontOnly)
+                return;
+            const lids = text.groups.filter(group => group.materialIndex == 0);
+            const front = new v3d.BufferGeometry();
+            for (const name in text.attributes) {
+                const attribute = text.attributes[name], size = attribute.itemSize, parts = [];
+                for (const lid of lids)
+                    parts.push(attribute.array.slice((lid.start + lid.count / 2) * size, (lid.start + lid.count) * size));
+                const array = new attribute.array.constructor(parts.reduce((sum, part) => sum + part.length, 0));
+                parts.reduce((offset, part) => (array.set(part, offset), offset + part.length), 0);
+                front.setAttribute(name, new v3d.BufferAttribute(array, size));
+            }
+            front.isFrontOnly = true;
+            front.parameters = text.parameters;
+            front.cloneWithText = value => text.cloneWithText(value);   // so updateTextObj keeps working
+            obj.geometry = front;
+            text.dispose();
+        }
+
         // updateTextObject puzzle
         function updateTextObj(objSelector, text) {
             const objNames = retrieveObjectNames(objSelector);
@@ -2745,7 +2749,7 @@ function createPL(v3d = window.v3d) {
 
             if (section)
                 setObjTransform("Spot", false, "position", [section.xPos, section.yPos, section.totalHeight - 0.2], false);
-            lightIntensity("Spot", anyLed ? 6 + strips * 2.5 + spots * 0.5 : 0);
+            lightIntensity("Spot", anyLed ?strips * 10 + spots * 5 : 0);
             changeVis("Spot", anyLed);
             enableDayNight();   // the sun and the world
         }
@@ -2796,8 +2800,8 @@ function createPL(v3d = window.v3d) {
         // The look between day (0) and night (1). The world's light is rebuilt at each change (updateEnvironment), too
         // heavy for every frame: it follows in 10 steps.
         function applyDayNight(blend) {
-            const day = { sun: 6, sunColor: "#ffffff", world: 2 };
-            const night = { sun: 2, sunColor: "#9fb4ff", world: 0.15 };
+            const day = { sun: 16, sunColor: "#ffffff", world: 1.2 };
+            const night = { sun: 8, sunColor: "#9fb4ff", world: 0.33 };
             nightBlend = blend;
             const sun = getObjectByName("Sun_modern");
             if (sun) {
